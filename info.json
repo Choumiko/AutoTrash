@@ -1,0 +1,9 @@
+{
+  "name": "AutoTrash",
+  "version": "0.0.1",
+  "title": "Auto Trash",
+  "author": "Choumiko",
+  "homepage": "",
+  "dependencies": ["base >= 0.12.6"],
+  "description": "Keeps your inventory clean of certain items"
+}
