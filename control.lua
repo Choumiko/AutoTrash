@@ -14,6 +14,7 @@ local function initGlob()
     global["storage"] = {}
     global.version = "0.0.1"
     global.guiVersion = {}
+    global.configSize = {}
   end
 
   global["config"] = global["config"] or {}
@@ -21,6 +22,7 @@ local function initGlob()
   global["storage"] = global["storage"] or {}
   global.guiVersion = global.guiVersion or {}
   global.active = global.active or {}
+  global.configSize = global.configSize or {}
 
   if global.version < "0.0.2" then
     for p, _ in pairs(global.config) do
@@ -28,19 +30,31 @@ local function initGlob()
         global.active[p] = true
       end
     end
+    global.version = "0.0.2"
   end
 
-  global.version = "0.0.1"
+  if global.version < "0.0.3" then
+    for _, force in pairs(game.forces) do
+      local size = force.technologies["character-logistic-trash-slots-2"].researched and 30 or 10
+      global.configSize[force.name] = size
+    end
+    global.version = "0.0.3"
+  end
+
+  global.version = "0.0.3"
 end
 
-local function oninit() initGlob() end
+local function oninit()
+  initGlob()
+  game.on_event(defines.events.on_tick, function() update_gui() end)
+end
 
 local function onload()
   initGlob()
-  game.on_event(defines.events.on_tick, update_gui)
+  game.on_event(defines.events.on_tick, function() update_gui() end)
 end
 
-function update_gui(event, player)
+function update_gui(player)
   local status, err = pcall(function()
     if player then
       gui_init(player)
@@ -48,8 +62,8 @@ function update_gui(event, player)
       for _, p in pairs(game.players) do
         gui_init(p)
       end
-      game.on_event(defines.events.on_tick, on_tick)
     end
+    game.on_event(defines.events.on_tick, on_tick)
   end)
   if not status then
     debugDump(err, true)
@@ -120,7 +134,7 @@ function add_to_trash(player, item, count)
   global["config"][player.name] = global["config"][player.name] or {}
   if global.active[player.name] == nil then global.active[player.name] = true end
 
-  for i = 1, MAX_CONFIG_SIZE do
+  for i = 1, global.configSize[player.force.name] do
     if i > #global["config"][player.name] then
       global["config"][player.name][i] = { name = "", count = 0 }
     end
@@ -182,9 +196,12 @@ end)
 
 game.on_event(defines.events.on_research_finished, function(event)
   if event.research.name == "character-logistic-trash-slots-1" then
-    for _, player in pairs(game.players) do
+    for _, player in pairs(event.research.force.players) do
       gui_init(player, true)
     end
+  end
+  if event.research.name == "character-logistic-trash-slots-2" then
+    global.configSize[event.research.force.name] = 30
   end
 end)
 

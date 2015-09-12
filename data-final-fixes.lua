@@ -1,5 +1,5 @@
 require "lib"
-local types = {"item", "module"}
+
 for t, _ in pairs(data.raw) do
   for _, ent in pairs(data.raw[t]) do
     if ent.stack_size then

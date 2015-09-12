@@ -50,7 +50,7 @@ function gui_open_frame(player)
 
   -- We need to copy all items from normal config to temporary config.
   local i = 0
-  for i = 1, MAX_CONFIG_SIZE do
+  for i = 1, global.configSize[player.force.name] do
     if i > #global["config"][player.name] then
       global["config-tmp"][player.name][i] = { name = "", count = 0 }
     else
@@ -74,9 +74,10 @@ function gui_open_frame(player)
     name = "auto-trash-error-label"
   }
   error_label.style.minimal_width = 200
+  local colspan = global.configSize[player.force.name] > 10 and 9 or 6
   local ruleset_grid = frame.add{
     type = "table",
-    colspan = 5,
+    colspan = colspan,
     name = "auto-trash-ruleset-grid"
   }
   ruleset_grid.add{
@@ -105,8 +106,28 @@ function gui_open_frame(player)
     name = "auto-trash-grid-header-4",
     caption = {"auto-trash-config-header-2"}
   }
+  ruleset_grid.add{
+    type = "label",
+    caption = ""
+  }
+  if colspan == 9 then
+    ruleset_grid.add{
+      type = "label",
+      name = "auto-trash-grid-header-5",
+      caption = {"auto-trash-config-header-1"}
+    }
+    ruleset_grid.add{
+      type = "label",
+      name = "auto-trash-grid-header-6",
+      caption = {"auto-trash-config-header-2"}
+    }
+    ruleset_grid.add{
+      type = "label",
+      caption = ""
+    }
+  end
 
-  for i = 1, MAX_CONFIG_SIZE do
+  for i = 1, global.configSize[player.force.name] do
     local style = global["config-tmp"][player.name][i].name or "style"
     style = style == "" and "style" or style
     ruleset_grid.add{
@@ -122,12 +143,11 @@ function gui_open_frame(player)
       style = "auto-trash-textfield-small",
       text = ""
     }
-    if i%2 == 1 then
-      ruleset_grid.add{
-        type = "label",
-        caption = ""
-      }
-    end
+    ruleset_grid.add{
+      type = "label",
+      caption = ""
+    }
+
     local count = tonumber(global["config-tmp"][player.name][i].count)
     if global["config-tmp"][player.name][i].name ~= "" and count and count >= 0 then
       amount.text = count
@@ -149,7 +169,7 @@ function gui_open_frame(player)
     name = "auto-trash-clear-all",
     caption = {"auto-trash-config-button-clear-all"}
   }
-  local caption = global.active[player.name] and {"auto-trash-config-button-pause"} or {"auto-trash-config-button-unpause"} 
+  local caption = global.active[player.name] and {"auto-trash-config-button-pause"} or {"auto-trash-config-button-unpause"}
   button_grid.add{
     type = "button",
     name = "auto-trash-pause",
@@ -171,8 +191,8 @@ function gui_save_changes(player)
       if global["config-tmp"][player.name][i].name == "" then
         global["config"][player.name][i] = { name = "", count = "" }
       else
-      global["config-tmp"][player.name][i].count = GUI.sanitizeNumber(grid["auto-trash-amount-"..i].text,0)
-      local amount = global["config-tmp"][player.name][i].count
+        global["config-tmp"][player.name][i].count = GUI.sanitizeNumber(grid["auto-trash-amount-"..i].text,0)
+        local amount = global["config-tmp"][player.name][i].count
         global["config"][player.name][i] = {
           name = global["config-tmp"][player.name][i].name,
           count = amount or 0
@@ -193,7 +213,7 @@ function gui_clear_all(player)
   local frame = player.gui.left["auto-trash-config-frame"]
   if not frame then return end
   local ruleset_grid = frame["auto-trash-ruleset-grid"]
-  for i = 1, MAX_CONFIG_SIZE do
+  for i = 1, global.configSize[player.force.name] do
     global["config-tmp"][player.name][i] = { name = "", count = {} }
     ruleset_grid["auto-trash-item-" .. i].style = "at-icon-style"
   end
@@ -235,7 +255,7 @@ function gui_set_item(player, type1, index)
   if stack.type == "empty" or stack.name ~= global["config-tmp"][player.name][index].name then
     global["config-tmp"][player.name][index].count = ""
   end
-  
+
   global["config-tmp"][player.name][index].name = stack.name
   local ruleset_grid = frame["auto-trash-ruleset-grid"]
   local style = global["config-tmp"][player.name][index].name ~= "" and "at-icon-"..global["config-tmp"][player.name][index].name or "at-icon-style"
