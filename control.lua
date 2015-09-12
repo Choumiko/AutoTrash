@@ -2,7 +2,7 @@ require "defines"
 require "util"
 
 MAX_CONFIG_SIZE = 10
-MAX_STORAGE_SIZE = 12
+MAX_STORAGE_SIZE = 6
 
 require "gui"
 
@@ -11,17 +11,24 @@ local function initGlob()
   if not global.version then
     global.config = {}
     global["config-tmp"] = {}
+    global["logistics-config"] = {}
+    global["logistics-config-tmp"] = {}
     global["storage"] = {}
     global.version = "0.0.1"
     global.guiVersion = {}
     global.configSize = {}
+    global.active = {}
+    global["logistics-active"] = {}
   end
 
   global["config"] = global["config"] or {}
   global["config-tmp"] = global["config-tmp"] or {}
+  global["logistics-config"] = global["logistics-config"] or {}
+  global["logistics-config-tmp"] = global["logistics-config-tmp"] or {}
   global["storage"] = global["storage"] or {}
   global.guiVersion = global.guiVersion or {}
   global.active = global.active or {}
+  global["logistics-active"] = global["logistics-active"] or {}
   global.configSize = global.configSize or {}
   global.temporaryTrash = global.temporaryTrash or {}
 
@@ -55,12 +62,28 @@ local function onload()
   game.on_event(defines.events.on_tick, function() update_gui() end)
 end
 
+function count_keys(hashmap)
+  local result = 0
+  for _, __ in pairs(hashmap) do
+    result = result + 1
+  end
+  return result
+end
+
 function update_gui(player)
   local status, err = pcall(function()
     if player then
+      if not global.guiVersion[player.name] then global.guiVersion[player.name] = "0.0.0" end
+      if global.guiVersion[player.name] < "0.0.2" then
+        gui_destroy(player)
+      end
       gui_init(player)
     else
       for _, p in pairs(game.players) do
+        if not global.guiVersion[p.name] then global.guiVersion[p.name] = "0.0.0" end
+        if global.guiVersion[p.name] < "0.0.2" then
+          gui_destroy(p)
+        end
         gui_init(p)
       end
     end
@@ -80,6 +103,17 @@ function requested_items(player)
       if request and (not requests[request.name] or (requests[request.name] and request.count > requests[request.name])) then
         requests[request.name] = request.count
       end
+    end
+  end
+  return requests
+end
+
+function get_requests(player)
+  local requests = {}
+  -- get requested items
+  if player.character and player.force.character_logistic_slot_count > 0 then
+    for c=1,player.force.character_logistic_slot_count do
+      requests[c] = player.character.get_request_slot(c)
     end
   end
   return requests
@@ -186,6 +220,41 @@ function add_to_trash(player, item, count)
   player.print({"", "added ", game.get_localised_item_name(item), " to temporary trash"})
 end
 
+function pause_requests(player)
+  if not global.storage[player.name] then
+    global.storage[player.name] = {requests={}}
+  end
+  global.storage[player.name].requests = global.storage[player.name].requests or {}
+
+  local storage = global.storage[player.name].requests
+  if player.character and player.force.character_logistic_slot_count > 0 then
+    for c=1,player.force.character_logistic_slot_count do
+      local request = player.character.get_request_slot(c)
+      if request then
+        storage[c] = {name = request.name, count = request.count}
+        player.character.clear_request_slot(c)
+        --requests[request.name] = request.count
+      end
+    end
+  end
+end
+
+function unpause_requests(player)
+  if not global.storage[player.name] then
+    global.storage[player.name] = {}
+  end
+  local storage = global.storage[player.name].requests or {}
+  local slots = player.force.character_logistic_slot_count
+  if player.character and slots > 0 then
+    for c=1, slots do
+      if storage[c] then
+        player.character.set_request_slot(storage[c], c)
+      end
+    end
+    global.storage[player.name].requests = {}
+  end
+end
+
 game.on_event(defines.events.on_gui_click, function(event)
   local status, err = pcall(function()
     local element = event.element
@@ -218,13 +287,48 @@ game.on_event(defines.events.on_gui_click, function(event)
         mainButton.style = "auto-trash-button-paused"
         element.caption = {"auto-trash-config-button-unpause"}
       end
+    elseif element.name == "auto-trash-logistics-button" then
+      global["logistics-active"][player.name] = not global["logistics-active"][player.name]
+      local mainButton = player.gui.top[GUI.logisticsButton]
+      if global["logistics-active"][player.name] then
+        mainButton.style = "auto-trash-logistics-button"
+        --element.caption = {"auto-trash-config-button-pause"}
+        unpause_requests(player)
+      else
+        mainButton.style = "auto-trash-logistics-button-paused"
+        --element.caption = {"auto-trash-config-button-unpause"}
+        pause_requests(player)
+      end
+      --gui_open_logistics_frame(player)
+      --
+    elseif element.name == "auto-trash-logistics-pause" then
+      global["logistics-active"][player.name] = not global["logistics-active"][player.name]
+      local mainButton = player.gui.top[GUI.logisticsButton]
+      if global["logistics-active"][player.name] then
+        mainButton.style = "auto-trash-logistics-button"
+        element.caption = {"auto-trash-config-button-pause"}
+        unpause_requests(player)
+      else
+        mainButton.style = "auto-trash-logistics-button-paused"
+        element.caption = {"auto-trash-config-button-unpause"}
+        pause_requests(player)
+      end
+    elseif element.name  == "auto-trash-logistics-storage-store" then
+      gui_store(player)
     else
       event.element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
       local type, index, slot = string.match(element.name, "auto%-trash%-(%a+)%-(%d+)%-*(%d*)")
+      if not type then
+        type, index, slot = string.match(element.name, "auto%-trash%-logistics%-(%a+)%-(%d+)%-*(%d*)")
+      end
       --debugDump({t=type,i=index,s=slot},true)
       if type and index then
         if type == "item" then
           gui_set_item(player, type, tonumber(index))
+        elseif type == "restore" then
+          gui_restore(player, tonumber(index))
+        elseif type == "remove" then
+          gui_remove(player, tonumber(index))
         end
       end
     end
