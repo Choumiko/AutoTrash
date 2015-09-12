@@ -23,6 +23,7 @@ local function initGlob()
   global.guiVersion = global.guiVersion or {}
   global.active = global.active or {}
   global.configSize = global.configSize or {}
+  global.temporaryTrash = global.temporaryTrash or {}
 
   if global.version < "0.0.2" then
     for p, _ in pairs(global.config) do
@@ -70,6 +71,20 @@ function update_gui(player)
   end
 end
 
+function requested_items(player)
+  local requests = {}
+  -- get requested items
+  if player.character and player.force.character_logistic_slot_count > 0 then
+    for c=1,player.force.character_logistic_slot_count do
+      local request = player.character.get_request_slot(c)
+      if request and (not requests[request.name] or (requests[request.name] and request.count > requests[request.name])) then
+        requests[request.name] = request.count
+      end
+    end
+  end
+  return requests
+end
+
 function on_tick(event)
   if event.tick % 120 == 0 then
     local status, err = pcall(function()
@@ -77,19 +92,33 @@ function on_tick(event)
         if not player.valid or not player.connected or not global.config[player.name] or not global.active[player.name] then
           break
         end
-        local requests = {}
-        -- get requested items
-        if player.character and player.force.character_logistic_slot_count > 0 then
-          for c=1,player.force.character_logistic_slot_count do
-            local request = player.character.get_request_slot(c)
-            if request and (not requests[request.name] or (requests[request.name] and request.count > requests[request.name])) then
-              requests[request.name] = request.count
+        if not global.temporaryTrash[player.name] then global.temporaryTrash[player.name] = {} end
+        local requests = requested_items(player)
+        for i=#global.temporaryTrash[player.name],1,-1 do
+          local item = global.temporaryTrash[player.name][i]
+          if (item and item.name == "") or not item then
+            break
+          end
+          local stack = {name=item.name, count=1}
+          local count = player.get_item_count(item.name)
+          local desired = requests[item.name] and requests[item.name] + item.count or item.count
+          local diff = count - desired
+          if diff > 0 then
+            --player.print(item.name.. ": " .. diff)
+            local trash = player.get_inventory(defines.inventory.player_trash)
+            for j=1,diff do
+              if trash.can_insert(stack) then
+                player.remove_item(stack)
+                trash.insert(stack)
+              end
             end
+          else
+            player.print({"", "removed ", game.get_localised_item_name(item.name), " from temporary trash"})
+            global.temporaryTrash[player.name][i] = nil
           end
         end
-
         for i, item in pairs(global.config[player.name]) do
-          if item.name == "" then
+          if (item and item.name == "") or not item then
             break
           end
           local stack = {name=item.name, count=1}
@@ -131,20 +160,30 @@ function add_order(player)
 end
 
 function add_to_trash(player, item, count)
-  global["config"][player.name] = global["config"][player.name] or {}
+  saveVar(global)
+  global.temporaryTrash[player.name] = global.temporaryTrash[player.name] or {}
   if global.active[player.name] == nil then global.active[player.name] = true end
-
-  for i = 1, global.configSize[player.force.name] do
-    if i > #global["config"][player.name] then
-      global["config"][player.name][i] = { name = "", count = 0 }
+  for i=#global.temporaryTrash[player.name],1,-1 do
+    local item = global.temporaryTrash[player.name][i]
+    if item and item.name == "" then
+      break
     end
-    if global["config"][player.name][i].name == "" then
-      global["config"][player.name][i] = {name = item, count  = count}
-      player.print({"", "added ", game.get_localised_item_name(item), " to auto trash"})
-      return
+    local requests = requested_items(player)
+    local count = player.get_item_count(item.name)
+    local desired = requests[item.name] and requests[item.name] + item.count or item.count
+    local diff = count - desired
+    if diff < 1 then
+      player.print({"", "removed ", game.get_localised_item_name(item.name), " from temporary trash"})
+      global.temporaryTrash[player.name][i] = nil
     end
   end
-  player.print({"", "Couldn't add ", game.get_localised_item_name(item), " to auto trash."})
+
+  if #global.temporaryTrash[player.name] >= 5 then
+    player.print({"", "Couldn't add ", game.get_localised_item_name(item), " to temporary trash."})
+    return
+  end
+  table.insert(global.temporaryTrash[player.name], {name = item, count = count})
+  player.print({"", "added ", game.get_localised_item_name(item), " to temporary trash"})
 end
 
 game.on_event(defines.events.on_gui_click, function(event)
@@ -153,6 +192,7 @@ game.on_event(defines.events.on_gui_click, function(event)
     --debugDump(element.name, true)
     local player = game.get_player(event.player_index)
     if not global.guiVersion[player.name] then global.guiVersion[player.name] = "0.0.0" end
+    if not global.temporaryTrash[player.name] then global.temporaryTrash[player.name] = {} end
 
     if element.name == "auto-trash-config-button" then
       if player.cursor_stack.valid_for_read then
