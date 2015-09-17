@@ -31,6 +31,7 @@ local function initGlob()
   global["logistics-active"] = global["logistics-active"] or {}
   global.configSize = global.configSize or {}
   global.temporaryTrash = global.temporaryTrash or {}
+  global.temporaryRequests = global.temporaryRequests or {}
 
   if global.version < "0.0.2" then
     for p, _ in pairs(global.config) do
@@ -167,20 +168,15 @@ function on_tick(event)
         for i=#global.temporaryTrash[player.name],1,-1 do
           local item = global.temporaryTrash[player.name][i]
           if item and item.name ~= "" then
-            local stack = {name=item.name, count=1}
             local count = player.get_item_count(item.name)
             local desired = requests[item.name] and requests[item.name] + item.count or item.count
             local diff = count - desired
+            local stack = {name=item.name, count=diff}
             if diff > 0 then
-              --player.print(item.name.. ": " .. diff)
               local trash = player.get_inventory(defines.inventory.player_trash)
-              for j=1,diff do
-                if trash.can_insert(stack) then
-                  player.remove_item(stack)
-                  trash.insert(stack)
-                end
-              end
-            else
+              diff = diff - player.remove_item{name=item.name, count=trash.insert(stack)}
+            end
+            if diff <= 0 then
               player.print({"", "removed ", game.get_localised_item_name(item.name), " from temporary trash"})
               global.temporaryTrash[player.name][i] = nil
             end
@@ -188,19 +184,13 @@ function on_tick(event)
         end
         for i, item in pairs(global.config[player.name]) do
           if item and item.name ~= "" then
-            local stack = {name=item.name, count=1}
             local count = player.get_item_count(item.name)
             local desired = requests[item.name] and requests[item.name] + item.count or item.count
             local diff = count - desired
+            local stack = {name=item.name, count=diff}
             if diff > 0 then
-              --player.print(item.name.. ": " .. diff)
               local trash = player.get_inventory(defines.inventory.player_trash)
-              for j=1,diff do
-                if trash.can_insert(stack) then
-                  player.remove_item(stack)
-                  trash.insert(stack)
-                end
-              end
+              player.remove_item{name=item.name, count=trash.insert(stack)}
             end
           end
         end
@@ -251,6 +241,36 @@ function add_to_trash(player, item, count)
   end
   table.insert(global.temporaryTrash[player.name], {name = item, count = count})
   player.print({"", "added ", game.get_localised_item_name(item), " to temporary trash"})
+end
+
+function add_to_requests(player, item, count)
+  global.temporaryRequests[player.name] = global.temporaryRequests[player.name] or {}
+  if global["logistics-active"][player.name] == nil then global["logistics-active"][player.name] = true end
+  local index = false
+
+  for i=#global.temporaryRequests[player.name],1,-1 do
+    local req = global.temporaryRequests[player.name][i]
+    if req and req.name == "" then
+      break
+    end
+    if req.name == item then
+      index = i
+    end
+  end
+
+  if #global.temporaryRequests[player.name] > player.force.character_logistic_slot_count then
+    player.print({"", "Couldn't add ", game.get_localised_item_name(item), " to temporary requests."})
+    return
+  end
+
+  if not index then
+    table.insert(global.temporaryTrash[player.name], {name = item, count = count})
+  else
+    global.temporaryTrash[player.name][index].count = global.temporaryTrash[player.name][index].count + count
+  end
+
+  table.insert(global.temporaryRequests[player.name], {name = item, count = count})
+  player.print({"", "added ", game.get_localised_item_name(item), " to temporary requests"})
 end
 
 function pause_requests(player)

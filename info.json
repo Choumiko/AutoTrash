@@ -4,6 +4,6 @@
   "title": "Auto Trash",
   "author": "Choumiko",
   "homepage": "",
-  "dependencies": ["base >= 0.12.7"],
+  "dependencies": ["base >= 0.12.8"],
   "description": "Keeps your inventory clean of certain items"
 }
