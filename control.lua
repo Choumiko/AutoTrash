@@ -190,7 +190,10 @@ function on_tick(event)
             local stack = {name=item.name, count=diff}
             if diff > 0 then
               local trash = player.get_inventory(defines.inventory.player_trash)
-              player.remove_item{name=item.name, count=trash.insert(stack)}
+              local c = trash.insert(stack)
+              if c > 0 then
+                player.remove_item{name=item.name, count=c}
+              end
             end
           end
         end
