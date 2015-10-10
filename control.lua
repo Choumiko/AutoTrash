@@ -175,8 +175,13 @@ function on_tick(event)
             if diff > 0 then
               local trash = player.get_inventory(defines.inventory.player_trash)
               local c = trash.insert(stack)
+              --debugDump({count=count,diff=diff,c=c},true)
               if c > 0 then
-                diff = diff - player.remove_item{name=item.name, count=c}
+                local removed = player.remove_item{name=item.name, count=c}
+                diff = diff - removed
+                if c > removed then
+                  trash.remove{name=item.name, count = c - removed}
+                end
               end
             end
             if diff <= 0 then
@@ -194,8 +199,12 @@ function on_tick(event)
             if diff > 0 then
               local trash = player.get_inventory(defines.inventory.player_trash)
               local c = trash.insert(stack)
+              --debugDump({count=count,diff=diff,c=c},true)
               if c > 0 then
-                player.remove_item{name=item.name, count=c}
+                local removed = player.remove_item{name=item.name, count=c}
+                if c > removed then
+                  trash.remove{name=item.name, count = c - removed}
+                end
               end
             end
           end
