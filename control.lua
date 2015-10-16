@@ -153,7 +153,8 @@ function on_tick(event)
           local item = global.temporaryTrash[player.name][i]
           if item and item.name ~= "" then
             local count = player.get_item_count(item.name)
-            local desired = requests[item.name] and requests[item.name] + item.count or item.count
+            local requested = requests[item.name] and requests[item.name] or 0
+            local desired = math.max(requested, item.count)
             local diff = count - desired
             local stack = {name=item.name, count=diff}
             if diff > 0 then
@@ -176,7 +177,8 @@ function on_tick(event)
         for i, item in pairs(global.config[player.name]) do
           if item and item.name ~= "" then
             local count = player.get_item_count(item.name)
-            local desired = requests[item.name] and requests[item.name] + item.count or item.count
+            local requested = requests[item.name] and requests[item.name] or 0
+            local desired = math.max(requested, item.count)
             local diff = count - desired
             local stack = {name=item.name, count=diff}
             if diff > 0 then
