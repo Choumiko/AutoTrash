@@ -7,7 +7,6 @@ MAX_STORAGE_SIZE = 6
 require "gui"
 
 local function initGlob()
-
   if not global.version then
     global.config = {}
     global["config-tmp"] = {}
@@ -33,24 +32,21 @@ local function initGlob()
   global.temporaryTrash = global.temporaryTrash or {}
   global.temporaryRequests = global.temporaryRequests or {}
 
-  if global.version < "0.0.2" then
-    for p, _ in pairs(global.config) do
-      if global.active[p] == nil then
-        global.active[p] = true
-      end
-    end
-    global.version = "0.0.2"
-  end
+  global.version = "0.0.3"
+end
 
-  if global.version < "0.0.3" then
-    for _, force in pairs(game.forces) do
-      local size = force.technologies["character-logistic-trash-slots-2"].researched and 30 or 10
-      global.configSize[force.name] = size
-    end
-    global.version = "0.0.3"
-  end
+local function oninit()
+  initGlob()
+  script.on_event(defines.events.on_tick, function() update_gui() end)
+end
 
-  --hanndle removed items here
+local function onload()
+  initGlob()
+  script.on_event(defines.events.on_tick, function() update_gui() end)
+end
+
+local function on_configuration_changed(data)
+  --handle removed items
   local items = game.item_prototypes
   for name, p in pairs(global.config) do
     local delete = {}
@@ -68,18 +64,6 @@ local function initGlob()
       end
     end
   end
-
-  global.version = "0.0.3"
-end
-
-local function oninit()
-  initGlob()
-  game.on_event(defines.events.on_tick, function() update_gui() end)
-end
-
-local function onload()
-  initGlob()
-  game.on_event(defines.events.on_tick, function() update_gui() end)
 end
 
 function count_keys(hashmap)
@@ -107,7 +91,7 @@ function update_gui(player)
         gui_init(p)
       end
     end
-    game.on_event(defines.events.on_tick, on_tick)
+    script.on_event(defines.events.on_tick, on_tick)
   end)
   if not status then
     debugDump(err, true)
@@ -175,7 +159,6 @@ function on_tick(event)
             if diff > 0 then
               local trash = player.get_inventory(defines.inventory.player_trash)
               local c = trash.insert(stack)
-              --debugDump({count=count,diff=diff,c=c},true)
               if c > 0 then
                 local removed = player.remove_item{name=item.name, count=c}
                 diff = diff - removed
@@ -199,7 +182,6 @@ function on_tick(event)
             if diff > 0 then
               local trash = player.get_inventory(defines.inventory.player_trash)
               local c = trash.insert(stack)
-              --debugDump({count=count,diff=diff,c=c},true)
               if c > 0 then
                 local removed = player.remove_item{name=item.name, count=c}
                 if c > removed then
@@ -217,8 +199,9 @@ function on_tick(event)
   end
 end
 
-game.on_init(oninit)
-game.on_load(onload)
+script.on_init(oninit)
+script.on_load(onload)
+script.on_configuration_changed(on_configuration_changed)
 
 function add_order(player)
   local entities = player.cursor_stack.get_blueprint_entities()
@@ -323,7 +306,7 @@ function unpause_requests(player)
   end
 end
 
-game.on_event(defines.events.on_gui_click, function(event)
+script.on_event(defines.events.on_gui_click, function(event)
   local status, err = pcall(function()
     local element = event.element
     --debugDump(element.name, true)
@@ -394,7 +377,7 @@ game.on_event(defines.events.on_gui_click, function(event)
   end
 end)
 
-game.on_event(defines.events.on_research_finished, function(event)
+script.on_event(defines.events.on_research_finished, function(event)
   if event.research.name == "character-logistic-trash-slots-1" then
     for _, player in pairs(event.research.force.players) do
       gui_init(player, "trash")
@@ -429,7 +412,7 @@ end
 function saveVar(var, name)
   local var = var or global
   local n = name or ""
-  game.makefile("autotrash"..n..".lua", serpent.block(var, {name="glob"}))
+  game.write_file("autotrash"..n..".lua", serpent.block(var, {name="glob"}))
 end
 
 remote.add_interface("at",
