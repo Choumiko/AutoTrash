@@ -80,6 +80,9 @@ local function on_configuration_changed(data)
       init_forces()
       init_players()
     elseif oldVersion < "0.0.51" then
+      if oldVersion < "0.0.5" then
+        global = {}
+      end
       init_global()
       init_forces()
       init_players(true)
