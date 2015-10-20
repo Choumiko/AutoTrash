@@ -25,10 +25,6 @@ GUI = {
 }
 
 function gui_init(player, after_research)
-  if not global.guiVersion[player.name] then global.guiVersion[player.name] = "0.0.0" end
-  if global.active[player.name] == nil then global.active[player.name] = true end
-  if global["logistics-active"][player.name] == nil then global["logistics-active"][player.name] = true end
-
   if not player.gui.top[GUI.mainFlow] and
     (player.force.technologies["character-logistic-trash-slots-1"].researched or after_research == "trash"
     or player.force.technologies["character-logistic-slots-1"].researched or after_research == "requests") then
@@ -59,7 +55,6 @@ function gui_init(player, after_research)
       style = "auto-trash-button"
     }
   end
-  global.guiVersion[player.name] = "0.0.3"
 end
 
 function gui_destroy(player)

@@ -6,46 +6,87 @@ MAX_STORAGE_SIZE = 6
 
 require "gui"
 
-local function initGlob()
-  if not global.version then
-    global.config = {}
-    global["config-tmp"] = {}
-    global["logistics-config"] = {}
-    global["logistics-config-tmp"] = {}
-    global["storage"] = {}
-    global.version = "0.0.1"
-    global.guiVersion = {}
-    global.configSize = {}
-    global.active = {}
-    global["logistics-active"] = {}
-  end
-
+local function init_global()
+  global = global or {}
   global["config"] = global["config"] or {}
-  global["config-tmp"] = global["config-tmp"] or {}
+  global["config-tmp"] =  global["config-tmp"] or {}
   global["logistics-config"] = global["logistics-config"] or {}
   global["logistics-config-tmp"] = global["logistics-config-tmp"] or {}
   global["storage"] = global["storage"] or {}
-  global.guiVersion = global.guiVersion or {}
   global.active = global.active or {}
   global["logistics-active"] = global["logistics-active"] or {}
   global.configSize = global.configSize or {}
   global.temporaryTrash = global.temporaryTrash or {}
   global.temporaryRequests = global.temporaryRequests or {}
-
-  global.version = "0.0.3"
 end
 
-local function oninit()
-  initGlob()
-  script.on_event(defines.events.on_tick, function() update_gui() end)
+local function init_player(player)
+    global.config[player.name] = global.config[player.name] or {}
+    global["logistics-config"][player.name] = global["logistics-config"] or {}
+    global["config-tmp"][player.name] = global["config-tmp"][player.name] or {}
+    global["logistics-active"][player.name] = true
+    global.active[player.name] = true
+    global["logistics-config"][player.name] = global["logistics-config"][player.name] or {}
+    global["logistics-config-tmp"][player.name] = global["logistics-config-tmp"][player.name] or {}
+    global.storage[player.name] = global.storage[player.name] or {}
+    global.temporaryRequests[player.name] = global.temporaryRequests[player.name] or {}
+    global.temporaryTrash[player.name] = global.temporaryTrash[player.name] or {}
+    gui_init(player)
 end
 
-local function onload()
-  initGlob()
-  script.on_event(defines.events.on_tick, function() update_gui() end)
+local function init_players(resetGui)
+  for i,player in pairs(game.players) do
+    if resetGui then
+      gui_destroy(player)
+    end
+    init_player(player)
+  end
 end
 
+local function init_force(force)
+  if not global.configSize[force.name] then
+    global.configSize[force.name] = force.technologies["character-logistic-trash-slots-2"].researched and 30 or MAX_CONFIG_SIZE
+  end
+end
+
+local function init_forces()
+  for i, force in pairs(game.forces) do
+    init_force(force)
+  end
+end
+
+--run once per save
+local function on_init()
+  init_global()
+  init_forces()
+  --script.on_event(defines.events.on_tick, function() update_gui() end)
+end
+
+-- run when loading/when player joins mp (only on connecting player)
+local function on_load()
+--script.on_event(defines.events.on_tick, function() update_gui() end)
+end
+
+
+-- run once
 local function on_configuration_changed(data)
+  --Autotrash changed, got added
+  if data.mod_changes.AutoTrash then
+    local newVersion = data.mod_changes.AutoTrash.new_version
+    local oldVersion = data.mod_changes.AutoTrash.old_version
+    -- mod was added to existing save
+    if not oldVersion then
+      init_global()
+      init_forces()
+      init_players()
+    elseif oldVersion < "0.0.51" then
+      init_global()
+      init_forces()
+      init_players(true)
+      global.version = nil
+    end
+  end
+  --debugDump(data,true)
   --handle removed items
   local items = game.item_prototypes
   for name, p in pairs(global.config) do
@@ -66,36 +107,27 @@ local function on_configuration_changed(data)
   end
 end
 
+-- run once
+local function on_player_created(event)
+  --debugDump(event,true)
+  init_player(game.players[event.player_index])
+end
+
+local function on_force_created(event)
+  --debugDump(event,true)
+  init_force(event.force)
+end
+
+local function on_forces_merging(event)
+  --debugDump(event,true)
+end
+
 function count_keys(hashmap)
   local result = 0
   for _, __ in pairs(hashmap) do
     result = result + 1
   end
   return result
-end
-
-function update_gui(player)
-  local status, err = pcall(function()
-    if player then
-      if not global.guiVersion[player.name] then global.guiVersion[player.name] = "0.0.0" end
-      if global.guiVersion[player.name] < "0.0.3" then
-        gui_destroy(player)
-      end
-      gui_init(player)
-    else
-      for _, p in pairs(game.players) do
-        if not global.guiVersion[p.name] then global.guiVersion[p.name] = "0.0.0" end
-        if global.guiVersion[p.name] < "0.0.3" then
-          gui_destroy(p)
-        end
-        gui_init(p)
-      end
-    end
-    script.on_event(defines.events.on_tick, on_tick)
-  end)
-  if not status then
-    debugDump(err, true)
-  end
 end
 
 function requested_items(player)
@@ -169,7 +201,7 @@ function on_tick(event)
               end
             end
             if diff <= 0 then
-              player.print({"", "removed ", game.get_localised_item_name(item.name), " from temporary trash"})
+              player.print({"", "removed ", game.item_prototypes[item.name].localised_name, " from temporary trash"})
               global.temporaryTrash[player.name][i] = nil
             end
           end
@@ -201,9 +233,14 @@ function on_tick(event)
   end
 end
 
-script.on_init(oninit)
-script.on_load(onload)
+script.on_init(on_init)
+script.on_load(on_load)
 script.on_configuration_changed(on_configuration_changed)
+script.on_event(defines.events.on_player_created, on_player_created)
+script.on_event(defines.events.on_force_created, on_force_created)
+script.on_event(defines.events.on_forces_merging, on_forces_merging)
+script.on_event(defines.events.on_tick, on_tick)
+
 
 function add_order(player)
   local entities = player.cursor_stack.get_blueprint_entities()
@@ -230,17 +267,17 @@ function add_to_trash(player, item, count)
     local desired = requests[item.name] and requests[item.name] + item.count or item.count
     local diff = count - desired
     if diff < 1 then
-      player.print({"", "removed ", game.get_localised_item_name(item.name), " from temporary trash"})
+      player.print({"", "removed ", game.item_prototypes[item.name].localised_name, " from temporary trash"})
       global.temporaryTrash[player.name][i] = nil
     end
   end
 
   if #global.temporaryTrash[player.name] >= 5 then
-    player.print({"", "Couldn't add ", game.get_localised_item_name(item), " to temporary trash."})
+    player.print({"", "Couldn't add ", game.item_prototypes[item].localised_name, " to temporary trash."})
     return
   end
   table.insert(global.temporaryTrash[player.name], {name = item, count = count})
-  player.print({"", "added ", game.get_localised_item_name(item), " to temporary trash"})
+  player.print({"", "added ", game.item_prototypes[item].localised_name, " to temporary trash"})
 end
 
 function add_to_requests(player, item, count)
@@ -259,7 +296,7 @@ function add_to_requests(player, item, count)
   end
 
   if #global.temporaryRequests[player.name] > player.force.character_logistic_slot_count then
-    player.print({"", "Couldn't add ", game.get_localised_item_name(item), " to temporary requests."})
+    player.print({"", "Couldn't add ", game.item_prototypes[item].localised_name, " to temporary requests."})
     return
   end
 
@@ -270,7 +307,7 @@ function add_to_requests(player, item, count)
   end
 
   table.insert(global.temporaryRequests[player.name], {name = item, count = count})
-  player.print({"", "added ", game.get_localised_item_name(item), " to temporary requests"})
+  player.print({"", "added ", game.item_prototypes[item].localised_name, " to temporary requests"})
 end
 
 function pause_requests(player)
@@ -313,9 +350,6 @@ script.on_event(defines.events.on_gui_click, function(event)
     local element = event.element
     --debugDump(element.name, true)
     local player = game.get_player(event.player_index)
-    if not global.guiVersion[player.name] then global.guiVersion[player.name] = "0.0.0" end
-    if not global.temporaryTrash[player.name] then global.temporaryTrash[player.name] = {} end
-
     if element.name == "auto-trash-config-button" then
       if player.cursor_stack.valid_for_read then
         if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
@@ -414,7 +448,7 @@ end
 function saveVar(var, name)
   local var = var or global
   local n = name or ""
-  game.write_file("autotrash"..n..".lua", serpent.block(var, {name="glob"}))
+  game.write_file("autotrash"..n..".lua", serpent.block(var, {name="glob", comment=false}))
 end
 
 remote.add_interface("at",
