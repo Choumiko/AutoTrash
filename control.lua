@@ -21,17 +21,17 @@ local function init_global()
 end
 
 local function init_player(player)
-    global.config[player.name] = global.config[player.name] or {}
-    global["logistics-config"][player.name] = global["logistics-config"] or {}
-    global["config-tmp"][player.name] = global["config-tmp"][player.name] or {}
-    global["logistics-active"][player.name] = true
-    global.active[player.name] = true
-    global["logistics-config"][player.name] = global["logistics-config"][player.name] or {}
-    global["logistics-config-tmp"][player.name] = global["logistics-config-tmp"][player.name] or {}
-    global.storage[player.name] = global.storage[player.name] or {}
-    global.temporaryRequests[player.name] = global.temporaryRequests[player.name] or {}
-    global.temporaryTrash[player.name] = global.temporaryTrash[player.name] or {}
-    gui_init(player)
+  global.config[player.name] = global.config[player.name] or {}
+  global["logistics-config"][player.name] = global["logistics-config"][player.name] or {}
+  global["config-tmp"][player.name] = global["config-tmp"][player.name] or {}
+  global["logistics-active"][player.name] = true
+  global.active[player.name] = true
+  global["logistics-config"][player.name] = global["logistics-config"][player.name] or {}
+  global["logistics-config-tmp"][player.name] = global["logistics-config-tmp"][player.name] or {}
+  global.storage[player.name] = global.storage[player.name] or {}
+  global.temporaryRequests[player.name] = global.temporaryRequests[player.name] or {}
+  global.temporaryTrash[player.name] = global.temporaryTrash[player.name] or {}
+  gui_init(player)
 end
 
 local function init_players(resetGui)
@@ -70,23 +70,28 @@ end
 
 -- run once
 local function on_configuration_changed(data)
+  if not data or not data.mod_changes then
+    return
+  end
   --Autotrash changed, got added
   if data.mod_changes.AutoTrash then
     local newVersion = data.mod_changes.AutoTrash.new_version
     local oldVersion = data.mod_changes.AutoTrash.old_version
+    if oldVersion then
+      if oldVersion < "0.0.4" then
+        global = {}
+      end
+      if oldVersion < "0.0.51" then
+        init_global()
+        init_forces()
+        init_players(true)
+        global.version = nil
+      end
     -- mod was added to existing save
-    if not oldVersion then
+    else
       init_global()
       init_forces()
       init_players()
-    elseif oldVersion < "0.0.51" then
-      if oldVersion < "0.0.5" then
-        global = {}
-      end
-      init_global()
-      init_forces()
-      init_players(true)
-      global.version = nil
     end
   end
   --debugDump(data,true)
@@ -122,7 +127,7 @@ local function on_force_created(event)
 end
 
 local function on_forces_merging(event)
-  --debugDump(event,true)
+--debugDump(event,true)
 end
 
 function count_keys(hashmap)
