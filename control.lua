@@ -24,10 +24,9 @@ local function init_player(player)
   global.config[player.name] = global.config[player.name] or {}
   global["logistics-config"][player.name] = global["logistics-config"][player.name] or {}
   global["config-tmp"][player.name] = global["config-tmp"][player.name] or {}
+  global["logistics-config-tmp"][player.name] = global["logistics-config-tmp"][player.name] or {}
   global["logistics-active"][player.name] = true
   global.active[player.name] = true
-  global["logistics-config"][player.name] = global["logistics-config"][player.name] or {}
-  global["logistics-config-tmp"][player.name] = global["logistics-config-tmp"][player.name] or {}
   global.storage[player.name] = global.storage[player.name] or {}
   global.temporaryRequests[player.name] = global.temporaryRequests[player.name] or {}
   global.temporaryTrash[player.name] = global.temporaryTrash[player.name] or {}
@@ -64,7 +63,7 @@ end
 
 -- run when loading/when player joins mp (only on connecting player)
 local function on_load()
---script.on_event(defines.events.on_tick, function() update_gui() end)
+
 end
 
 
