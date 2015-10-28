@@ -82,6 +82,9 @@ function gui_open_frame(player)
   if frame then
     frame.destroy()
     global["config-tmp"][player.name] = nil
+    if remote.interfaces.YARM and global.settings[player.name].YARM_old_expando then
+      remote.call("YARM", "show_expando", player.index)
+    end
     return
   end
 
@@ -105,7 +108,9 @@ function gui_open_frame(player)
       }
     end
   end
-
+  if remote.interfaces.YARM then
+    global.settings[player.name].YARM_old_expando = remote.call("YARM", "hide_expando", player.index)
+  end
   -- Now we can build the GUI.
   frame = player.gui.left.add{
     type = "frame",
@@ -237,6 +242,9 @@ function gui_open_logistics_frame(player, redraw)
     end
     if not redraw then
       global["logistics-config-tmp"][player.name] = nil
+      if remote.interfaces.YARM and global.settings[player.name].YARM_old_expando then
+        remote.call("YARM", "show_expando", player.index)
+      end
       return
     end
   end
@@ -248,6 +256,10 @@ function gui_open_logistics_frame(player, redraw)
   -- Temporary config lives as long as the frame is open, so it has to be created
   -- every time the frame is opened.
   global["logistics-config-tmp"][player.name] = get_requests(player)
+
+  if remote.interfaces.YARM then
+    global.settings[player.name].YARM_old_expando = remote.call("YARM", "hide_expando", player.index)
+  end
 
   -- Now we can build the GUI.
   frame = player.gui.left.add{
@@ -415,10 +427,13 @@ function gui_save_changes(player)
   end
 
   if key == "logistics-" then
-      set_requests(player, global["logistics-config"][player.name])
+    set_requests(player, global["logistics-config"][player.name])
     if not global["logistics-active"][player.name] then
       pause_requests(player)
     end
+  end
+  if remote.interfaces.YARM and global.settings[player.name].YARM_old_expando then
+    remote.call("YARM", "show_expando", player.index)
   end
   --saveVar(global, "saved")
   if frame then

@@ -18,6 +18,7 @@ local function init_global()
   global.configSize = global.configSize or {}
   global.temporaryTrash = global.temporaryTrash or {}
   global.temporaryRequests = global.temporaryRequests or {}
+  global.settings = global.settings or {}
 end
 
 local function init_player(player)
@@ -30,6 +31,7 @@ local function init_player(player)
   global.storage[player.name] = global.storage[player.name] or {}
   global.temporaryRequests[player.name] = global.temporaryRequests[player.name] or {}
   global.temporaryTrash[player.name] = global.temporaryTrash[player.name] or {}
+  global.settings[player.name] = global.settings[player.name] or {}
   gui_init(player)
 end
 
@@ -85,6 +87,10 @@ local function on_configuration_changed(data)
         init_forces()
         init_players(true)
         global.version = nil
+      elseif oldVersion < "0.0.53" then
+        init_global()
+        init_forces()
+        init_players()
       end
     -- mod was added to existing save
     else
@@ -462,5 +468,10 @@ remote.add_interface("at",
   {
     saveVar = function(name)
       saveVar(global, name)
+    end,
+    init = function()
+      init_global()
+      init_forces()
+      init_players()
     end
   })
