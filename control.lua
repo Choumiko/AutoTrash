@@ -45,6 +45,9 @@ local function init_players(resetGui)
 end
 
 local function init_force(force)
+  if not global.configSize then
+    init_global()
+  end
   if not global.configSize[force.name] then
     global.configSize[force.name] = force.technologies["character-logistic-trash-slots-2"].researched and 30 or MAX_CONFIG_SIZE
   end
