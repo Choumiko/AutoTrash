@@ -1,7 +1,10 @@
 require "defines"
 require "util"
 
-MAX_CONFIG_SIZE = 10
+MAX_CONFIG_SIZES = {
+  ["character-logistic-trash-slots-1"] = 10,
+  ["character-logistic-trash-slots-2"] = 30
+}
 MAX_STORAGE_SIZE = 6
 
 require "gui"
@@ -52,7 +55,11 @@ local function init_force(force)
     init_global()
   end
   if not global.configSize[force.name] then
-    global.configSize[force.name] = force.technologies["character-logistic-trash-slots-2"].researched and 30 or MAX_CONFIG_SIZE
+    if force.technologies["character-logistic-trash-slots-2"].researched then
+      global.configSize[force.name] = MAX_CONFIG_SIZES["character-logistic-trash-slots-2"]
+    else
+     global.configSize[force.name] = MAX_CONFIG_SIZES["character-logistic-trash-slots-1"]
+    end
   end
 end
 
@@ -225,9 +232,10 @@ function on_tick(event)
             end
           end
         end
+        local configSize = global.configSize[player.force.name]
         local already_trashed = {}
         for i, item in pairs(global.config[player.name]) do
-          if item and item.name ~= "" then
+          if item and item.name ~= "" and i <= configSize then
             already_trashed[item.name] = item.count
             local count = player.get_item_count(item.name)
             local requested = requests[item.name] and requests[item.name] or 0
@@ -470,7 +478,7 @@ script.on_event(defines.events.on_research_finished, function(event)
     return
   end
   if event.research.name == "character-logistic-trash-slots-2" then
-    global.configSize[event.research.force.name] = 30
+    global.configSize[event.research.force.name] = MAX_CONFIG_SIZES["character-logistic-trash-slots-2"]
   end
 end)
 
@@ -503,5 +511,27 @@ remote.add_interface("at",
       init_global()
       init_forces()
       init_players()
+    end,
+    
+    setConfigSize = function(size1, size2)
+      local s1 = size1 and size1 or MAX_CONFIG_SIZES["character-logistic-trash-slots-1"]
+      local s2 = size2 and size2 or MAX_CONFIG_SIZES["character-logistic-trash-slots-2"]
+      if s1 > s2 then
+        s1, s2 = s2, s1
+      end
+      --check max size (to avoid gui hanging out of the game
+      s1 = s1 > 80 and 80 or s1
+      s2 = s2 > 80 and 80 or s2
+      --update all forces
+      if not global.configSize then
+        init_global()
+      end
+      for i, force in pairs(game.forces) do
+        if force.technologies["character-logistic-trash-slots-2"].researched then
+          global.configSize[force.name] = s2
+        else
+          global.configSize[force.name] = s1
+        end
+      end       
     end
   })

@@ -95,10 +95,10 @@ function gui_open_frame(player)
   -- Temporary config lives as long as the frame is open, so it has to be created
   -- every time the frame is opened.
   global["config-tmp"][player.name] = {}
-
+  local configSize = global.configSize[player.force.name] 
   -- We need to copy all items from normal config to temporary config.
   local i = 0
-  for i = 1, global.configSize[player.force.name] do
+  for i = 1, configSize  do
     if i > #global["config"][player.name] then
       global["config-tmp"][player.name][i] = { name = "", count = 0 }
     else
@@ -124,60 +124,34 @@ function gui_open_frame(player)
     name = "auto-trash-error-label"
   }
   error_label.style.minimal_width = 200
-  local colspan = global.configSize[player.force.name] > 10 and 9 or 6
+  local colspan = configSize > 10 and 9 or 6
+  colspan = configSize > 54 and 12 or colspan
   local ruleset_grid = frame.add{
     type = "table",
     colspan = colspan,
     name = "auto-trash-ruleset-grid"
   }
-  ruleset_grid.add{
-    type = "label",
-    name = "auto-trash-grid-header-1",
-    caption = {"auto-trash-config-header-1"}
-  }
-  ruleset_grid.add{
-    type = "label",
-    name = "auto-trash-grid-header-2",
-    caption = {"auto-trash-config-header-2"}
-  }
-
-  ruleset_grid.add{
-    type = "label",
-    caption = ""
-  }
-
-  ruleset_grid.add{
-    type = "label",
-    name = "auto-trash-grid-header-3",
-    caption = {"auto-trash-config-header-1"}
-  }
-  ruleset_grid.add{
-    type = "label",
-    name = "auto-trash-grid-header-4",
-    caption = {"auto-trash-config-header-2"}
-  }
-  ruleset_grid.add{
-    type = "label",
-    caption = ""
-  }
-  if colspan == 9 then
+  local j = 1
+  for i=1,colspan/3 do
     ruleset_grid.add{
       type = "label",
-      name = "auto-trash-grid-header-5",
+      name = "auto-trash-grid-header-"..j,
       caption = {"auto-trash-config-header-1"}
     }
+    j = j+1
     ruleset_grid.add{
       type = "label",
-      name = "auto-trash-grid-header-6",
+      name = "auto-trash-grid-header-"..j,
       caption = {"auto-trash-config-header-2"}
     }
+    j=j+1
     ruleset_grid.add{
       type = "label",
       caption = ""
     }
   end
 
-  for i = 1, global.configSize[player.force.name] do
+  for i = 1, configSize do
     local style = global["config-tmp"][player.name][i].name or "style"
     style = style == "" and "style" or style
     ruleset_grid.add{
