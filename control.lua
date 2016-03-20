@@ -32,6 +32,9 @@ local function init_player(player)
   global.temporaryRequests[player.name] = global.temporaryRequests[player.name] or {}
   global.temporaryTrash[player.name] = global.temporaryTrash[player.name] or {}
   global.settings[player.name] = global.settings[player.name] or {}
+  if global.settings[player.name].auto_trash_above_requested == nil then
+    global.settings[player.name].auto_trash_above_requested = false
+  end
   gui_init(player)
 end
 
@@ -90,7 +93,7 @@ local function on_configuration_changed(data)
         init_forces()
         init_players(true)
         global.version = nil
-      elseif oldVersion < "0.0.53" then
+      elseif oldVersion < "0.0.54" then
         init_global()
         init_forces()
         init_players()
@@ -222,8 +225,10 @@ function on_tick(event)
             end
           end
         end
+        local already_trashed = {}
         for i, item in pairs(global.config[player.name]) do
           if item and item.name ~= "" then
+            already_trashed[item.name] = item.count
             local count = player.get_item_count(item.name)
             local requested = requests[item.name] and requests[item.name] or 0
             local desired = math.max(requested, item.count)
@@ -239,6 +244,26 @@ function on_tick(event)
                 end
               end
             end
+          end
+        end
+        if global.settings[player.name].auto_trash_above_requested then
+          local config = global.config[player.name]
+          for name, r in pairs(requests) do
+            if not already_trashed[name] then
+              local count = player.get_item_count(name)
+              local diff = count - r
+              if diff > 0 then
+                local stack = {name=name, count=diff}
+                local trash = player.get_inventory(defines.inventory.player_trash)
+                local c = trash.insert(stack)
+                if c > 0 then
+                  local removed = player.remove_item{name=name, count=c}
+                  if c > removed then
+                    trash.remove{name=name, count = c - removed}
+                  end
+                end
+              end
+            end  
           end
         end
       end
@@ -406,6 +431,8 @@ script.on_event(defines.events.on_gui_click, function(event)
       end
     elseif element.name  == "auto-trash-logistics-storage-store" then
       gui_store(player)
+    elseif element.name == "auto-trash-above-requested" then
+      global.settings[player.name].auto_trash_above_requested = not global.settings[player.name].auto_trash_above_requested
     else
       event.element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
       local type, index, slot = string.match(element.name, "auto%-trash%-(%a+)%-(%d+)%-*(%d*)")
@@ -466,7 +493,7 @@ function saveVar(var, name)
   local n = name or ""
   game.write_file("autotrash"..n..".lua", serpent.block(var, {name="glob", comment=false}))
 end
-
+--/c remote.call("at","saveVar")
 remote.add_interface("at",
   {
     saveVar = function(name)

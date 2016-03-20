@@ -203,12 +203,20 @@ function gui_open_frame(player)
       amount.text = count
     end
   end
+  
+  frame.add{
+    type = "checkbox",
+    name = "auto-trash-above-requested",
+    caption = {"auto-trash-above-requested"},
+    state = global.settings[player.name].auto_trash_above_requested
+  }
 
   local button_grid = frame.add{
     type = "table",
     colspan = 3,
     name = "auto-trash-button-grid"
   }
+  
   button_grid.add{
     type = "button",
     name = "auto-trash-apply",
