@@ -81,35 +81,35 @@ function gui_open_frame(player)
   end
   if frame then
     frame.destroy()
-    global["config-tmp"][player.name] = nil
-    if remote.interfaces.YARM and global.settings[player.name].YARM_old_expando then
+    global["config-tmp"][player.index] = nil
+    if remote.interfaces.YARM and global.settings[player.index].YARM_old_expando then
       remote.call("YARM", "show_expando", player.index)
     end
     return
   end
 
   -- If player config does not exist, we need to create it.
-  global["config"][player.name] = global["config"][player.name] or {}
-  if global.active[player.name] == nil then global.active[player.name] = true end
+  global["config"][player.index] = global["config"][player.index] or {}
+  if global.active[player.index] == nil then global.active[player.index] = true end
 
   -- Temporary config lives as long as the frame is open, so it has to be created
   -- every time the frame is opened.
-  global["config-tmp"][player.name] = {}
+  global["config-tmp"][player.index] = {}
   local configSize = global.configSize[player.force.name] 
   -- We need to copy all items from normal config to temporary config.
   local i = 0
   for i = 1, configSize  do
-    if i > #global["config"][player.name] then
-      global["config-tmp"][player.name][i] = { name = "", count = 0 }
+    if i > #global["config"][player.index] then
+      global["config-tmp"][player.index][i] = { name = "", count = 0 }
     else
-      global["config-tmp"][player.name][i] = {
-        name = global["config"][player.name][i].name,
-        count = global["config"][player.name][i].count
+      global["config-tmp"][player.index][i] = {
+        name = global["config"][player.index][i].name,
+        count = global["config"][player.index][i].count
       }
     end
   end
   if remote.interfaces.YARM then
-    global.settings[player.name].YARM_old_expando = remote.call("YARM", "hide_expando", player.index)
+    global.settings[player.index].YARM_old_expando = remote.call("YARM", "hide_expando", player.index)
   end
   -- Now we can build the GUI.
   frame = player.gui.left.add{
@@ -152,7 +152,7 @@ function gui_open_frame(player)
   end
 
   for i = 1, configSize do
-    local style = global["config-tmp"][player.name][i].name or "style"
+    local style = global["config-tmp"][player.index][i].name or "style"
     style = style == "" and "style" or style
     ruleset_grid.add{
       type = "checkbox",
@@ -172,8 +172,8 @@ function gui_open_frame(player)
       caption = ""
     }
 
-    local count = tonumber(global["config-tmp"][player.name][i].count)
-    if global["config-tmp"][player.name][i].name ~= "" and count and count >= 0 then
+    local count = tonumber(global["config-tmp"][player.index][i].count)
+    if global["config-tmp"][player.index][i].name ~= "" and count and count >= 0 then
       amount.text = count
     end
   end
@@ -182,7 +182,7 @@ function gui_open_frame(player)
     type = "checkbox",
     name = "auto-trash-above-requested",
     caption = {"auto-trash-above-requested"},
-    state = global.settings[player.name].auto_trash_above_requested
+    state = global.settings[player.index].auto_trash_above_requested
   }
 
   local button_grid = frame.add{
@@ -201,7 +201,7 @@ function gui_open_frame(player)
     name = "auto-trash-clear-all",
     caption = {"auto-trash-config-button-clear-all"}
   }
-  local caption = global.active[player.name] and {"auto-trash-config-button-pause"} or {"auto-trash-config-button-unpause"}
+  local caption = global.active[player.index] and {"auto-trash-config-button-pause"} or {"auto-trash-config-button-unpause"}
   button_grid.add{
     type = "button",
     name = "auto-trash-pause",
@@ -223,8 +223,8 @@ function gui_open_logistics_frame(player, redraw)
       storage_frame.destroy()
     end
     if not redraw then
-      global["logistics-config-tmp"][player.name] = nil
-      if remote.interfaces.YARM and global.settings[player.name].YARM_old_expando then
+      global["logistics-config-tmp"][player.index] = nil
+      if remote.interfaces.YARM and global.settings[player.index].YARM_old_expando then
         remote.call("YARM", "show_expando", player.index)
       end
       return
@@ -232,15 +232,15 @@ function gui_open_logistics_frame(player, redraw)
   end
 
   -- If player config does not exist, we need to create it.
-  global["logistics-config"][player.name] = global["logistics-config"][player.name] or {}
-  if global["logistics-active"][player.name] == nil then global["logistics-active"][player.name] = true end
+  global["logistics-config"][player.index] = global["logistics-config"][player.index] or {}
+  if global["logistics-active"][player.index] == nil then global["logistics-active"][player.index] = true end
 
   -- Temporary config lives as long as the frame is open, so it has to be created
   -- every time the frame is opened.
-  global["logistics-config-tmp"][player.name] = get_requests(player)
+  global["logistics-config-tmp"][player.index] = get_requests(player)
 
   if remote.interfaces.YARM then
-    global.settings[player.name].YARM_old_expando = remote.call("YARM", "hide_expando", player.index)
+    global.settings[player.index].YARM_old_expando = remote.call("YARM", "hide_expando", player.index)
   end
 
   -- Now we can build the GUI.
@@ -265,7 +265,7 @@ function gui_open_logistics_frame(player, redraw)
   }
 
   for i = 1, slots do
-    local req = global["logistics-config-tmp"][player.name][i]
+    local req = global["logistics-config-tmp"][player.index][i]
     local style = req and req.name or "style"
     style = style == "" and "style" or style
     ruleset_grid.add{
@@ -286,7 +286,7 @@ function gui_open_logistics_frame(player, redraw)
       caption = ""
     }
 
-    local req = global["logistics-config-tmp"][player.name][i]
+    local req = global["logistics-config-tmp"][player.index][i]
     local count = req and tonumber(req.count) or ""
     if req and req.name ~= "" and count and count >= 0 then
       amount.text = count
@@ -308,7 +308,7 @@ function gui_open_logistics_frame(player, redraw)
     name = "auto-trash-logistics-clear-all",
     caption = {"auto-trash-config-button-clear-all"}
   }
-  local caption = global["logistics-active"][player.name] and {"auto-trash-config-button-pause"} or {"auto-trash-config-button-unpause"}
+  local caption = global["logistics-active"][player.index] and {"auto-trash-config-button-pause"} or {"auto-trash-config-button-unpause"}
   button_grid.add{
     type = "button",
     name = "auto-trash-logistics-pause",
@@ -354,9 +354,9 @@ function gui_open_logistics_frame(player, redraw)
     name = "auto-trash-logistics-storage-grid"
   }
 
-  if global["storage"][player.name] and global["storage"][player.name].store then
+  if global["storage"][player.index] and global["storage"][player.index].store then
     local i = 1
-    for key, _ in pairs(global["storage"][player.name].store) do
+    for key, _ in pairs(global["storage"][player.index].store) do
       storage_grid.add{
         type = "label",
         caption = key .. "        ",
@@ -389,32 +389,32 @@ function gui_save_changes(player)
 
   local key = player.gui.left[GUI.configFrame] and "" or "logistics-"
 
-  if global[key.."config-tmp"][player.name] then
+  if global[key.."config-tmp"][player.index] then
     local i = 0
-    global[key.."config"][player.name] = {}
+    global[key.."config"][player.index] = {}
     local grid = frame["auto-trash-ruleset-grid"]
-    for i, config in pairs(global[key.."config-tmp"][player.name]) do
-      if global[key.."config-tmp"][player.name][i].name == "" then
-        global[key.."config"][player.name][i] = { name = "", count = "" }
+    for i, config in pairs(global[key.."config-tmp"][player.index]) do
+      if global[key.."config-tmp"][player.index][i].name == "" then
+        global[key.."config"][player.index][i] = { name = "", count = "" }
       else
-        global[key.."config-tmp"][player.name][i].count = GUI.sanitizeNumber(grid["auto-trash-amount-"..i].text,0)
-        local amount = global[key.."config-tmp"][player.name][i].count
-        global[key.."config"][player.name][i] = {
-          name = global[key.."config-tmp"][player.name][i].name,
+        global[key.."config-tmp"][player.index][i].count = GUI.sanitizeNumber(grid["auto-trash-amount-"..i].text,0)
+        local amount = global[key.."config-tmp"][player.index][i].count
+        global[key.."config"][player.index][i] = {
+          name = global[key.."config-tmp"][player.index][i].name,
           count = amount or 0
         }
       end
     end
-    global[key.."config-tmp"][player.name] = nil
+    global[key.."config-tmp"][player.index] = nil
   end
 
   if key == "logistics-" then
-    set_requests(player, global["logistics-config"][player.name])
-    if not global["logistics-active"][player.name] then
+    set_requests(player, global["logistics-config"][player.index])
+    if not global["logistics-active"][player.index] then
       pause_requests(player)
     end
   end
-  if remote.interfaces.YARM and global.settings[player.name].YARM_old_expando then
+  if remote.interfaces.YARM and global.settings[player.index].YARM_old_expando then
     remote.call("YARM", "show_expando", player.index)
   end
   --saveVar(global, "saved")
@@ -433,8 +433,8 @@ function gui_clear_all(player)
 
   if not frame then return end
   local ruleset_grid = frame["auto-trash-ruleset-grid"]
-  for i, c in pairs(global[key.."config-tmp"][player.name]) do
-    global[key.."config-tmp"][player.name][i] = { name = "", count = {} }
+  for i, c in pairs(global[key.."config-tmp"][player.index]) do
+    global[key.."config-tmp"][player.index][i] = { name = "", count = {} }
     ruleset_grid["auto-trash-item-" .. i].style = "at-icon-style"
     ruleset_grid["auto-trash-amount-" .. i].text = ""
   end
@@ -457,48 +457,48 @@ end
 function gui_set_item(player, type1, index)
   local frame = player.gui.left[GUI.configFrame] or player.gui.left[GUI.logisticsConfigFrame]
   local key = player.gui.left[GUI.configFrame] and "config-tmp" or "logistics-config-tmp"
-  if not frame or not global[key][player.name] then return end
+  if not frame or not global[key][player.index] then return end
 
   local stack = player.cursor_stack
   if not stack.valid_for_read then
     stack = {type = "empty", name = ""}
-    global[key][player.name][index].name = ""
+    global[key][player.index][index].name = ""
   end
 
   local i = 0
 
-  for i, _ in pairs(global[key][player.name]) do
-    if stack.type ~= "empty" and index ~= i and global[key][player.name][i].name == stack.name then
+  for i, _ in pairs(global[key][player.index]) do
+    if stack.type ~= "empty" and index ~= i and global[key][player.index][i].name == stack.name then
       gui_display_message(frame, false, "auto-trash-item-already-set")
       return
     end
   end
-  if not global[key][player.name][index] then
-    global[key][player.name][index] = {name="", count=""}
+  if not global[key][player.index][index] then
+    global[key][player.index][index] = {name="", count=""}
   end
-  if stack.type == "empty" or stack.name ~= global[key][player.name][index].name then
-    global[key][player.name][index].count = ""
+  if stack.type == "empty" or stack.name ~= global[key][player.index][index].name then
+    global[key][player.index][index].count = ""
   end
 
-  global[key][player.name][index].name = stack.name
+  global[key][player.index][index].name = stack.name
   if stack.type ~= "empty" then
     if key == "logistics-config-tmp" then
-      global[key][player.name][index].count = game.item_prototypes[stack.name].default_request_amount
+      global[key][player.index][index].count = game.item_prototypes[stack.name].default_request_amount
     else
-      global[key][player.name][index].count = 0
+      global[key][player.index][index].count = 0
     end
   end
 
   local ruleset_grid = frame["auto-trash-ruleset-grid"]
-  local style = global[key][player.name][index].name ~= "" and "at-icon-"..global[key][player.name][index].name or "at-icon-style"
+  local style = global[key][player.index][index].name ~= "" and "at-icon-"..global[key][player.index][index].name or "at-icon-style"
   ruleset_grid["auto-trash-" .. type1 .. "-" .. index].style = style
   ruleset_grid["auto-trash-" .. type1 .. "-" .. index].state = false
-  ruleset_grid["auto-trash-amount" .. "-" .. index].text = global[key][player.name][index].count
+  ruleset_grid["auto-trash-amount" .. "-" .. index].text = global[key][player.index][index].count
 end
 
 function gui_store(player)
-  global["storage"][player.name] = global["storage"][player.name] or {}
-  global["storage"][player.name].store = global["storage"][player.name].store or {}
+  global["storage"][player.index] = global["storage"][player.index] or {}
+  global["storage"][player.index].store = global["storage"][player.index].store or {}
   local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
   if not storage_frame then return end
   local textfield = storage_frame["auto-trash-logistics-storage-buttons"]["auto-trash-logistics-storage-name"]
@@ -509,23 +509,23 @@ function gui_store(player)
     gui_display_message(storage_frame, true, "auto-trash-storage-name-not-set")
     return
   end
-  if global["storage"][player.name].store[name] then
+  if global["storage"][player.index].store[name] then
     gui_display_message(storage_frame, true, "auto-trash-storage-name-in-use")
     return
   end
 
   local storage_grid = storage_frame["auto-trash-logistics-storage-grid"]
-  local index = count_keys(global["storage"][player.name]) + 1
+  local index = count_keys(global["storage"][player.index]) + 1
   if index > MAX_STORAGE_SIZE then
     gui_display_message(storage_frame, true, "auto-trash-storage-too-long")
     return
   end
   local frame = player.gui.left[GUI.logisticsConfigFrame]
   local ruleset_grid = frame["auto-trash-ruleset-grid"]
-  global["storage"][player.name].store[name] = {}
-  for i,c in pairs(global["logistics-config-tmp"][player.name]) do
-    global["storage"][player.name].store[name][i] = {name = c.name, count = 0}
-    global["storage"][player.name].store[name][i].count = tonumber(ruleset_grid["auto-trash-amount-" .. i].text) or 0
+  global["storage"][player.index].store[name] = {}
+  for i,c in pairs(global["logistics-config-tmp"][player.index]) do
+    global["storage"][player.index].store[name][i] = {name = c.name, count = 0}
+    global["storage"][player.index].store[name][i].count = tonumber(ruleset_grid["auto-trash-amount-" .. i].text) or 0
   end
   gui_display_message(storage_frame, true, "---")
   textfield.text = ""
@@ -563,27 +563,27 @@ function gui_restore(player, index)
   if not storage_entry then return end
 
   local name = string.match(storage_entry.caption, "^%s*(.-)%s*$")
-  if not global["storage"][player.name] or not global["storage"][player.name].store[name] then return end
+  if not global["storage"][player.index] or not global["storage"][player.index].store[name] then return end
 
-  global["logistics-config-tmp"][player.name] = {}
+  global["logistics-config-tmp"][player.index] = {}
   local ruleset_grid = frame["auto-trash-ruleset-grid"]
   local slots = player.force.character_logistic_slot_count
   for i = 1, slots do
-    if global["storage"][player.name].store[name][i] then
-      global["logistics-config-tmp"][player.name][i] = global["storage"][player.name].store[name][i]
+    if global["storage"][player.index].store[name][i] then
+      global["logistics-config-tmp"][player.index][i] = global["storage"][player.index].store[name][i]
     else
-      global["logistics-config-tmp"][player.name][i] = {name = "", count = ""}
+      global["logistics-config-tmp"][player.index][i] = {name = "", count = ""}
     end
-    local style = global["logistics-config-tmp"][player.name][i].name ~= "" and "at-icon-"..global["logistics-config-tmp"][player.name][i].name or "at-icon-style"
+    local style = global["logistics-config-tmp"][player.index][i].name ~= "" and "at-icon-"..global["logistics-config-tmp"][player.index][i].name or "at-icon-style"
     ruleset_grid["auto-trash-item-" .. i].style = style
     ruleset_grid["auto-trash-item-" .. i].state = false
-    ruleset_grid["auto-trash-amount-" .. i].text = global["logistics-config-tmp"][player.name][i].count
+    ruleset_grid["auto-trash-amount-" .. i].text = global["logistics-config-tmp"][player.index][i].count
   end
   gui_display_message(storage_frame, true, "---")
 end
 
 function gui_remove(player, index)
-  if not global["storage"][player.name] then return end
+  if not global["storage"][player.index] then return end
 
   local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
   if not storage_frame then return end
@@ -599,6 +599,6 @@ function gui_remove(player, index)
   btn1.destroy()
   btn2.destroy()
 
-  global["storage"][player.name].store[name] = nil
+  global["storage"][player.index].store[name] = nil
   gui_display_message(storage_frame, true, "---")
 end

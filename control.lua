@@ -25,18 +25,19 @@ local function init_global()
 end
 
 local function init_player(player)
-  global.config[player.name] = global.config[player.name] or {}
-  global["logistics-config"][player.name] = global["logistics-config"][player.name] or {}
-  global["config-tmp"][player.name] = global["config-tmp"][player.name] or {}
-  global["logistics-config-tmp"][player.name] = global["logistics-config-tmp"][player.name] or {}
-  global["logistics-active"][player.name] = true
-  global.active[player.name] = true
-  global.storage[player.name] = global.storage[player.name] or {}
-  global.temporaryRequests[player.name] = global.temporaryRequests[player.name] or {}
-  global.temporaryTrash[player.name] = global.temporaryTrash[player.name] or {}
-  global.settings[player.name] = global.settings[player.name] or {}
-  if global.settings[player.name].auto_trash_above_requested == nil then
-    global.settings[player.name].auto_trash_above_requested = false
+  local index = player.index
+  global.config[index] = global.config[index] or {}
+  global["logistics-config"][index] = global["logistics-config"][index] or {}
+  global["config-tmp"][index] = global["config-tmp"][index] or {}
+  global["logistics-config-tmp"][index] = global["logistics-config-tmp"][index] or {}
+  global["logistics-active"][index] = true
+  global.active[index] = true
+  global.storage[index] = global.storage[index] or {}
+  global.temporaryRequests[index] = global.temporaryRequests[index] or {}
+  global.temporaryTrash[index] = global.temporaryTrash[index] or {}
+  global.settings[index] = global.settings[index] or {}
+  if global.settings[index].auto_trash_above_requested == nil then
+    global.settings[index].auto_trash_above_requested = false
   end
   gui_init(player)
 end
@@ -92,15 +93,8 @@ local function on_configuration_changed(data)
     local newVersion = data.mod_changes.AutoTrash.new_version
     local oldVersion = data.mod_changes.AutoTrash.old_version
     if oldVersion then
-      if oldVersion < "0.0.4" then
-        global = {}
-      end
-      if oldVersion < "0.0.51" then
-        init_global()
-        init_forces()
-        init_players(true)
-        global.version = nil
-      elseif oldVersion < "0.0.54" then
+      if oldVersion < "0.0.55" then
+        global = nil
         init_global()
         init_forces()
         init_players()
@@ -115,19 +109,19 @@ local function on_configuration_changed(data)
   --debugDump(data,true)
   --handle removed items
   local items = game.item_prototypes
-  for name, p in pairs(global.config) do
+  for player_index, p in pairs(global.config) do
     local delete = {}
     for i=#p,1,-1 do
       if not items[p[i].name] then
-        table.remove(global.config[name], i)
+        table.remove(global.config[player_index], i)
       end
     end
   end
-  for name, p in pairs(global["config-tmp"]) do
+  for player_index, p in pairs(global["config-tmp"]) do
     local delete = {}
     for i=#p,1,-1 do
       if not items[p[i].name] then
-        table.remove(global["config-tmp"][name], i)
+        table.remove(global["config-tmp"][player_index], i)
       end
     end
   end
@@ -182,10 +176,11 @@ function get_requests(player)
 end
 
 function set_requests(player, requests)
-  if not global["logistics-config"][player.name] then
-    global["logistics-config"][player.name] = {}
+  local index = player.index
+  if not global["logistics-config"][index] then
+    global["logistics-config"][index] = {}
   end
-  local storage = global["logistics-config"][player.name]
+  local storage = global["logistics-config"][index]
   local slots = player.force.character_logistic_slot_count
   if player.character and slots > 0 then
     for c=1, slots do
@@ -202,13 +197,14 @@ function on_tick(event)
   if event.tick % 120 == 0 then
     local status, err = pcall(function()
       for pi, player in pairs(game.players) do
-        if not player.valid or not player.connected or not global.config[player.name] or not global.active[player.name] then
+        local player_index = player.index
+        if not player.valid or not player.connected or not global.config[player_index] or not global.active[player_index] then
           break
         end
-        if not global.temporaryTrash[player.name] then global.temporaryTrash[player.name] = {} end
+        if not global.temporaryTrash[player_index] then global.temporaryTrash[player_index] = {} end
         local requests = requested_items(player)
-        for i=#global.temporaryTrash[player.name],1,-1 do
-          local item = global.temporaryTrash[player.name][i]
+        for i=#global.temporaryTrash[player_index],1,-1 do
+          local item = global.temporaryTrash[player_index][i]
           if item and item.name ~= "" then
             local count = player.get_item_count(item.name)
             local requested = requests[item.name] and requests[item.name] or 0
@@ -228,13 +224,13 @@ function on_tick(event)
             end
             if diff <= 0 then
               player.print({"", "removed ", game.item_prototypes[item.name].localised_name, " from temporary trash"})
-              global.temporaryTrash[player.name][i] = nil
+              global.temporaryTrash[player_index][i] = nil
             end
           end
         end
         local configSize = global.configSize[player.force.name]
         local already_trashed = {}
-        for i, item in pairs(global.config[player.name]) do
+        for i, item in pairs(global.config[player_index]) do
           if item and item.name ~= "" and i <= configSize then
             already_trashed[item.name] = item.count
             local count = player.get_item_count(item.name)
@@ -254,8 +250,8 @@ function on_tick(event)
             end
           end
         end
-        if global.settings[player.name].auto_trash_above_requested then
-          local config = global.config[player.name]
+        if global.settings[player_index].auto_trash_above_requested then
+          local config = global.config[player_index]
           for name, r in pairs(requests) do
             if not already_trashed[name] then
               local count = player.get_item_count(name)
@@ -304,10 +300,11 @@ function add_order(player)
 end
 
 function add_to_trash(player, item, count)
-  global.temporaryTrash[player.name] = global.temporaryTrash[player.name] or {}
-  if global.active[player.name] == nil then global.active[player.name] = true end
-  for i=#global.temporaryTrash[player.name],1,-1 do
-    local item = global.temporaryTrash[player.name][i]
+  local player_index = player.index
+  global.temporaryTrash[player_index] = global.temporaryTrash[player_index] or {}
+  if global.active[player_index] == nil then global.active[player_index] = true end
+  for i=#global.temporaryTrash[player_index],1,-1 do
+    local item = global.temporaryTrash[player_index][i]
     if item and item.name == "" then
       break
     end
@@ -317,25 +314,26 @@ function add_to_trash(player, item, count)
     local diff = count - desired
     if diff < 1 then
       player.print({"", "removed ", game.item_prototypes[item.name].localised_name, " from temporary trash"})
-      global.temporaryTrash[player.name][i] = nil
+      global.temporaryTrash[player_index][i] = nil
     end
   end
 
-  if #global.temporaryTrash[player.name] >= 5 then
+  if #global.temporaryTrash[player_index] >= 5 then
     player.print({"", "Couldn't add ", game.item_prototypes[item].localised_name, " to temporary trash."})
     return
   end
-  table.insert(global.temporaryTrash[player.name], {name = item, count = count})
+  table.insert(global.temporaryTrash[player_index], {name = item, count = count})
   player.print({"", "added ", game.item_prototypes[item].localised_name, " to temporary trash"})
 end
 
 function add_to_requests(player, item, count)
-  global.temporaryRequests[player.name] = global.temporaryRequests[player.name] or {}
-  if global["logistics-active"][player.name] == nil then global["logistics-active"][player.name] = true end
+  local player_index = player.index
+  global.temporaryRequests[player_index] = global.temporaryRequests[player_index] or {}
+  if global["logistics-active"][player_index] == nil then global["logistics-active"][player_index] = true end
   local index = false
 
-  for i=#global.temporaryRequests[player.name],1,-1 do
-    local req = global.temporaryRequests[player.name][i]
+  for i=#global.temporaryRequests[player_index],1,-1 do
+    local req = global.temporaryRequests[player_index][i]
     if req and req.name == "" then
       break
     end
@@ -344,28 +342,29 @@ function add_to_requests(player, item, count)
     end
   end
 
-  if #global.temporaryRequests[player.name] > player.force.character_logistic_slot_count then
+  if #global.temporaryRequests[player_index] > player.force.character_logistic_slot_count then
     player.print({"", "Couldn't add ", game.item_prototypes[item].localised_name, " to temporary requests."})
     return
   end
 
   if not index then
-    table.insert(global.temporaryTrash[player.name], {name = item, count = count})
+    table.insert(global.temporaryTrash[player_index], {name = item, count = count})
   else
-    global.temporaryTrash[player.name][index].count = global.temporaryTrash[player.name][index].count + count
+    global.temporaryTrash[player_index][index].count = global.temporaryTrash[player_index][index].count + count
   end
 
-  table.insert(global.temporaryRequests[player.name], {name = item, count = count})
+  table.insert(global.temporaryRequests[player_index], {name = item, count = count})
   player.print({"", "added ", game.item_prototypes[item].localised_name, " to temporary requests"})
 end
 
 function pause_requests(player)
-  if not global.storage[player.name] then
-    global.storage[player.name] = {requests={}}
+  local player_index = player.index
+  if not global.storage[player_index] then
+    global.storage[player_index] = {requests={}}
   end
-  global.storage[player.name].requests = global.storage[player.name].requests or {}
+  global.storage[player_index].requests = global.storage[player_index].requests or {}
 
-  local storage = global.storage[player.name].requests
+  local storage = global.storage[player_index].requests
   if player.character and player.force.character_logistic_slot_count > 0 then
     for c=1,player.force.character_logistic_slot_count do
       local request = player.character.get_request_slot(c)
@@ -379,10 +378,11 @@ function pause_requests(player)
 end
 
 function unpause_requests(player)
-  if not global.storage[player.name] then
-    global.storage[player.name] = {}
+  local player_index = player.index
+  if not global.storage[player_index] then
+    global.storage[player_index] = {}
   end
-  local storage = global.storage[player.name].requests or {}
+  local storage = global.storage[player_index].requests or {}
   local slots = player.force.character_logistic_slot_count
   if player.character and slots > 0 then
     for c=1, slots do
@@ -390,7 +390,7 @@ function unpause_requests(player)
         player.character.set_request_slot(storage[c], c)
       end
     end
-    global.storage[player.name].requests = {}
+    global.storage[player_index].requests = {}
   end
 end
 
@@ -398,7 +398,8 @@ script.on_event(defines.events.on_gui_click, function(event)
   local status, err = pcall(function()
     local element = event.element
     --debugDump(element.name, true)
-    local player = game.get_player(event.player_index)
+    local player_index = event.player_index
+    local player = game.get_player(player_index)
     if element.name == "auto-trash-config-button" then
       if player.cursor_stack.valid_for_read then
         if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
@@ -414,9 +415,9 @@ script.on_event(defines.events.on_gui_click, function(event)
     elseif element.name == "auto-trash-clear-all" or element.name == "auto-trash-logistics-clear-all" then
       gui_clear_all(player)
     elseif element.name == "auto-trash-pause" then
-      global.active[player.name] = not global.active[player.name]
+      global.active[player_index] = not global.active[player_index]
       local mainButton = player.gui.top[GUI.mainFlow][GUI.mainButton]
-      if global.active[player.name] then
+      if global.active[player_index] then
         mainButton.style = "auto-trash-button"
         element.caption = {"auto-trash-config-button-pause"}
       else
@@ -426,9 +427,9 @@ script.on_event(defines.events.on_gui_click, function(event)
     elseif element.name == "auto-trash-logistics-button" then
       gui_open_logistics_frame(player)
     elseif element.name == "auto-trash-logistics-pause" then
-      global["logistics-active"][player.name] = not global["logistics-active"][player.name]
+      global["logistics-active"][player_index] = not global["logistics-active"][player_index]
       local mainButton = player.gui.top[GUI.mainFlow][GUI.logisticsButton]
-      if global["logistics-active"][player.name] then
+      if global["logistics-active"][player_index] then
         mainButton.style = "auto-trash-logistics-button"
         element.caption = {"auto-trash-config-button-pause"}
         unpause_requests(player)
@@ -440,7 +441,7 @@ script.on_event(defines.events.on_gui_click, function(event)
     elseif element.name  == "auto-trash-logistics-storage-store" then
       gui_store(player)
     elseif element.name == "auto-trash-above-requested" then
-      global.settings[player.name].auto_trash_above_requested = not global.settings[player.name].auto_trash_above_requested
+      global.settings[player_index].auto_trash_above_requested = not global.settings[player_index].auto_trash_above_requested
     else
       event.element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
       local type, index, slot = string.match(element.name, "auto%-trash%-(%a+)%-(%d+)%-*(%d*)")
@@ -532,6 +533,29 @@ remote.add_interface("at",
         else
           global.configSize[force.name] = s1
         end
-      end       
+      end
+    end,
+    
+    debugLog = function()
+      for i,p in pairs(game.players) do
+        local name = p.name or "noName"
+        local c_valid = "not connected" 
+        if p.connected then
+          c_valid = (p.character and p.character.valid) and p.character.name or "false"
+        end
+        if p.controller_type == defines.controllers.god then
+          c_valid = "god controller"
+        end
+        debugDump("Player: "..name.." index: "..i.." character: "..c_valid,true)
+      end     
+    end,
+    
+    reset = function(confirm)
+      if confirm then
+        global = nil
+        init_global()
+        init_forces()
+        init_players()
+      end
     end
   })
