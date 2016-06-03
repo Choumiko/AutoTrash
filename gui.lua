@@ -5,13 +5,13 @@ GUI = {
   configFrame = "auto-trash-config-frame",
   logisticsConfigFrame = "auto-trash-logistics-config-frame",
   logisticsStorageFrame = "auto-trash-logistics-storage-frame",
-  sanitizeName = function(name)
-    local name = string.gsub(name, "_", " ")
+  sanitizeName = function(name_)
+    local name = string.gsub(name_, "_", " ")
     name = string.gsub(name, "^%s", "")
     name = string.gsub(name, "%s$", "")
     local pattern = "(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)"
     local element = "activeLine__"..name.."__".."something"
-    local t1,t2,t3,t4 = element:match(pattern)
+    local t1, t2, t3, _ = element:match(pattern)
     if t1 == "activeLine" and t2 == name and t3 == "something" then
       return name
     else
@@ -95,9 +95,9 @@ function gui_open_frame(player)
   -- Temporary config lives as long as the frame is open, so it has to be created
   -- every time the frame is opened.
   global["config-tmp"][player.index] = {}
-  local configSize = global.configSize[player.force.name] 
+  local configSize = global.configSize[player.force.name]
   -- We need to copy all items from normal config to temporary config.
-  local i = 0
+
   for i = 1, configSize  do
     if i > #global["config"][player.index] then
       global["config-tmp"][player.index][i] = { name = "", count = 0 }
@@ -177,7 +177,7 @@ function gui_open_frame(player)
       amount.text = count
     end
   end
-  
+
   frame.add{
     type = "checkbox",
     name = "auto-trash-above-requested",
@@ -190,7 +190,7 @@ function gui_open_frame(player)
     colspan = 3,
     name = "auto-trash-button-grid"
   }
-  
+
   button_grid.add{
     type = "button",
     name = "auto-trash-apply",
@@ -286,7 +286,6 @@ function gui_open_logistics_frame(player, redraw)
       caption = ""
     }
 
-    local req = global["logistics-config-tmp"][player.index][i]
     local count = req and tonumber(req.count) or ""
     if req and req.name ~= "" and count and count >= 0 then
       amount.text = count
@@ -390,7 +389,6 @@ function gui_save_changes(player)
   local key = player.gui.left[GUI.configFrame] and "" or "logistics-"
 
   if global[key.."config-tmp"][player.index] then
-    local i = 0
     global[key.."config"][player.index] = {}
     local grid = frame["auto-trash-ruleset-grid"]
     for i, config in pairs(global[key.."config-tmp"][player.index]) do
@@ -428,7 +426,7 @@ end
 
 function gui_clear_all(player)
   local frame = player.gui.left[GUI.configFrame] or player.gui.left[GUI.logisticsConfigFrame]
-  local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
+  --local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
   local key = player.gui.left[GUI.configFrame] and "" or "logistics-"
 
   if not frame then return end
@@ -464,8 +462,6 @@ function gui_set_item(player, type1, index)
     stack = {type = "empty", name = ""}
     global[key][player.index][index].name = ""
   end
-
-  local i = 0
 
   for i, _ in pairs(global[key][player.index]) do
     if stack.type ~= "empty" and index ~= i and global[key][player.index][i].name == stack.name then
@@ -514,7 +510,7 @@ function gui_store(player)
     return
   end
 
-  local storage_grid = storage_frame["auto-trash-logistics-storage-grid"]
+  --local storage_grid = storage_frame["auto-trash-logistics-storage-grid"]
   local index = count_keys(global["storage"][player.index]) + 1
   if index > MAX_STORAGE_SIZE then
     gui_display_message(storage_frame, true, "auto-trash-storage-too-long")

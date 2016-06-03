@@ -12,25 +12,29 @@ for t, _ in pairs(data.raw) do
           {
             filename = prototype.icon,
             width = 32,
-            height = 32
+            height = 32,
+            scale = 1.75
           },
           hovered_background =
           {
             filename = prototype.icon,
             width = 32,
-            height = 32
+            height = 32,
+            scale = 1.75
           },
           checked_background =
           {
             filename = prototype.icon,
             width = 32,
-            height = 32
+            height = 32,
+            scale = 1.75
           },
           clicked_background =
           {
             filename = prototype.icon,
             width = 32,
-            height = 32
+            height = 32,
+            scale = 1.75
           }
         }
       data.raw["gui-style"].default["at-icon-"..prototype.name] = style
@@ -51,7 +55,8 @@ data.raw["gui-style"].default["at-icon-style"] =
       priority = "extra-high-no-scale",
       width = 32,
       height = 32,
-      x = 111
+      x = 111,
+      scale = 1.75
     },
     hovered_background =
     {
@@ -59,7 +64,8 @@ data.raw["gui-style"].default["at-icon-style"] =
       priority = "extra-high-no-scale",
       width = 32,
       height = 32,
-      x = 111
+      x = 111,
+      scale = 1.75
     },
     clicked_background =
     {
@@ -67,7 +73,8 @@ data.raw["gui-style"].default["at-icon-style"] =
       priority = "extra-high-no-scale",
       width = 32,
       height = 32,
-      x = 111
+      x = 111,
+      scale = 1.75
     },
     checked =
     {
@@ -75,6 +82,7 @@ data.raw["gui-style"].default["at-icon-style"] =
       priority = "extra-high-no-scale",
       width = 32,
       height = 32,
-      x = 111
+      x = 111,
+      scale = 1.75
     }
   }
