@@ -118,6 +118,17 @@ function gui_open_frame(player)
     name = "auto-trash-config-frame",
     direction = "vertical"
   }
+  
+  --local sprite_button = 
+--  frame.add{
+--    type = "sprite-button",
+--    --sprite = "item/iron-ore",
+--    style = "auto-trash-sprite-button",
+--    name = "spritetest"
+--  }
+  
+  
+  
   local error_label = frame.add{
     type = "label",
     caption = "---",

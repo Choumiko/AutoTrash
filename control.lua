@@ -1,5 +1,5 @@
 if not defines then
-  require "defines" 
+  require "defines"
 end
 
 require "util"
@@ -412,6 +412,16 @@ script.on_event(defines.events.on_gui_click, function(event)
       else
         gui_open_frame(player)
       end
+    elseif element.name == "spritetest" then
+
+      local stack = player.cursor_stack
+      if not stack.valid_for_read then
+        element.sprite = false
+      else
+        element.sprite = "item/".. stack.name
+      end
+
+
     elseif element.name == "auto-trash-apply" or element.name == "auto-trash-logistics-apply" then
       gui_save_changes(player)
     elseif element.name == "auto-trash-clear-all" or element.name == "auto-trash-logistics-clear-all" then
