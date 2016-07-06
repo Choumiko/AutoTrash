@@ -118,17 +118,15 @@ function gui_open_frame(player)
     name = "auto-trash-config-frame",
     direction = "vertical"
   }
-  
-  --local sprite_button = 
---  frame.add{
---    type = "sprite-button",
---    --sprite = "item/iron-ore",
---    style = "auto-trash-sprite-button",
---    name = "spritetest"
---  }
-  
-  
-  
+
+  --local sprite_button =
+  --  frame.add{
+  --    type = "sprite-button",
+  --    --sprite = "item/iron-ore",
+  --    style = "auto-trash-sprite-button",
+  --    name = "spritetest"
+  --  }
+
   local error_label = frame.add{
     type = "label",
     caption = "---",
@@ -389,13 +387,23 @@ function gui_open_logistics_frame(player, redraw)
   end
 end
 
+function gui_close(player)
+  local frame = player.gui.left[GUI.configFrame] or player.gui.left[GUI.logisticsConfigFrame]
+  local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
+  if frame then
+    frame.destroy()
+  end
+  if storage_frame then
+    storage_frame.destroy()
+  end
+end
+
 function gui_save_changes(player)
   -- Saving changes consists in:
   --   1. copying config-tmp to config
   --   2. removing config-tmp
   --   3. closing the frame
   local frame = player.gui.left[GUI.configFrame] or player.gui.left[GUI.logisticsConfigFrame]
-  local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
 
   local key = player.gui.left[GUI.configFrame] and "" or "logistics-"
 
@@ -427,12 +435,7 @@ function gui_save_changes(player)
     remote.call("YARM", "show_expando", player.index)
   end
   --saveVar(global, "saved")
-  if frame then
-    frame.destroy()
-  end
-  if storage_frame then
-    storage_frame.destroy()
-  end
+  gui_close(player)
 end
 
 function gui_clear_all(player)

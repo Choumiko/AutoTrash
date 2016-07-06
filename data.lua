@@ -285,3 +285,18 @@ data.raw["gui-style"].default["auto-trash-logistics-button-paused"] =
       }
     }
   }
+
+data:extend({
+  {
+    type = "custom-input",
+    name = "autotrash_pause",
+    key_sequence = "SHIFT + p",
+    consuming = "none"
+  },
+  {
+    type = "custom-input",
+    name = "autotrash_pause_requests",
+    key_sequence = "SHIFT + o",
+    consuming = "none"
+  }
+})

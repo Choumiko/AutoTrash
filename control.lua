@@ -396,6 +396,36 @@ function unpause_requests(player)
   end
 end
 
+function toggle_autotrash_pause(player, element)
+  global.active[player.index] = not global.active[player.index]
+  local mainButton = player.gui.top[GUI.mainFlow][GUI.mainButton]
+  if global.active[player.index] then
+    mainButton.style = "auto-trash-button"
+    if element then
+      element.caption = {"auto-trash-config-button-pause"}
+    end
+  else
+    mainButton.style = "auto-trash-button-paused"
+    if element then
+      element.caption = {"auto-trash-config-button-unpause"}
+    end
+  end
+  gui_close(player)
+end
+
+function toggle_autotrash_pause_requests(player)
+  global["logistics-active"][player.index] = not global["logistics-active"][player.index]
+  local mainButton = player.gui.top[GUI.mainFlow][GUI.logisticsButton]
+  if global["logistics-active"][player.index] then
+    mainButton.style = "auto-trash-logistics-button"
+    unpause_requests(player)
+  else
+    mainButton.style = "auto-trash-logistics-button-paused"
+    pause_requests(player)
+  end
+  gui_close(player)
+end
+
 script.on_event(defines.events.on_gui_click, function(event)
   local status, err = pcall(function()
     local element = event.element
@@ -427,29 +457,11 @@ script.on_event(defines.events.on_gui_click, function(event)
     elseif element.name == "auto-trash-clear-all" or element.name == "auto-trash-logistics-clear-all" then
       gui_clear_all(player)
     elseif element.name == "auto-trash-pause" then
-      global.active[player_index] = not global.active[player_index]
-      local mainButton = player.gui.top[GUI.mainFlow][GUI.mainButton]
-      if global.active[player_index] then
-        mainButton.style = "auto-trash-button"
-        element.caption = {"auto-trash-config-button-pause"}
-      else
-        mainButton.style = "auto-trash-button-paused"
-        element.caption = {"auto-trash-config-button-unpause"}
-      end
+      toggle_autotrash_pause(player)
     elseif element.name == "auto-trash-logistics-button" then
       gui_open_logistics_frame(player)
     elseif element.name == "auto-trash-logistics-pause" then
-      global["logistics-active"][player_index] = not global["logistics-active"][player_index]
-      local mainButton = player.gui.top[GUI.mainFlow][GUI.logisticsButton]
-      if global["logistics-active"][player_index] then
-        mainButton.style = "auto-trash-logistics-button"
-        element.caption = {"auto-trash-config-button-pause"}
-        unpause_requests(player)
-      else
-        mainButton.style = "auto-trash-logistics-button-paused"
-        element.caption = {"auto-trash-config-button-unpause"}
-        pause_requests(player)
-      end
+      toggle_autotrash_pause_requests(player)
     elseif element.name  == "auto-trash-logistics-storage-store" then
       gui_store(player)
     elseif element.name == "auto-trash-above-requested" then
@@ -493,6 +505,14 @@ script.on_event(defines.events.on_research_finished, function(event)
   if event.research.name == "character-logistic-trash-slots-2" then
     global.configSize[event.research.force.name] = MAX_CONFIG_SIZES["character-logistic-trash-slots-2"]
   end
+end)
+
+script.on_event("autotrash_pause", function(event)
+  toggle_autotrash_pause(game.players[event.player_index])
+end)
+
+script.on_event("autotrash_pause_requests", function(event)
+  toggle_autotrash_pause_requests(game.players[event.player_index])
 end)
 
 function debugDump(var, force)
