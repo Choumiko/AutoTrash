@@ -82,9 +82,9 @@ data.raw["gui-style"].default["auto-trash-sprite-button"] =
   {
     type = "button_style",
     parent = "button_style",
-    width = 33,
-    height = 33,
-    top_padding = 6,
+    width = 32,
+    height = 32,
+    top_padding = 0,
     right_padding = 0,
     bottom_padding = 0,
     left_padding = 0,
@@ -96,43 +96,6 @@ data.raw["gui-style"].default["auto-trash-sprite-button"] =
       height = 32,
       x = 111,
     },
-
-    default_graphical_set =
-    {
-      type = "monolith",
-      monolith_image =
-      {
-        filename = "__core__/graphics/gui.png",
-        priority = "extra-high-no-scale",
-        width = 32,
-        height = 32,
-        x = 111,
-      }
-    },
-    hovered_graphical_set =
-    {
-      type = "monolith",
-      monolith_image =
-      {
-        filename = "__core__/graphics/gui.png",
-        priority = "extra-high-no-scale",
-        width = 32,
-        height = 32,
-        x = 111,
-      }
-    },
-    clicked_graphical_set =
-    {
-      type = "monolith",
-      monolith_image =
-      {
-        filename = "__core__/graphics/gui.png",
-        priority = "extra-high-no-scale",
-        width = 32,
-        height = 32,
-        x = 111,
-      }
-    }
   }
 
 

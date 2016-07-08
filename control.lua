@@ -42,6 +42,9 @@ local function init_player(player)
   if global.settings[index].auto_trash_above_requested == nil then
     global.settings[index].auto_trash_above_requested = false
   end
+  if global.settings[index].auto_trash_unrequested == nil then
+    global.settings[index].auto_trash_unrequested = false
+  end
   gui_init(player)
 end
 
@@ -101,6 +104,12 @@ local function on_configuration_changed(data)
         init_global()
         init_forces()
         init_players()
+      end
+      if oldVersion < "0.1.1" then
+        init_players()
+        for _, p in pairs(game.players) do
+          gui_close(p)
+        end
       end
       -- mod was added to existing save
     else
@@ -252,9 +261,11 @@ function on_tick(event)
             end
           end
         end
+        local requests_by_name = {}
         if global.settings[player_index].auto_trash_above_requested then
           --local config = global.config[player_index]
           for name, r in pairs(requests) do
+            requests_by_name[name] = true
             if not already_trashed[name] then
               local count = player.get_item_count(name)
               local diff = count - r
@@ -264,6 +275,27 @@ function on_tick(event)
                 local c = trash.insert(stack)
                 if c > 0 then
                   local removed = player.remove_item{name=name, count=c}
+                  if c > removed then
+                    trash.remove{name=name, count = c - removed}
+                  end
+                end
+              end
+            end
+          end
+        end
+        if global.settings[player_index].auto_trash_unrequested then
+          local main_inventory = player.get_inventory(defines.inventory.player_main)
+          local trash = player.get_inventory(defines.inventory.player_trash)
+          if main_inventory and not main_inventory.is_empty() then
+            local contents = main_inventory.get_contents()
+            local stack = {name="", count = 0}
+            for name, count in pairs(contents) do
+              if not requests_by_name[name] then
+                stack.name = name
+                stack.count = count
+                local c = trash.insert(stack)
+                if c > 0 then
+                  local removed = main_inventory.remove{name=name, count=c}
                   if c > removed then
                     trash.remove{name=name, count = c - removed}
                   end
@@ -442,16 +474,6 @@ script.on_event(defines.events.on_gui_click, function(event)
       else
         gui_open_frame(player)
       end
-    elseif element.name == "spritetest" then
-
-      local stack = player.cursor_stack
-      if not stack.valid_for_read then
-        element.sprite = false
-      else
-        element.sprite = "item/".. stack.name
-      end
-
-
     elseif element.name == "auto-trash-apply" or element.name == "auto-trash-logistics-apply" then
       gui_save_changes(player)
     elseif element.name == "auto-trash-clear-all" or element.name == "auto-trash-logistics-clear-all" then
@@ -466,13 +488,18 @@ script.on_event(defines.events.on_gui_click, function(event)
       gui_store(player)
     elseif element.name == "auto-trash-above-requested" then
       global.settings[player_index].auto_trash_above_requested = not global.settings[player_index].auto_trash_above_requested
+    elseif element.name == "auto-trash-unrequested" then
+      global.settings[player_index].auto_trash_unrequested = not global.settings[player_index].auto_trash_unrequested
+      if global.settings[player_index].auto_trash_unrequested then
+        global.settings[player_index].auto_trash_above_requested = true
+        element.parent["auto-trash-above-requested"].state = true
+      end
     else
       event.element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
       local type, index, _ = string.match(element.name, "auto%-trash%-(%a+)%-(%d+)%-*(%d*)")
       if not type then
         type, index, _ = string.match(element.name, "auto%-trash%-logistics%-(%a+)%-(%d+)%-*(%d*)")
       end
-      --debugDump({t=type,i=index,s=slot},true)
       if type and index then
         if type == "item" then
           gui_set_item(player, type, tonumber(index))

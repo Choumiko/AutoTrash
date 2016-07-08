@@ -119,14 +119,6 @@ function gui_open_frame(player)
     direction = "vertical"
   }
 
-  --local sprite_button =
-  --  frame.add{
-  --    type = "sprite-button",
-  --    --sprite = "item/iron-ore",
-  --    style = "auto-trash-sprite-button",
-  --    name = "spritetest"
-  --  }
-
   local error_label = frame.add{
     type = "label",
     caption = "---",
@@ -162,12 +154,12 @@ function gui_open_frame(player)
 
   for i = 1, configSize do
     local style = global["config-tmp"][player.index][i].name or "style"
-    style = style == "" and "style" or style
+    style = style == "" and style or "item/" .. style
     ruleset_grid.add{
-      type = "checkbox",
+      type = "sprite-button",
       name = "auto-trash-item-" .. i,
-      style = "at-icon-" ..style,
-      state = false
+      sprite = style,
+      style = "auto-trash-sprite-button"
     }
 
     local amount = ruleset_grid.add{
@@ -192,6 +184,13 @@ function gui_open_frame(player)
     name = "auto-trash-above-requested",
     caption = {"auto-trash-above-requested"},
     state = global.settings[player.index].auto_trash_above_requested
+  }
+
+  frame.add{
+    type = "checkbox",
+    name = "auto-trash-unrequested",
+    caption = {"auto-trash-unrequested"},
+    state = global.settings[player.index].auto_trash_unrequested,
   }
 
   local button_grid = frame.add{
@@ -275,13 +274,13 @@ function gui_open_logistics_frame(player, redraw)
 
   for i = 1, slots do
     local req = global["logistics-config-tmp"][player.index][i]
-    local style = req and req.name or "style"
-    style = style == "" and "style" or style
+    local style = req and "item/" .. req.name or ""
+
     ruleset_grid.add{
-      type = "checkbox",
+      type = "sprite-button",
       name = "auto-trash-item-" .. i,
-      style = "at-icon-" ..style,
-      state = false
+      sprite = style,
+      style = "auto-trash-sprite-button"
     }
 
     local amount = ruleset_grid.add{
@@ -500,9 +499,8 @@ function gui_set_item(player, type1, index)
   end
 
   local ruleset_grid = frame["auto-trash-ruleset-grid"]
-  local style = global[key][player.index][index].name ~= "" and "at-icon-"..global[key][player.index][index].name or "at-icon-style"
-  ruleset_grid["auto-trash-" .. type1 .. "-" .. index].style = style
-  ruleset_grid["auto-trash-" .. type1 .. "-" .. index].state = false
+  local style = global[key][player.index][index].name ~= "" and "item/"..global[key][player.index][index].name or ""
+  ruleset_grid["auto-trash-" .. type1 .. "-" .. index].sprite = style
   ruleset_grid["auto-trash-amount" .. "-" .. index].text = global[key][player.index][index].count
 end
 
