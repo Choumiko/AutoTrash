@@ -16,6 +16,11 @@ The number of slots is equal to your logistics slots research.
 
 Items get trashed every 2 seconds for now. Hitting Pause will, wait for it.., pause AutoTrash :D
 
+Hotkeys:
+---
+- Shift + P: Pauses Autotrash
+- Shift + O: Pause logistic requests
+
 [More info](https://forums.factorio.com/viewtopic.php?f=97&t=16016)
 
 ***

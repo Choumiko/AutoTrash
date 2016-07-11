@@ -123,6 +123,20 @@ local function on_configuration_changed(data)
         init_global()
         init_players()
       end
+
+      if oldVersion < "0.1.3" then
+        init_global()
+        init_players()
+        local cell
+        for player_index, network in pairs(global.mainNetwork) do
+          if network and network.valid then
+            cell = network.cells[1]
+            if cell and cell.valid then
+              global.mainNetwork[player_index] = cell.owner
+            end
+          end
+        end
+      end
       -- mod was added to existing save
     else
       init_global()
@@ -221,8 +235,9 @@ function inMainNetwork(player)
     return true
   end
 
-  local current = player.surface.find_logistic_network_by_position(player.position, player.force)
-  if current and global.mainNetwork[player.index] and current == global.mainNetwork[player.index] then
+  local currentNetwork = player.surface.find_logistic_network_by_position(player.position, player.force)
+  local entity = global.mainNetwork[player.index]
+  if currentNetwork and entity and entity.valid and currentNetwork == entity.logistic_network then
     return true
   end
   return false
@@ -243,7 +258,7 @@ function on_tick(event)
           local requests = requested_items(player)
           for i=#global.temporaryTrash[player_index],1,-1 do
             local item = global.temporaryTrash[player_index][i]
-            if item and item.name ~= "" then
+            if item and item.name ~= "" and item.name ~= "blueprint" and item.name ~= "blueprint-book" then
               local count = player.get_item_count(item.name) --counts main,quick + cursor
               local requested = requests[item.name] and requests[item.name] or 0
               local desired = math.max(requested, item.count)
@@ -268,7 +283,7 @@ function on_tick(event)
           local configSize = global.configSize[player.force.name]
           local already_trashed = {}
           for i, item in pairs(global.config[player_index]) do
-            if item and item.name ~= "" and i <= configSize then
+            if item and item.name ~= "" and item.name ~= "blueprint" and item.name ~= "blueprint-book" and i <= configSize then
               already_trashed[item.name] = item.count
               local count = player.get_item_count(item.name)
               local requested = requests[item.name] and requests[item.name] or 0
@@ -287,10 +302,11 @@ function on_tick(event)
             end
           end
           local requests_by_name = {}
-          if global.settings[player_index].auto_trash_above_requested then
-            --local config = global.config[player_index]
-            for name, r in pairs(requests) do
-              requests_by_name[name] = true
+
+          --local config = global.config[player_index]
+          for name, r in pairs(requests) do
+            requests_by_name[name] = true
+            if global.settings[player_index].auto_trash_above_requested then
               if not already_trashed[name] then
                 local count = player.get_item_count(name)
                 local diff = count - r
@@ -312,7 +328,7 @@ function on_tick(event)
               local contents = main_inventory.get_contents()
               local stack = {name="", count = 0}
               for name, count in pairs(contents) do
-                if not requests_by_name[name] then
+                if not requests_by_name[name] and name ~= "blueprint" and name ~= "blueprint-book" then
                   stack.name = name
                   stack.count = count
                   local c = trash.insert(stack)
@@ -342,6 +358,31 @@ script.on_event(defines.events.on_player_created, on_player_created)
 script.on_event(defines.events.on_force_created, on_force_created)
 script.on_event(defines.events.on_forces_merging, on_forces_merging)
 script.on_event(defines.events.on_tick, on_tick)
+
+function on_pre_mined_item(event)
+  if event.entity.type == "roboport" then
+    for player_index, entity in pairs(global.mainNetwork) do
+      if entity == event.entity then
+        --get another roboport from the network
+        local newEntity = false
+        for _, cell in pairs(entity.logistic_network.cells) do
+          if cell.owner ~= entity and cell.owner.valid then
+            newEntity = cell.owner
+            break
+          end
+        end
+        global.mainNetwork[player_index] = newEntity
+      end
+    end
+  end
+end
+
+script.on_event(defines.events.on_preplayer_mined_item, on_pre_mined_item)
+script.on_event(defines.events.on_robot_pre_mined, on_pre_mined_item)
+script.on_event(defines.events.on_entity_died, on_pre_mined_item)
+
+--script.on_event(defines.events.on_built_entity, on_built_entity)
+--script.on_event(defines.events.on_robot_built_entity, on_built_entity)
 
 
 function add_order(player)
@@ -517,9 +558,12 @@ script.on_event(defines.events.on_gui_click, function(event)
     elseif element.name == "auto-trash-set-main-network" then
       if global.mainNetwork[player_index] then
         global.mainNetwork[player_index] = false
-        global.settings[player_index].auto_trash_in_main_network = false
       else
-        global.mainNetwork[player_index] = player.surface.find_logistic_network_by_position(player.position, player.force) or false
+        local network = player.surface.find_logistic_network_by_position(player.position, player.force) or false
+        if network then
+          local cell = network.find_cell_closest_to(player.position)
+          global.mainNetwork[player_index] = cell and cell.owner or false
+        end
         if not global.mainNetwork[player_index] then
           gui_display_message(player.gui.left[GUI.configFrame], false, "auto-trash-not-in-network")
         end
