@@ -1,6 +1,11 @@
 GUI = {
   mainFlow = "auto-trash-main-flow",
   mainButton = "auto-trash-config-button",
+  optionsBar = "auto-trash-options-bar",
+  expandButton = "auto-trash-expand-button",
+  trash_above_requested = "auto-trash-above-requested",
+  trash_unrequested = "auto-trash-unrequested",
+  trash_in_main_network = "auto-trash-in-main-network",
   logisticsButton = "auto-trash-logistics-button",
   configFrame = "auto-trash-config-frame",
   logisticsConfigFrame = "auto-trash-logistics-config-frame",
@@ -35,6 +40,7 @@ function gui_init(player, after_research)
       direction = "horizontal"
     }
   end
+
   if player.gui.top[GUI.mainFlow] and not player.gui.top[GUI.mainFlow][GUI.logisticsButton] and
     (player.force.technologies["character-logistic-slots-1"].researched or after_research == "requests") then
 
@@ -46,14 +52,99 @@ function gui_init(player, after_research)
     }
   end
 
-  if player.gui.top[GUI.mainFlow] and not player.gui.top[GUI.mainFlow][GUI.mainButton] and
-    (player.force.technologies["character-logistic-trash-slots-1"].researched or after_research == "trash") then
+  if player.gui.top[GUI.mainFlow] and (player.force.technologies["character-logistic-trash-slots-1"].researched or after_research == "trash") then
+    if not player.gui.top[GUI.mainFlow][GUI.mainButton] then
+      player.gui.top[GUI.mainFlow].add{
+        type = "button",
+        name = GUI.mainButton,
+        style = "auto-trash-button"
+      }
+    end
+    if not player.gui.top[GUI.mainFlow][GUI.expandButton] then
+      player.gui.top[GUI.mainFlow].add{
+        type = "button",
+        name = GUI.expandButton,
+        style = "auto-trash-expand-button"
+      }
+    end
+  end
 
-    player.gui.top[GUI.mainFlow].add{
-      type = "button",
-      name = GUI.mainButton,
-      style = "auto-trash-button"
-    }
+  --  if player.gui.top[GUI.mainFlow] and (player.force.technologies["character-logistic-trash-slots-1"].researched or after_research == "trash") then
+  --    local bar = player.gui.top[GUI.mainFlow][GUI.optionsBar]
+  --    if not bar then
+  --      player.gui.top[GUI.mainFlow].add{
+  --        type = "flow",
+  --        name = GUI.optionsBar,
+  --        direction = "vertical"
+  --      }
+  --    end
+
+  --  end
+end
+
+function get_settings_group(player)
+  local bar = player.gui.top[GUI.mainFlow][GUI.optionsBar]
+  local other = player.gui.left[GUI.configFrame]
+  local result = {}
+  if bar then
+    table.insert(result, bar)
+  end
+  if other then
+    table.insert(result, other)
+  end
+  return result
+end
+
+function update_settings(player)
+  local groups = get_settings_group(player)
+  local index = player.index
+  for _, group in pairs(groups) do
+    group[GUI.trash_unrequested].state = global.settings[index].auto_trash_unrequested
+    group[GUI.trash_above_requested].state = global.settings[index].auto_trash_above_requested
+    group[GUI.trash_in_main_network].state = global.settings[index].auto_trash_in_main_network
+  end
+end
+
+function gui_toggle_settings(player)
+  local bar = player.gui.top[GUI.mainFlow][GUI.optionsBar]
+
+  global.settings[player.index].options_extended = not global.settings[player.index].options_extended
+  local show = global.settings[player.index].options_extended
+  if show then
+
+    if not bar then
+      bar = player.gui.top[GUI.mainFlow].add{
+        type = "flow",
+        name = GUI.optionsBar,
+        direction = "vertical"
+      }
+    end
+    if not bar[GUI.trash_above_requested] then
+      bar.add{
+        type = "checkbox",
+        name = GUI.trash_above_requested,
+        caption = {"auto-trash-above-requested"},
+        state = global.settings[player.index].auto_trash_above_requested
+      }
+    end
+    if not bar[GUI.trash_unrequested] then
+      bar.add{
+        type = "checkbox",
+        name = GUI.trash_unrequested,
+        caption = {"auto-trash-unrequested"},
+        state = global.settings[player.index].auto_trash_unrequested,
+      }
+    end
+    if not bar[GUI.trash_in_main_network] then
+      bar.add{
+        type = "checkbox",
+        name = GUI.trash_in_main_network,
+        caption = {"auto-trash-in-main-network"},
+        state = global.settings[player.index].auto_trash_in_main_network,
+      }
+    end
+  else
+    if bar then bar.destroy() end
   end
 end
 
@@ -115,7 +206,7 @@ function gui_open_frame(player)
   frame = player.gui.left.add{
     type = "frame",
     caption = {"auto-trash-config-frame-title"},
-    name = "auto-trash-config-frame",
+    name = GUI.configFrame,
     direction = "vertical"
   }
 
@@ -127,6 +218,26 @@ function gui_open_frame(player)
   error_label.style.minimal_width = 200
   local colspan = configSize > 10 and 9 or 6
   colspan = configSize > 54 and 12 or colspan
+  
+--  local pane = frame.add{
+--    type = "scroll-pane",
+--    name = "scroll_me",
+--  }
+--  local flow = pane.add{
+--    type = "flow",
+--    name = "paneFlow",
+--    direction = "vertical"
+--
+--  }
+--  pane.style.maximal_height = 200
+--  pane.horizontal_scroll_policy = "never"
+--  pane.vertical_scroll_policy = "always"
+--  flow.style.resize_row_to_width = true
+
+--  for i=1,10 do
+--    flow.add{type="label", caption="Element " .. i}
+--  end
+  
   local ruleset_grid = frame.add{
     type = "table",
     colspan = colspan,
@@ -181,16 +292,30 @@ function gui_open_frame(player)
 
   frame.add{
     type = "checkbox",
-    name = "auto-trash-above-requested",
+    name = GUI.trash_above_requested,
     caption = {"auto-trash-above-requested"},
     state = global.settings[player.index].auto_trash_above_requested
   }
 
   frame.add{
     type = "checkbox",
-    name = "auto-trash-unrequested",
+    name = GUI.trash_unrequested,
     caption = {"auto-trash-unrequested"},
     state = global.settings[player.index].auto_trash_unrequested,
+  }
+
+  frame.add{
+    type = "checkbox",
+    name = GUI.trash_in_main_network,
+    caption = {"auto-trash-in-main-network"},
+    state = global.settings[player.index].auto_trash_in_main_network,
+  }
+
+  local caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+  frame.add{
+    type = "button",
+    name = "auto-trash-set-main-network",
+    caption = caption
   }
 
   local button_grid = frame.add{
@@ -209,7 +334,7 @@ function gui_open_frame(player)
     name = "auto-trash-clear-all",
     caption = {"auto-trash-config-button-clear-all"}
   }
-  local caption = global.active[player.index] and {"auto-trash-config-button-pause"} or {"auto-trash-config-button-unpause"}
+  caption = global.active[player.index] and {"auto-trash-config-button-pause"} or {"auto-trash-config-button-unpause"}
   button_grid.add{
     type = "button",
     name = "auto-trash-pause",
@@ -452,6 +577,7 @@ function gui_clear_all(player)
 end
 
 function gui_display_message(frame, storage, message)
+  if not frame then return end
   local label_name = "auto-trash-"
   if storage then label_name = label_name .. "logistics-storage-" end
   label_name = label_name .. "error-label"

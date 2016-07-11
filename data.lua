@@ -248,6 +248,63 @@ data.raw["gui-style"].default["auto-trash-logistics-button-paused"] =
       }
     }
   }
+  
+  data.raw["gui-style"].default["auto-trash-expand-button"] =
+  {
+    type = "button_style",
+    parent = "button_style",
+    width = 16,
+    height = 16,
+    default_graphical_set =
+    {
+      type = "monolith",
+      monolith_image =
+      {
+        filename = "__core__/graphics/side-menu-icons.png",
+        priority = "extra-high-no-scale",
+        width = 64,
+        height = 64,
+        x = 0,
+      },
+      stretch_monolith_image_to_size = false
+    },
+    hovered_graphical_set =
+    {
+      type = "monolith",
+      monolith_image =
+      {
+        filename = "__core__/graphics/side-menu-icons.png",
+        priority = "extra-high-no-scale",
+        width = 64,
+        height = 64,
+        x = 64,
+      },
+      stretch_monolith_image_to_size = false
+    },
+    
+    clicked_graphical_set =
+    {
+      type = "monolith",
+      monolith_image =
+      {
+        filename = "__core__/graphics/side-menu-icons.png",
+        priority = "extra-high-no-scale",
+        width = 64,
+        height = 64,
+        x = 64,
+      },
+      stretch_monolith_image_to_size = false
+    },
+    
+    left_click_sound =
+    {
+      {
+        filename = "__core__/sound/gui-click.ogg",
+        volume = 1
+      }
+    },
+
+  }
 
 data:extend({
   {

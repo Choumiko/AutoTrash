@@ -20,6 +20,7 @@ local function init_global()
   global["logistics-config-tmp"] = global["logistics-config-tmp"] or {}
   global["storage"] = global["storage"] or {}
   global.active = global.active or {}
+  global.mainNetwork = global.mainNetwork or {}
   global["logistics-active"] = global["logistics-active"] or {}
   global.configSize = global.configSize or {}
   global.temporaryTrash = global.temporaryTrash or {}
@@ -35,6 +36,7 @@ local function init_player(player)
   global["logistics-config-tmp"][index] = global["logistics-config-tmp"][index] or {}
   global["logistics-active"][index] = true
   global.active[index] = true
+  global.mainNetwork[index] = false
   global.storage[index] = global.storage[index] or {}
   global.temporaryRequests[index] = global.temporaryRequests[index] or {}
   global.temporaryTrash[index] = global.temporaryTrash[index] or {}
@@ -44,6 +46,12 @@ local function init_player(player)
   end
   if global.settings[index].auto_trash_unrequested == nil then
     global.settings[index].auto_trash_unrequested = false
+  end
+  if global.settings[index].options_extended == nil then
+    global.settings[index].options_extended = false
+  end
+  if global.settings[index].auto_trash_in_main_network == nil then
+    global.settings[index].auto_trash_in_main_network = false
   end
   gui_init(player)
 end
@@ -110,6 +118,10 @@ local function on_configuration_changed(data)
         for _, p in pairs(game.players) do
           gui_close(p)
         end
+      end
+      if oldVersion < "0.1.2" then
+        init_global()
+        init_players()
       end
       -- mod was added to existing save
     else
@@ -204,100 +216,111 @@ function set_requests(player, requests)
   end
 end
 
+function inMainNetwork(player)
+  if not global.settings[player.index].auto_trash_in_main_network then
+    return true
+  end
+
+  local current = player.surface.find_logistic_network_by_position(player.position, player.force)
+  if current and global.mainNetwork[player.index] and current == global.mainNetwork[player.index] then
+    return true
+  end
+  return false
+end
+
 function on_tick(event)
   if event.tick % 120 == 0 then
     local status, err = pcall(function()
       for _, player in pairs(game.players) do
         local player_index = player.index
-        if not player.valid or not player.connected or not global.config[player_index] or not global.active[player_index] then
-          break
-        end
-        if not global.temporaryTrash[player_index] then global.temporaryTrash[player_index] = {} end
-        local requests = requested_items(player)
-        for i=#global.temporaryTrash[player_index],1,-1 do
-          local item = global.temporaryTrash[player_index][i]
-          if item and item.name ~= "" then
-            local count = player.get_item_count(item.name)
-            local requested = requests[item.name] and requests[item.name] or 0
-            local desired = math.max(requested, item.count)
-            local diff = count - desired
-            local stack = {name=item.name, count=diff}
-            if diff > 0 then
-              local trash = player.get_inventory(defines.inventory.player_trash)
-              local c = trash.insert(stack)
-              if c > 0 then
-                local removed = player.remove_item{name=item.name, count=c}
-                diff = diff - removed
-                if c > removed then
-                  trash.remove{name=item.name, count = c - removed}
-                end
-              end
-            end
-            if diff <= 0 then
-              player.print({"", "removed ", game.item_prototypes[item.name].localised_name, " from temporary trash"})
-              global.temporaryTrash[player_index][i] = nil
-            end
-          end
-        end
-        local configSize = global.configSize[player.force.name]
-        local already_trashed = {}
-        for i, item in pairs(global.config[player_index]) do
-          if item and item.name ~= "" and i <= configSize then
-            already_trashed[item.name] = item.count
-            local count = player.get_item_count(item.name)
-            local requested = requests[item.name] and requests[item.name] or 0
-            local desired = math.max(requested, item.count)
-            local diff = count - desired
-            local stack = {name=item.name, count=diff}
-            if diff > 0 then
-              local trash = player.get_inventory(defines.inventory.player_trash)
-              local c = trash.insert(stack)
-              if c > 0 then
-                local removed = player.remove_item{name=item.name, count=c}
-                if c > removed then
-                  trash.remove{name=item.name, count = c - removed}
-                end
-              end
-            end
-          end
-        end
-        local requests_by_name = {}
-        if global.settings[player_index].auto_trash_above_requested then
-          --local config = global.config[player_index]
-          for name, r in pairs(requests) do
-            requests_by_name[name] = true
-            if not already_trashed[name] then
-              local count = player.get_item_count(name)
-              local diff = count - r
+        if player.valid and player.connected and global.config[player_index] and global.active[player_index]
+          and inMainNetwork(player) then
+          local godController = player.controller_type == defines.controllers.god
+          local main_inventory = godController and player.get_inventory(defines.inventory.god_main) or player.get_inventory(defines.inventory.player_main)
+          local trash = player.get_inventory(defines.inventory.player_trash)
+
+          if not global.temporaryTrash[player_index] then global.temporaryTrash[player_index] = {} end
+          local requests = requested_items(player)
+          for i=#global.temporaryTrash[player_index],1,-1 do
+            local item = global.temporaryTrash[player_index][i]
+            if item and item.name ~= "" then
+              local count = player.get_item_count(item.name) --counts main,quick + cursor
+              local requested = requests[item.name] and requests[item.name] or 0
+              local desired = math.max(requested, item.count)
+              local diff = count - desired
+              local stack = {name=item.name, count=diff}
               if diff > 0 then
-                local stack = {name=name, count=diff}
-                local trash = player.get_inventory(defines.inventory.player_trash)
                 local c = trash.insert(stack)
                 if c > 0 then
-                  local removed = player.remove_item{name=name, count=c}
+                  local removed = main_inventory.remove{name=item.name, count=c} --remove only from main
+                  diff = diff - removed
                   if c > removed then
-                    trash.remove{name=name, count = c - removed}
+                    trash.remove{name=item.name, count = c - removed}
+                  end
+                end
+              end
+              if diff <= 0 then
+                player.print({"", "removed ", game.item_prototypes[item.name].localised_name, " from temporary trash"})
+                global.temporaryTrash[player_index][i] = nil
+              end
+            end
+          end
+          local configSize = global.configSize[player.force.name]
+          local already_trashed = {}
+          for i, item in pairs(global.config[player_index]) do
+            if item and item.name ~= "" and i <= configSize then
+              already_trashed[item.name] = item.count
+              local count = player.get_item_count(item.name)
+              local requested = requests[item.name] and requests[item.name] or 0
+              local desired = math.max(requested, item.count)
+              local diff = count - desired
+              local stack = {name=item.name, count=diff}
+              if diff > 0 then
+                local c = trash.insert(stack)
+                if c > 0 then
+                  local removed = main_inventory.remove{name=item.name, count=c}
+                  if c > removed then
+                    trash.remove{name=item.name, count = c - removed}
                   end
                 end
               end
             end
           end
-        end
-        if global.settings[player_index].auto_trash_unrequested then
-          local main_inventory = player.get_inventory(defines.inventory.player_main)
-          local trash = player.get_inventory(defines.inventory.player_trash)
-          if main_inventory and not main_inventory.is_empty() then
-            local contents = main_inventory.get_contents()
-            local stack = {name="", count = 0}
-            for name, count in pairs(contents) do
-              if not requests_by_name[name] then
-                stack.name = name
-                stack.count = count
-                local c = trash.insert(stack)
-                if c > 0 then
-                  local removed = main_inventory.remove{name=name, count=c}
-                  if c > removed then
-                    trash.remove{name=name, count = c - removed}
+          local requests_by_name = {}
+          if global.settings[player_index].auto_trash_above_requested then
+            --local config = global.config[player_index]
+            for name, r in pairs(requests) do
+              requests_by_name[name] = true
+              if not already_trashed[name] then
+                local count = player.get_item_count(name)
+                local diff = count - r
+                if diff > 0 then
+                  local stack = {name=name, count=diff}
+                  local c = trash.insert(stack)
+                  if c > 0 then
+                    local removed = main_inventory.remove{name=name, count=c}
+                    if c > removed then
+                      trash.remove{name=name, count = c - removed}
+                    end
+                  end
+                end
+              end
+            end
+          end
+          if global.settings[player_index].auto_trash_unrequested then
+            if main_inventory and not main_inventory.is_empty() then
+              local contents = main_inventory.get_contents()
+              local stack = {name="", count = 0}
+              for name, count in pairs(contents) do
+                if not requests_by_name[name] then
+                  stack.name = name
+                  stack.count = count
+                  local c = trash.insert(stack)
+                  if c > 0 then
+                    local removed = main_inventory.remove{name=name, count=c}
+                    if c > removed then
+                      trash.remove{name=name, count = c - removed}
+                    end
                   end
                 end
               end
@@ -474,6 +497,8 @@ script.on_event(defines.events.on_gui_click, function(event)
       else
         gui_open_frame(player)
       end
+    elseif element.name == GUI.expandButton then
+      gui_toggle_settings(player)
     elseif element.name == "auto-trash-apply" or element.name == "auto-trash-logistics-apply" then
       gui_save_changes(player)
     elseif element.name == "auto-trash-clear-all" or element.name == "auto-trash-logistics-clear-all" then
@@ -486,14 +511,29 @@ script.on_event(defines.events.on_gui_click, function(event)
       toggle_autotrash_pause_requests(player)
     elseif element.name  == "auto-trash-logistics-storage-store" then
       gui_store(player)
-    elseif element.name == "auto-trash-above-requested" then
+    elseif element.name == GUI.trash_in_main_network then
+      global.settings[player_index].auto_trash_in_main_network = not global.settings[player_index].auto_trash_in_main_network
+      update_settings(player)
+    elseif element.name == "auto-trash-set-main-network" then
+      if global.mainNetwork[player_index] then
+        global.mainNetwork[player_index] = false
+        global.settings[player_index].auto_trash_in_main_network = false
+      else
+        global.mainNetwork[player_index] = player.surface.find_logistic_network_by_position(player.position, player.force) or false
+        if not global.mainNetwork[player_index] then
+          gui_display_message(player.gui.left[GUI.configFrame], false, "auto-trash-not-in-network")
+        end
+      end
+      element.caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+    elseif element.name == GUI.trash_above_requested then
       global.settings[player_index].auto_trash_above_requested = not global.settings[player_index].auto_trash_above_requested
-    elseif element.name == "auto-trash-unrequested" then
+      update_settings(player)
+    elseif element.name == GUI.trash_unrequested then
       global.settings[player_index].auto_trash_unrequested = not global.settings[player_index].auto_trash_unrequested
       if global.settings[player_index].auto_trash_unrequested then
         global.settings[player_index].auto_trash_above_requested = true
-        element.parent["auto-trash-above-requested"].state = true
       end
+      update_settings(player)
     else
       event.element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
       local type, index, _ = string.match(element.name, "auto%-trash%-(%a+)%-(%d+)%-*(%d*)")
@@ -567,6 +607,7 @@ remote.add_interface("at",
     saveVar = function(name)
       saveVar(global, name)
     end,
+
     init = function()
       init_global()
       init_forces()
@@ -616,5 +657,8 @@ remote.add_interface("at",
         init_forces()
         init_players()
       end
+    end,
+    init_gui = function()
+      gui_init(game.player)
     end
   })
