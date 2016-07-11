@@ -26,6 +26,11 @@ Hotkeys:
 ***
 Changelog
 ---
+0.1.3
+
+- update main network when a roboport gets mined/destroyed
+- don't trash blueprints/books (clears the blueprint)
+
 0.1.2
 
 - added option to only trash items when the player is in a specific network (WIP)
