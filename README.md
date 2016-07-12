@@ -26,6 +26,10 @@ Hotkeys:
 ***
 Changelog
 ---
+0.1.4
+
+- fixed error when restoring logistic requests
+
 0.1.3
 
 - update main network when a roboport gets mined/destroyed

@@ -218,26 +218,26 @@ function gui_open_frame(player)
   error_label.style.minimal_width = 200
   local colspan = configSize > 10 and 9 or 6
   colspan = configSize > 54 and 12 or colspan
-  
---  local pane = frame.add{
---    type = "scroll-pane",
---    name = "scroll_me",
---  }
---  local flow = pane.add{
---    type = "flow",
---    name = "paneFlow",
---    direction = "vertical"
---
---  }
---  pane.style.maximal_height = 200
---  pane.horizontal_scroll_policy = "never"
---  pane.vertical_scroll_policy = "always"
---  flow.style.resize_row_to_width = true
 
---  for i=1,10 do
---    flow.add{type="label", caption="Element " .. i}
---  end
-  
+  --  local pane = frame.add{
+  --    type = "scroll-pane",
+  --    name = "scroll_me",
+  --  }
+  --  local flow = pane.add{
+  --    type = "flow",
+  --    name = "paneFlow",
+  --    direction = "vertical"
+  --
+  --  }
+  --  pane.style.maximal_height = 200
+  --  pane.horizontal_scroll_policy = "never"
+  --  pane.vertical_scroll_policy = "always"
+  --  flow.style.resize_row_to_width = true
+
+  --  for i=1,10 do
+  --    flow.add{type="label", caption="Element " .. i}
+  --  end
+
   local ruleset_grid = frame.add{
     type = "table",
     colspan = colspan,
@@ -571,7 +571,7 @@ function gui_clear_all(player)
   local ruleset_grid = frame["auto-trash-ruleset-grid"]
   for i, c in pairs(global[key.."config-tmp"][player.index]) do
     global[key.."config-tmp"][player.index][i] = { name = "", count = {} }
-    ruleset_grid["auto-trash-item-" .. i].style = "at-icon-style"
+    ruleset_grid["auto-trash-item-" .. i].sprite = ""
     ruleset_grid["auto-trash-amount-" .. i].text = ""
   end
 end
@@ -664,27 +664,6 @@ function gui_store(player)
   gui_display_message(storage_frame, true, "---")
   textfield.text = ""
   gui_open_logistics_frame(player,true)
-  --  storage_grid.add{
-  --    type = "label",
-  --    caption = name .. "        ",
-  --    name = "auto-trash-logistics-storage-entry-" .. index
-  --  }
-  --
-  --  storage_grid.add{
-  --    type = "button",
-  --    caption = {"auto-trash-storage-restore"},
-  --    name = "auto-trash-logistics-restore-" .. index,
-  --    style = "auto-trash-small-button"
-  --  }
-  --
-  --  storage_grid.add{
-  --    type = "button",
-  --    caption = {"auto-trash-storage-remove"},
-  --    name = "auto-trash-logistics-remove-" .. index,
-  --    style = "auto-trash-small-button"
-  --  }
-
-  --saveVar(global, "stored")
 end
 
 function gui_restore(player, index)
@@ -704,13 +683,12 @@ function gui_restore(player, index)
   local slots = player.force.character_logistic_slot_count
   for i = 1, slots do
     if global["storage"][player.index].store[name][i] then
-      global["logistics-config-tmp"][player.index][i] = global["storage"][player.index].store[name][i]
+      global["logistics-config-tmp"][player.index][i] = {name=global["storage"][player.index].store[name][i].name, count = global["storage"][player.index].store[name][i].count}
     else
       global["logistics-config-tmp"][player.index][i] = {name = "", count = ""}
     end
-    local style = global["logistics-config-tmp"][player.index][i].name ~= "" and "at-icon-"..global["logistics-config-tmp"][player.index][i].name or "at-icon-style"
-    ruleset_grid["auto-trash-item-" .. i].style = style
-    ruleset_grid["auto-trash-item-" .. i].state = false
+    local style = global["logistics-config-tmp"][player.index][i].name ~= "" and "item/"..global["logistics-config-tmp"][player.index][i].name or ""
+    ruleset_grid["auto-trash-item-" .. i].sprite = style
     ruleset_grid["auto-trash-amount-" .. i].text = global["logistics-config-tmp"][player.index][i].count
   end
   gui_display_message(storage_frame, true, "---")

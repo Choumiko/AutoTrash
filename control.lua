@@ -1,7 +1,3 @@
-if not defines then
-  require "defines"
-end
-
 require "util"
 
 MAX_CONFIG_SIZES = {
