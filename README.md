@@ -26,6 +26,10 @@ Hotkeys:
 ***
 Changelog
 ---
+0.1.5
+
+- temporary trash gets removed from main inventory, quickbar and cursor 
+
 0.1.4
 
 - fixed error when restoring logistic requests

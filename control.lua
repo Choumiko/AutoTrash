@@ -263,7 +263,7 @@ function on_tick(event)
               if diff > 0 then
                 local c = trash.insert(stack)
                 if c > 0 then
-                  local removed = main_inventory.remove{name=item.name, count=c} --remove only from main
+                  local removed = player.remove_item{name=item.name, count=c} --temporary items are removed from main,quickbar and cursor
                   diff = diff - removed
                   if c > removed then
                     trash.remove{name=item.name, count = c - removed}
