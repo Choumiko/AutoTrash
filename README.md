@@ -23,6 +23,12 @@ Hotkeys:
 
 [More info](https://forums.factorio.com/viewtopic.php?f=97&t=16016)
 
+Todo:
+---
+- Scrollpane instead of table to setup Autotrash
+- "Unlimited" number of slots
+- Option to trash from (unfiltered) quickbar
+
 ***
 Changelog
 ---
