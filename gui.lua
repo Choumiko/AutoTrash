@@ -338,7 +338,8 @@ function gui_open_frame(player)
   button_grid.add{
     type = "button",
     name = "auto-trash-pause",
-    caption = caption
+    caption = caption,
+    tooltip = {"auto-trash-tooltip-pause"}
   }
 end
 
@@ -444,7 +445,8 @@ function gui_open_logistics_frame(player, redraw)
   button_grid.add{
     type = "button",
     name = "auto-trash-logistics-pause",
-    caption = caption
+    caption = caption,
+    tooltip = {"auto-trash-tooltip-pause-requests"}
   }
 
   storage_frame = player.gui.left.add{

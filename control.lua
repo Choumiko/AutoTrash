@@ -53,6 +53,9 @@ local function init_player(player)
 end
 
 local function init_players(resetGui)
+  if not global.mainNetwork then
+    init_global()
+  end
   for i,player in pairs(game.players) do
     if resetGui then
       gui_destroy(player)
@@ -102,6 +105,11 @@ local function on_configuration_changed(data)
   if data.mod_changes.AutoTrash then
     local newVersion = data.mod_changes.AutoTrash.new_version
     local oldVersion = data.mod_changes.AutoTrash.old_version
+
+    init_global()
+    init_forces()
+    init_players()
+
     if oldVersion then
       if oldVersion < "0.0.55" then
         global = nil
@@ -109,20 +117,14 @@ local function on_configuration_changed(data)
         init_forces()
         init_players()
       end
+
       if oldVersion < "0.1.1" then
-        init_players()
         for _, p in pairs(game.players) do
           gui_close(p)
         end
       end
-      if oldVersion < "0.1.2" then
-        init_global()
-        init_players()
-      end
 
       if oldVersion < "0.1.3" then
-        init_global()
-        init_players()
         local cell
         for player_index, network in pairs(global.mainNetwork) do
           if network and network.valid then
@@ -133,11 +135,6 @@ local function on_configuration_changed(data)
           end
         end
       end
-      -- mod was added to existing save
-    else
-      init_global()
-      init_forces()
-      init_players()
     end
     global.version = newVersion
   end

@@ -32,6 +32,11 @@ Todo:
 ***
 Changelog
 ---
+0.1.6
+
+- added tooltip to Pause buttons, showing the configured hotkey
+- fixed migration error
+
 0.1.5
 
 - temporary trash gets removed from main inventory, quickbar and cursor 
