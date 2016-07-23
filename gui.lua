@@ -219,26 +219,14 @@ function gui_open_frame(player)
   local colspan = configSize > 10 and 9 or 6
   colspan = configSize > 54 and 12 or colspan
 
-  --  local pane = frame.add{
-  --    type = "scroll-pane",
-  --    name = "scroll_me",
-  --  }
-  --  local flow = pane.add{
-  --    type = "flow",
-  --    name = "paneFlow",
-  --    direction = "vertical"
-  --
-  --  }
-  --  pane.style.maximal_height = 200
-  --  pane.horizontal_scroll_policy = "never"
-  --  pane.vertical_scroll_policy = "always"
-  --  flow.style.resize_row_to_width = true
+  local pane = frame.add{
+    type = "scroll-pane",
+  }
+  pane.style.maximal_height = math.ceil(40*10)
+  pane.horizontal_scroll_policy = "never"
+  pane.vertical_scroll_policy = "auto"
 
-  --  for i=1,10 do
-  --    flow.add{type="label", caption="Element " .. i}
-  --  end
-
-  local ruleset_grid = frame.add{
+  local ruleset_grid = pane.add{
     type = "table",
     colspan = colspan,
     name = "auto-trash-ruleset-grid"
@@ -341,6 +329,8 @@ function gui_open_frame(player)
     caption = caption,
     tooltip = {"auto-trash-tooltip-pause"}
   }
+  
+  return {ruleset_grid = ruleset_grid}
 end
 
 function gui_open_logistics_frame(player, redraw)
@@ -522,6 +512,7 @@ function gui_close(player)
   if storage_frame then
     storage_frame.destroy()
   end
+  global.guiData[player.index] = nil
 end
 
 function gui_save_changes(player)
@@ -529,13 +520,12 @@ function gui_save_changes(player)
   --   1. copying config-tmp to config
   --   2. removing config-tmp
   --   3. closing the frame
-  local frame = player.gui.left[GUI.configFrame] or player.gui.left[GUI.logisticsConfigFrame]
 
   local key = player.gui.left[GUI.configFrame] and "" or "logistics-"
 
   if global[key.."config-tmp"][player.index] then
     global[key.."config"][player.index] = {}
-    local grid = frame["auto-trash-ruleset-grid"]
+    local grid = global.guiData[player.index].ruleset_grid
     for i, config in pairs(global[key.."config-tmp"][player.index]) do
       if global[key.."config-tmp"][player.index][i].name == "" then
         global[key.."config"][player.index][i] = { name = "", count = "" }
@@ -570,7 +560,7 @@ function gui_clear_all(player)
   local key = player.gui.left[GUI.configFrame] and "" or "logistics-"
 
   if not frame then return end
-  local ruleset_grid = frame["auto-trash-ruleset-grid"]
+  local ruleset_grid = global.guiData[player.index].ruleset_grid
   for i, c in pairs(global[key.."config-tmp"][player.index]) do
     global[key.."config-tmp"][player.index][i] = { name = "", count = {} }
     ruleset_grid["auto-trash-item-" .. i].sprite = ""
@@ -626,7 +616,7 @@ function gui_set_item(player, type1, index)
     end
   end
 
-  local ruleset_grid = frame["auto-trash-ruleset-grid"]
+  local ruleset_grid = global.guiData[player.index].ruleset_grid
   local style = global[key][player.index][index].name ~= "" and "item/"..global[key][player.index][index].name or ""
   ruleset_grid["auto-trash-" .. type1 .. "-" .. index].sprite = style
   ruleset_grid["auto-trash-amount" .. "-" .. index].text = global[key][player.index][index].count
@@ -656,8 +646,8 @@ function gui_store(player)
     gui_display_message(storage_frame, true, "auto-trash-storage-too-long")
     return
   end
-  local frame = player.gui.left[GUI.logisticsConfigFrame]
-  local ruleset_grid = frame["auto-trash-ruleset-grid"]
+
+  local ruleset_grid = global.guiData[player.index].ruleset_grid
   global["storage"][player.index].store[name] = {}
   for i,c in pairs(global["logistics-config-tmp"][player.index]) do
     global["storage"][player.index].store[name][i] = {name = c.name, count = 0}
@@ -665,7 +655,7 @@ function gui_store(player)
   end
   gui_display_message(storage_frame, true, "---")
   textfield.text = ""
-  gui_open_logistics_frame(player,true)
+  global.guiData[player.index] = gui_open_logistics_frame(player,true)
 end
 
 function gui_restore(player, index)
@@ -681,7 +671,7 @@ function gui_restore(player, index)
   if not global["storage"][player.index] or not global["storage"][player.index].store[name] then return end
 
   global["logistics-config-tmp"][player.index] = {}
-  local ruleset_grid = frame["auto-trash-ruleset-grid"]
+  local ruleset_grid = global.guiData[player.index].ruleset_grid
   local slots = player.force.character_logistic_slot_count
   for i = 1, slots do
     if global["storage"][player.index].store[name][i] then

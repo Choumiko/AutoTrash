@@ -22,6 +22,7 @@ local function init_global()
   global.temporaryTrash = global.temporaryTrash or {}
   global.temporaryRequests = global.temporaryRequests or {}
   global.settings = global.settings or {}
+  global.guiData = global.guiData or {}
 end
 
 local function init_player(player)
@@ -49,6 +50,9 @@ local function init_player(player)
   if global.settings[index].auto_trash_in_main_network == nil then
     global.settings[index].auto_trash_in_main_network = false
   end
+
+  global.guiData[index] = global.guiData[index] or {}
+
   gui_init(player)
 end
 
@@ -104,42 +108,37 @@ local function on_configuration_changed(data)
   --Autotrash changed, got added
   if data.mod_changes.AutoTrash then
     local newVersion = data.mod_changes.AutoTrash.new_version
-    local oldVersion = data.mod_changes.AutoTrash.old_version
+    local oldVersion = data.mod_changes.AutoTrash.old_version or "0.0.0"
+
+    if oldVersion < "0.0.55" then
+      global = nil
+    end
 
     init_global()
     init_forces()
     init_players()
 
-    if oldVersion then
-      if oldVersion < "0.0.55" then
-        global = nil
-        init_global()
-        init_forces()
-        init_players()
+    if oldVersion < "0.1.1" then
+      for _, p in pairs(game.players) do
+        gui_close(p)
       end
+    end
 
-      if oldVersion < "0.1.1" then
-        for _, p in pairs(game.players) do
-          gui_close(p)
-        end
-      end
-
-      if oldVersion < "0.1.3" then
-        local cell
-        for player_index, network in pairs(global.mainNetwork) do
-          if network and network.valid then
-            cell = network.cells[1]
-            if cell and cell.valid then
-              global.mainNetwork[player_index] = cell.owner
-            end
+    if oldVersion < "0.1.3" then
+      local cell
+      for player_index, network in pairs(global.mainNetwork) do
+        if network and network.valid then
+          cell = network.cells[1]
+          if cell and cell.valid then
+            global.mainNetwork[player_index] = cell.owner
           end
         end
       end
     end
+
     global.version = newVersion
   end
-  --debugDump(data,true)
-  --handle removed items
+
   local items = game.item_prototypes
   for player_index, p in pairs(global.config) do
     for i=#p,1,-1 do
@@ -157,14 +156,11 @@ local function on_configuration_changed(data)
   end
 end
 
--- run once
 local function on_player_created(event)
-  --debugDump(event,true)
   init_player(game.players[event.player_index])
 end
 
 local function on_force_created(event)
-  --debugDump(event,true)
   init_force(event.force)
 end
 
@@ -529,7 +525,7 @@ script.on_event(defines.events.on_gui_click, function(event)
           add_to_trash(player, player.cursor_stack.name, 0)
         end
       else
-        gui_open_frame(player)
+        global.guiData[player_index] = gui_open_frame(player)
       end
     elseif element.name == GUI.expandButton then
       gui_toggle_settings(player)
@@ -540,7 +536,7 @@ script.on_event(defines.events.on_gui_click, function(event)
     elseif element.name == "auto-trash-pause" then
       toggle_autotrash_pause(player)
     elseif element.name == "auto-trash-logistics-button" then
-      gui_open_logistics_frame(player)
+      global.guiData[player_index] = gui_open_logistics_frame(player)
     elseif element.name == "auto-trash-logistics-pause" then
       toggle_autotrash_pause_requests(player)
     elseif element.name  == "auto-trash-logistics-storage-store" then

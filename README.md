@@ -25,7 +25,6 @@ Hotkeys:
 
 Todo:
 ---
-- Scrollpane instead of table to setup Autotrash
 - "Unlimited" number of slots
 - Option to trash from (unfiltered) quickbar
 
