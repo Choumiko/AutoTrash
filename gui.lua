@@ -501,6 +501,7 @@ function gui_open_logistics_frame(player, redraw)
       i = i + 1
     end
   end
+  return {ruleset_grid = ruleset_grid}
 end
 
 function gui_close(player)

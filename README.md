@@ -31,6 +31,9 @@ Todo:
 ***
 Changelog
 ---
+0.1.7
+ - fixed logistic requests not working at all
+
 0.1.6
 
 - added tooltip to Pause buttons, showing the configured hotkey
