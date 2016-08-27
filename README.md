@@ -36,6 +36,10 @@ Todo:
 ***
 Changelog
 ---
+1.0.0
+
+- version for Factorio 0.14.x
+
 0.1.8
 
 - added hotkey to add the item on the cursor to temporary trash. Toggles pausing autotrash when the cursor is empty
