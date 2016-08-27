@@ -20,6 +20,11 @@ Hotkeys:
 ---
 - Shift + P: Pauses Autotrash
 - Shift + O: Pause logistic requests
+- Shift + T: Add item on cursor to temporary trash. Pause/Unpause Autotrash if cursor is empty
+
+Console commands:
+---
+- Show/Hide buttons: /c remote_call("at", "hide"), /c remote.call("at", "show")
 
 [More info](https://forums.factorio.com/viewtopic.php?f=97&t=16016)
 
@@ -31,8 +36,14 @@ Todo:
 ***
 Changelog
 ---
+0.1.8
+
+- added hotkey to add the item on the cursor to temporary trash. Toggles pausing autotrash when the cursor is empty
+- added console command to hide/show the buttons: /c remote_call("at", "hide"), /c remote.call("at", "show")
+
 0.1.7
- - fixed logistic requests not working at all
+
+- fixed logistic requests not working at all
 
 0.1.6
 
