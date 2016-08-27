@@ -701,7 +701,20 @@ remote.add_interface("at",
         init_players()
       end
     end,
+
     init_gui = function()
       gui_init(game.player)
-    end
+    end,
+
+    hide = function()
+      if game.player.gui.top[GUI.mainFlow] then
+        game.player.gui.top[GUI.mainFlow].style.visible = false
+      end
+    end,
+
+    show = function()
+      if game.player.gui.top[GUI.mainFlow] then
+        game.player.gui.top[GUI.mainFlow].style.visible = true
+      end
+    end,
   })
