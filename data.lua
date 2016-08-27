@@ -248,8 +248,8 @@ data.raw["gui-style"].default["auto-trash-logistics-button-paused"] =
       }
     }
   }
-  
-  data.raw["gui-style"].default["auto-trash-expand-button"] =
+
+data.raw["gui-style"].default["auto-trash-expand-button"] =
   {
     type = "button_style",
     parent = "button_style",
@@ -281,7 +281,7 @@ data.raw["gui-style"].default["auto-trash-logistics-button-paused"] =
       },
       stretch_monolith_image_to_size = false
     },
-    
+
     clicked_graphical_set =
     {
       type = "monolith",
@@ -295,7 +295,7 @@ data.raw["gui-style"].default["auto-trash-logistics-button-paused"] =
       },
       stretch_monolith_image_to_size = false
     },
-    
+
     left_click_sound =
     {
       {
@@ -318,5 +318,11 @@ data:extend({
     name = "autotrash_pause_requests",
     key_sequence = "SHIFT + o",
     consuming = "none"
-  }
+  },
+  {
+    type = "custom-input",
+    name = "autotrash_trash_cursor",
+    key_sequence = "SHIFT + t",
+    consuming = "none"
+  },
 })

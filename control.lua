@@ -615,6 +615,16 @@ script.on_event("autotrash_pause_requests", function(event)
   toggle_autotrash_pause_requests(game.players[event.player_index])
 end)
 
+script.on_event("autotrash_trash_cursor", function(event)
+  local player = game.players[event.player_index]
+  local cursorStack = player.cursor_stack
+  if cursorStack.valid_for_read then
+    add_to_trash(player, cursorStack.name, 0)
+  else
+    toggle_autotrash_pause(game.players[event.player_index])
+  end
+end)
+
 function debugDump(var, force)
   if false or force then
     for _, player in pairs(game.players) do
