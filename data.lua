@@ -1,5 +1,7 @@
 require "lib"
 
+log(serpent.dump(data.raw["deconstruction-item"]["deconstruction-planner"]))
+
 data:extend({
   {
     type = "font",

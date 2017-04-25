@@ -36,6 +36,10 @@ Todo:
 ***
 Changelog
 ---
+2.0.0
+
+- version for Factorio 0.15.x
+
 1.0.1/1.0.9
 
 - fixed errors when using Hotkeys before Autotrash is unlocked
