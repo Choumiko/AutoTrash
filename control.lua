@@ -590,6 +590,7 @@ script.on_event(defines.events.on_gui_click, function(event)
 end)
 
 script.on_event(defines.events.on_research_finished, function(event)
+  init_global()
   if event.research.name == "character-logistic-trash-slots-1" then
     for _, player in pairs(event.research.force.players) do
       gui_init(player, "trash")

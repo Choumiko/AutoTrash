@@ -36,6 +36,10 @@ Todo:
 ***
 Changelog
 ---
+2.0.1
+
+- fixed error when starting the new Wave Defense scenario
+
 2.0.0
 
 - version for Factorio 0.15.x
