@@ -36,6 +36,10 @@ Todo:
 ***
 Changelog
 ---
+2.0.2
+
+- fixed error when clicking an empty slot in the logistics configuration
+
 2.0.1
 
 - fixed error when starting the new Wave Defense scenario

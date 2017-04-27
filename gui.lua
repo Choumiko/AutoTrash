@@ -329,7 +329,7 @@ function gui_open_frame(player)
     caption = caption,
     tooltip = {"auto-trash-tooltip-pause"}
   }
-  
+
   return {ruleset_grid = ruleset_grid}
 end
 
@@ -589,6 +589,10 @@ function gui_set_item(player, type1, index)
   local key = player.gui.left[GUI.configFrame] and "config-tmp" or "logistics-config-tmp"
   if not frame or not global[key][player.index] then return end
 
+  if not global[key][player.index][index] then
+    global[key][player.index][index] = {name="", count=""}
+  end
+
   local stack = player.cursor_stack
   if not stack.valid_for_read then
     stack = {type = "empty", name = ""}
@@ -601,9 +605,7 @@ function gui_set_item(player, type1, index)
       return
     end
   end
-  if not global[key][player.index][index] then
-    global[key][player.index][index] = {name="", count=""}
-  end
+
   if stack.type == "empty" or stack.name ~= global[key][player.index][index].name then
     global[key][player.index][index].count = ""
   end
