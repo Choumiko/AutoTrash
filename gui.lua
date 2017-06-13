@@ -1,3 +1,40 @@
+local function count_keys(hashmap)
+    local result = 0
+    for _, _ in pairs(hashmap) do
+        result = result + 1
+    end
+    return result
+end
+
+local function get_requests(player)
+    local requests = {}
+    -- get requested items
+    if player.character and player.force.character_logistic_slot_count > 0 then
+        for c=1,player.force.character_logistic_slot_count do
+            requests[c] = player.character.get_request_slot(c)
+        end
+    end
+    return requests
+end
+
+local function set_requests(player)
+    local index = player.index
+    if not global["logistics-config"][index] then
+        global["logistics-config"][index] = {}
+    end
+    local storage = global["logistics-config"][index]
+    local slots = player.force.character_logistic_slot_count
+    if player.character and slots > 0 then
+        for c=1, slots do
+            if storage[c] and storage[c].name ~= "" then
+                player.character.set_request_slot(storage[c], c)
+            else
+                player.character.clear_request_slot(c)
+            end
+        end
+    end
+end
+
 local GUI = {
     mainFlow = "auto-trash-main-flow",
     mainButton = "auto-trash-config-button",

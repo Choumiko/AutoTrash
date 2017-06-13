@@ -8,6 +8,26 @@ MAX_STORAGE_SIZE = 6  --luacheck: allow defined top
 
 local GUI = require "gui"
 
+local function debugDump(var, force)
+    if false or force then
+        for _, player in pairs(game.players) do
+            local msg
+            if type(var) == "string" then
+                msg = var
+            else
+                msg = serpent.dump(var, {name="var", comment=false, sparse=false, sortkeys=true})
+            end
+            player.print(msg)
+        end
+    end
+end
+
+local function saveVar(var, name)
+    var = var or global
+    local n = name or ""
+    game.write_file("autotrash"..n..".lua", serpent.block(var, {name="glob", comment=false}))
+end
+
 local function init_global()
     global = global or {}
     global["config"] = global["config"] or {}
@@ -164,15 +184,7 @@ local function on_force_created(event)
     init_force(event.force)
 end
 
-function count_keys(hashmap) --luacheck: allow defined top
-    local result = 0
-    for _, _ in pairs(hashmap) do
-        result = result + 1
-    end
-    return result
-end
-
-function requested_items(player) --luacheck: allow defined top
+local function requested_items(player)
     local requests = {}
     -- get requested items
     if player.character and player.force.character_logistic_slot_count > 0 then
@@ -186,46 +198,17 @@ function requested_items(player) --luacheck: allow defined top
     return requests
 end
 
-function get_requests(player) --luacheck: allow defined top
-    local requests = {}
-    -- get requested items
-    if player.character and player.force.character_logistic_slot_count > 0 then
-        for c=1,player.force.character_logistic_slot_count do
-            requests[c] = player.character.get_request_slot(c)
-        end
-    end
-    return requests
-end
-
-function set_requests(player) --luacheck: allow defined top
-    local index = player.index
-    if not global["logistics-config"][index] then
-        global["logistics-config"][index] = {}
-    end
-    local storage = global["logistics-config"][index]
-    local slots = player.force.character_logistic_slot_count
-    if player.character and slots > 0 then
-        for c=1, slots do
-            if storage[c] and storage[c].name ~= "" then
-                player.character.set_request_slot(storage[c], c)
-            else
-                player.character.clear_request_slot(c)
-            end
-        end
-    end
-end
-
-function inMainNetwork(player) --luacheck: allow defined top
+local function inMainNetwork(player)
     if not global.settings[player.index].auto_trash_in_main_network then
         return true
-end
+    end
 
-local currentNetwork = player.surface.find_logistic_network_by_position(player.position, player.force)
-local entity = global.mainNetwork[player.index]
-if currentNetwork and entity and entity.valid and currentNetwork == entity.logistic_network then
-    return true
-end
-return false
+    local currentNetwork = player.surface.find_logistic_network_by_position(player.position, player.force)
+    local entity = global.mainNetwork[player.index]
+    if currentNetwork and entity and entity.valid and currentNetwork == entity.logistic_network then
+        return true
+    end
+    return false
 end
 
 local function on_tick(event)
@@ -369,7 +352,7 @@ script.on_event(defines.events.on_entity_died, on_pre_mined_item)
 --script.on_event(defines.events.on_robot_built_entity, on_built_entity)
 
 
-function add_order(player) --luacheck: allow defined top
+local function add_order(player)
     local entities = player.cursor_stack.get_blueprint_entities()
     local orders = {}
     for _, ent in pairs(entities) do
@@ -381,7 +364,7 @@ function add_order(player) --luacheck: allow defined top
     debugDump(orders,true)
 end
 
-function add_to_trash(player, item, count) --luacheck: allow defined top
+local function add_to_trash(player, item, count)
     local player_index = player.index
     global.temporaryTrash[player_index] = global.temporaryTrash[player_index] or {}
     if global.active[player_index] == nil then global.active[player_index] = true end
@@ -459,7 +442,7 @@ function pause_requests(player) --luacheck: allow defined top
     end
 end
 
-function unpause_requests(player) --luacheck: allow defined top
+local function unpause_requests(player)
     local player_index = player.index
     if not global.storage[player_index] then
         global.storage[player_index] = {}
@@ -476,7 +459,7 @@ function unpause_requests(player) --luacheck: allow defined top
     end
 end
 
-function toggle_autotrash_pause(player, element) --luacheck: allow defined top
+local function toggle_autotrash_pause(player, element)
     global.active[player.index] = not global.active[player.index]
     local mainButton = player.gui.top[GUI.mainFlow][GUI.mainButton]
     if global.active[player.index] then
@@ -493,7 +476,7 @@ function toggle_autotrash_pause(player, element) --luacheck: allow defined top
     GUI.close(player)
 end
 
-function toggle_autotrash_pause_requests(player) --luacheck: allow defined top
+local function toggle_autotrash_pause_requests(player)
     global["logistics-active"][player.index] = not global["logistics-active"][player.index]
     local mainButton = player.gui.top[GUI.mainFlow][GUI.logisticsButton]
     if global["logistics-active"][player.index] then
@@ -629,25 +612,6 @@ script.on_event("autotrash_trash_cursor", function(event)
     end
 end)
 
-function debugDump(var, force) --luacheck: allow defined top
-    if false or force then
-        for _, player in pairs(game.players) do
-            local msg
-            if type(var) == "string" then
-                msg = var
-            else
-                msg = serpent.dump(var, {name="var", comment=false, sparse=false, sortkeys=true})
-            end
-            player.print(msg)
-        end
-end
-end
-
-function saveVar(var, name) --luacheck: allow defined top
-    var = var or global
-    local n = name or ""
-    game.write_file("autotrash"..n..".lua", serpent.block(var, {name="glob", comment=false}))
-end
 --/c remote.call("at","saveVar")
 remote.add_interface("at",
     {
