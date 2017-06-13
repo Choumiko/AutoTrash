@@ -1,4 +1,4 @@
-function copyPrototype(type, name, newName)
+function copyPrototype(type, name, newName) --luacheck: allow defined top
   if not data.raw[type][name] then error("type "..type.." "..name.." doesn't exist") end
   local p = table.deepcopy(data.raw[type][name])
   p.name = newName

@@ -1,4 +1,4 @@
-GUI = {
+local GUI = {
   mainFlow = "auto-trash-main-flow",
   mainButton = "auto-trash-config-button",
   optionsBar = "auto-trash-options-bar",
@@ -29,7 +29,7 @@ GUI = {
   end
 }
 
-function gui_init(player, after_research)
+function GUI.init(player, after_research)
   if not player.gui.top[GUI.mainFlow] and
     (player.force.technologies["character-logistic-trash-slots-1"].researched or after_research == "trash"
     or player.force.technologies["character-logistic-slots-1"].researched or after_research == "requests") then
@@ -82,7 +82,7 @@ function gui_init(player, after_research)
   --  end
 end
 
-function get_settings_group(player)
+local function get_settings_group(player)
   local bar = player.gui.top[GUI.mainFlow][GUI.optionsBar]
   local other = player.gui.left[GUI.configFrame]
   local result = {}
@@ -95,7 +95,7 @@ function get_settings_group(player)
   return result
 end
 
-function update_settings(player)
+function GUI.update_settings(player)
   local groups = get_settings_group(player)
   local index = player.index
   for _, group in pairs(groups) do
@@ -105,7 +105,7 @@ function update_settings(player)
   end
 end
 
-function gui_toggle_settings(player)
+function GUI.toggle_settings(player)
   local bar = player.gui.top[GUI.mainFlow][GUI.optionsBar]
 
   global.settings[player.index].options_extended = not global.settings[player.index].options_extended
@@ -148,7 +148,7 @@ function gui_toggle_settings(player)
   end
 end
 
-function gui_destroy(player)
+function GUI.destroy(player)
   if player.gui.top[GUI.mainButton] then
     player.gui.top[GUI.mainButton].destroy()
   end
@@ -160,7 +160,7 @@ function gui_destroy(player)
   end
 end
 
-function gui_open_frame(player)
+function GUI.open_frame(player)
   local frame = player.gui.left[GUI.configFrame]
   local frame2 = player.gui.left[GUI.logisticsConfigFrame]
   local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
@@ -232,7 +232,7 @@ function gui_open_frame(player)
     name = "auto-trash-ruleset-grid"
   }
   local j = 1
-  for i=1,colspan/3 do
+  for _=1,colspan/3 do
     ruleset_grid.add{
       type = "label",
       name = "auto-trash-grid-header-"..j,
@@ -333,7 +333,7 @@ function gui_open_frame(player)
   return {ruleset_grid = ruleset_grid}
 end
 
-function gui_open_logistics_frame(player, redraw)
+function GUI.open_logistics_frame(player, redraw)
   local frame = player.gui.left[GUI.logisticsConfigFrame]
   local frame2 = player.gui.left[GUI.configFrame]
 
@@ -504,7 +504,7 @@ function gui_open_logistics_frame(player, redraw)
   return {ruleset_grid = ruleset_grid}
 end
 
-function gui_close(player)
+function GUI.close(player)
   local frame = player.gui.left[GUI.configFrame] or player.gui.left[GUI.logisticsConfigFrame]
   local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
   if frame then
@@ -516,7 +516,7 @@ function gui_close(player)
   global.guiData[player.index] = nil
 end
 
-function gui_save_changes(player)
+function GUI.save_changes(player)
   -- Saving changes consists in:
   --   1. copying config-tmp to config
   --   2. removing config-tmp
@@ -527,7 +527,7 @@ function gui_save_changes(player)
   if global[key.."config-tmp"][player.index] then
     global[key.."config"][player.index] = {}
     local grid = global.guiData[player.index].ruleset_grid
-    for i, config in pairs(global[key.."config-tmp"][player.index]) do
+    for i, _ in pairs(global[key.."config-tmp"][player.index]) do
       if global[key.."config-tmp"][player.index][i].name == "" then
         global[key.."config"][player.index][i] = { name = "", count = "" }
       else
@@ -552,24 +552,24 @@ function gui_save_changes(player)
     remote.call("YARM", "show_expando", player.index)
   end
   --saveVar(global, "saved")
-  gui_close(player)
+  GUI.close(player)
 end
 
-function gui_clear_all(player)
+function GUI.clear_all(player)
   local frame = player.gui.left[GUI.configFrame] or player.gui.left[GUI.logisticsConfigFrame]
   --local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
   local key = player.gui.left[GUI.configFrame] and "" or "logistics-"
 
   if not frame then return end
   local ruleset_grid = global.guiData[player.index].ruleset_grid
-  for i, c in pairs(global[key.."config-tmp"][player.index]) do
+  for i, _ in pairs(global[key.."config-tmp"][player.index]) do
     global[key.."config-tmp"][player.index][i] = { name = "", count = {} }
     ruleset_grid["auto-trash-item-" .. i].sprite = ""
     ruleset_grid["auto-trash-amount-" .. i].text = ""
   end
 end
 
-function gui_display_message(frame, storage, message)
+function GUI.display_message(frame, storage, message)
   if not frame then return end
   local label_name = "auto-trash-"
   if storage then label_name = label_name .. "logistics-storage-" end
@@ -584,7 +584,7 @@ function gui_display_message(frame, storage, message)
   error_label.caption = message
 end
 
-function gui_set_item(player, type1, index)
+function GUI.set_item(player, type1, index)
   local frame = player.gui.left[GUI.configFrame] or player.gui.left[GUI.logisticsConfigFrame]
   local key = player.gui.left[GUI.configFrame] and "config-tmp" or "logistics-config-tmp"
   if not frame or not global[key][player.index] then return end
@@ -601,7 +601,7 @@ function gui_set_item(player, type1, index)
 
   for i, _ in pairs(global[key][player.index]) do
     if stack.type ~= "empty" and index ~= i and global[key][player.index][i].name == stack.name then
-      gui_display_message(frame, false, "auto-trash-item-already-set")
+      GUI.display_message(frame, false, "auto-trash-item-already-set")
       return
     end
   end
@@ -625,7 +625,7 @@ function gui_set_item(player, type1, index)
   ruleset_grid["auto-trash-amount" .. "-" .. index].text = global[key][player.index][index].count
 end
 
-function gui_store(player)
+function GUI.store(player)
   global["storage"][player.index] = global["storage"][player.index] or {}
   global["storage"][player.index].store = global["storage"][player.index].store or {}
   local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
@@ -635,18 +635,18 @@ function gui_store(player)
   name = string.match(name, "^%s*(.-)%s*$")
 
   if not name or name == "" then
-    gui_display_message(storage_frame, true, "auto-trash-storage-name-not-set")
+    GUI.display_message(storage_frame, true, "auto-trash-storage-name-not-set")
     return
   end
   if global["storage"][player.index].store[name] then
-    gui_display_message(storage_frame, true, "auto-trash-storage-name-in-use")
+    GUI.display_message(storage_frame, true, "auto-trash-storage-name-in-use")
     return
   end
 
   --local storage_grid = storage_frame["auto-trash-logistics-storage-grid"]
   local index = count_keys(global["storage"][player.index]) + 1
   if index > MAX_STORAGE_SIZE then
-    gui_display_message(storage_frame, true, "auto-trash-storage-too-long")
+    GUI.display_message(storage_frame, true, "auto-trash-storage-too-long")
     return
   end
 
@@ -656,12 +656,12 @@ function gui_store(player)
     global["storage"][player.index].store[name][i] = {name = c.name, count = 0}
     global["storage"][player.index].store[name][i].count = tonumber(ruleset_grid["auto-trash-amount-" .. i].text) or 0
   end
-  gui_display_message(storage_frame, true, "---")
+  GUI.display_message(storage_frame, true, "---")
   textfield.text = ""
-  global.guiData[player.index] = gui_open_logistics_frame(player,true)
+  global.guiData[player.index] = GUI.open_logistics_frame(player,true)
 end
 
-function gui_restore(player, index)
+function GUI.restore(player, index)
   local frame = player.gui.left[GUI.logisticsConfigFrame]
   local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
   if not frame or not storage_frame then return end
@@ -686,10 +686,10 @@ function gui_restore(player, index)
     ruleset_grid["auto-trash-item-" .. i].sprite = style
     ruleset_grid["auto-trash-amount-" .. i].text = global["logistics-config-tmp"][player.index][i].count
   end
-  gui_display_message(storage_frame, true, "---")
+  GUI.display_message(storage_frame, true, "---")
 end
 
-function gui_remove(player, index)
+function GUI.remove(player, index)
   if not global["storage"][player.index] then return end
 
   local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
@@ -707,5 +707,7 @@ function gui_remove(player, index)
   btn2.destroy()
 
   global["storage"][player.index].store[name] = nil
-  gui_display_message(storage_frame, true, "---")
+  GUI.display_message(storage_frame, true, "---")
 end
+
+return GUI
