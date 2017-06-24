@@ -36,6 +36,10 @@ Todo:
 ***
 Changelog
 ---
+2.0.3
+
+ - fixed missing gui after playing on Factorio 0.15.22
+
 2.0.2
 
 - fixed error when clicking an empty slot in the logistics configuration
