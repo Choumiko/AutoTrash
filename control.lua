@@ -489,7 +489,7 @@ local function toggle_autotrash_pause_requests(player)
     GUI.close(player)
 end
 
-script.on_event(defines.events.on_gui_click, function(event)
+local function on_gui_click(event)
     local status, err = pcall(function()
         local element = event.element
         --debugDump(element.name, true)
@@ -565,7 +565,10 @@ script.on_event(defines.events.on_gui_click, function(event)
     if not status then
         debugDump(err, true)
     end
-end)
+end
+
+script.on_event(defines.events.on_gui_click, on_gui_click)
+script.on_event(defines.events.on_gui_checked_state_changed, on_gui_click)
 
 script.on_event(defines.events.on_research_finished, function(event)
     init_global()
