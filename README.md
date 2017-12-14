@@ -36,6 +36,10 @@ Todo:
 ***
 Changelog
 ---
+3.0.0
+
+ - updated for Factorio 0.16
+
 2.0.3
 
  - fixed missing gui after playing on Factorio 0.15.22

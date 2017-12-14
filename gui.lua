@@ -253,23 +253,22 @@ function GUI.open_frame(player)
         name = "auto-trash-error-label"
     }
     error_label.style.minimal_width = 200
-    local colspan = configSize > 10 and 9 or 6
-    colspan = configSize > 54 and 12 or colspan
+    local column_count = configSize > 10 and 9 or 6
+    column_count = configSize > 54 and 12 or column_count
 
     local pane = frame.add{
         type = "scroll-pane",
     }
     pane.style.maximal_height = math.ceil(40*10)
-    pane.horizontal_scroll_policy = "never"
-    pane.vertical_scroll_policy = "auto"
+    pane.can_scroll_horizontally = false
 
     local ruleset_grid = pane.add{
         type = "table",
-        colspan = colspan,
+        column_count = column_count,
         name = "auto-trash-ruleset-grid"
     }
     local j = 1
-    for _=1,colspan/3 do
+    for _=1,column_count/3 do
         ruleset_grid.add{
             type = "label",
             name = "auto-trash-grid-header-"..j,
@@ -345,7 +344,7 @@ function GUI.open_frame(player)
 
     local button_grid = frame.add{
         type = "table",
-        colspan = 3,
+        column_count = 3,
         name = "auto-trash-button-grid"
     }
 
@@ -418,10 +417,10 @@ function GUI.open_logistics_frame(player, redraw)
     }
     error_label.style.minimal_width = 200
     local slots = player.force.character_logistic_slot_count
-    local colspan = 15
+    local column_count = 15
     local ruleset_grid = frame.add{
         type = "table",
-        colspan = colspan,
+        column_count = column_count,
         name = "auto-trash-ruleset-grid",
     }
 
@@ -455,7 +454,7 @@ function GUI.open_logistics_frame(player, redraw)
 
     local button_grid = frame.add{
         type = "table",
-        colspan = 3,
+        column_count = 3,
         name = "auto-trash-button-grid"
     }
     button_grid.add{
@@ -490,7 +489,7 @@ function GUI.open_logistics_frame(player, redraw)
     storage_frame_error_label.style.minimal_width = 200
     local storage_frame_buttons = storage_frame.add{
         type = "table",
-        colspan = 3,
+        column_count = 3,
         name = "auto-trash-logistics-storage-buttons"
     }
     storage_frame_buttons.add{
@@ -511,7 +510,7 @@ function GUI.open_logistics_frame(player, redraw)
     }
     local storage_grid = storage_frame.add{
         type = "table",
-        colspan = 3,
+        column_count = 3,
         name = "auto-trash-logistics-storage-grid"
     }
 

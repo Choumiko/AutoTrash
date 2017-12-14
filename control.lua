@@ -344,7 +344,7 @@ local function on_pre_mined_item(event)
     end
 end
 
-script.on_event(defines.events.on_preplayer_mined_item, on_pre_mined_item)
+script.on_event(defines.events.on_pre_player_mined_item, on_pre_mined_item)
 script.on_event(defines.events.on_robot_pre_mined, on_pre_mined_item)
 script.on_event(defines.events.on_entity_died, on_pre_mined_item)
 
@@ -361,7 +361,7 @@ local function add_order(player)
         end
         orders[ent.name] = orders[ent.name] + 1
     end
-    debugDump(orders,true)
+    --debugDump(orders,true)
 end
 
 local function add_to_trash(player, item, count)

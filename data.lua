@@ -11,7 +11,7 @@ data:extend({
 
 data.raw["gui-style"].default["auto-trash-small-button"] = {
     type = "button_style",
-    parent = "button_style",
+    parent = "button",
     font = "auto-trash-small-font"
 }
 
@@ -27,13 +27,13 @@ data.raw["gui-style"].default["auto-trash-textfield-small"] =
 data.raw["gui-style"].default["auto-trash-table"] =
     {
         type = "table_style",
-        parent = "table_style",
+        parent = "table",
     }
 
 data.raw["gui-style"].default["auto-trash-button"] =
     {
         type = "button_style",
-        parent = "button_style",
+        parent = "button",
         width = 33,
         height = 33,
         top_padding = 6,
@@ -81,7 +81,7 @@ data.raw["gui-style"].default["auto-trash-button"] =
 data.raw["gui-style"].default["auto-trash-sprite-button"] =
     {
         type = "button_style",
-        parent = "button_style",
+        parent = "button",
         width = 32,
         height = 32,
         top_padding = 0,
@@ -102,7 +102,7 @@ data.raw["gui-style"].default["auto-trash-sprite-button"] =
 data.raw["gui-style"].default["auto-trash-button-paused"] =
     {
         type = "button_style",
-        parent = "button_style",
+        parent = "button",
         width = 33,
         height = 33,
         top_padding = 6,
@@ -150,7 +150,7 @@ data.raw["gui-style"].default["auto-trash-button-paused"] =
 data.raw["gui-style"].default["auto-trash-logistics-button"] =
     {
         type = "button_style",
-        parent = "button_style",
+        parent = "button",
         width = 33,
         height = 33,
         top_padding = 6,
@@ -201,7 +201,7 @@ data.raw["gui-style"].default["auto-trash-logistics-button"] =
 data.raw["gui-style"].default["auto-trash-logistics-button-paused"] =
     {
         type = "button_style",
-        parent = "button_style",
+        parent = "button",
         width = 33,
         height = 33,
         top_padding = 6,
@@ -252,7 +252,7 @@ data.raw["gui-style"].default["auto-trash-logistics-button-paused"] =
 data.raw["gui-style"].default["auto-trash-expand-button"] =
     {
         type = "button_style",
-        parent = "button_style",
+        parent = "button",
         width = 16,
         height = 16,
         default_graphical_set =
