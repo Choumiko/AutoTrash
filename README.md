@@ -36,6 +36,10 @@ Todo:
 ***
 Changelog
 ---
+3.0.1
+
+ - fixed gui error
+
 3.0.0
 
  - updated for Factorio 0.16

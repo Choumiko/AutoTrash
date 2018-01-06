@@ -260,7 +260,6 @@ function GUI.open_frame(player)
         type = "scroll-pane",
     }
     pane.style.maximal_height = math.ceil(40*10)
-    pane.can_scroll_horizontally = false
 
     local ruleset_grid = pane.add{
         type = "table",
