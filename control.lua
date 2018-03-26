@@ -568,7 +568,7 @@ local function on_gui_click(event)
 end
 
 script.on_event(defines.events.on_gui_click, on_gui_click)
-script.on_event(defines.events.on_gui_checked_state_changed, on_gui_click)
+--script.on_event(defines.events.on_gui_checked_state_changed, on_gui_click)
 
 script.on_event(defines.events.on_research_finished, function(event)
     init_global()
