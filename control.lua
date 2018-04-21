@@ -327,20 +327,30 @@ script.on_event(defines.events.on_force_created, on_force_created)
 script.on_event(defines.events.on_tick, on_tick)
 
 local function on_pre_mined_item(event)
-    if event.entity.type == "roboport" then
-        for player_index, entity in pairs(global.mainNetwork) do
-            if entity == event.entity then
-                --get another roboport from the network
-                local newEntity = false
-                for _, cell in pairs(entity.logistic_network.cells) do
-                    if cell.owner ~= entity and cell.owner.valid then
-                        newEntity = cell.owner
-                        break
+    local status, err = pcall(function()
+        if event.entity.type == "roboport" then
+            for player_index, entity in pairs(global.mainNetwork) do
+                if entity == event.entity then
+                    --get another roboport from the network
+                    local newEntity = false
+                    if entity.logistic_network and entity.logistic_network.valid then
+                        for _, cell in pairs(entity.logistic_network.cells) do
+                            if cell.owner ~= entity and cell.owner.valid then
+                                newEntity = cell.owner
+                                break
+                            end
+                        end
                     end
+                    if not newEntity and global.mainNetwork[player_index] then
+                        game.players[player_index].print("Autotrash main network has been unset")
+                    end
+                    global.mainNetwork[player_index] = newEntity
                 end
-                global.mainNetwork[player_index] = newEntity
             end
         end
+    end)
+    if not status then
+        debugDump(err, true)
     end
 end
 

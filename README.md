@@ -36,9 +36,7 @@ Todo:
 ***
 Changelog
 ---
-3.0.1
-
- - fixed gui error
+3.0.1 and above: see ingame changelog
 
 3.0.0
 
