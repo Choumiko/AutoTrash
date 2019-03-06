@@ -8,9 +8,7 @@ data.raw["gui-style"].default["auto-trash-small-button"] = {
 data.raw["gui-style"].default["auto-trash-textfield-small"] =
     {
         type = "textbox_style",
-        left_padding = 3,
-        right_padding = 2,
-        minimal_width = 30,
+        width = 40,
     }
 
 data.raw["gui-style"].default["auto-trash-table"] =
@@ -25,17 +23,7 @@ data.raw["gui-style"].default["auto-trash-sprite-button"] =
         parent = "button",
         width = 36,
         height = 36,
-        top_padding = 0,
-        right_padding = 0,
-        bottom_padding = 0,
-        left_padding = 0,
-        sprite = {
-            filename = "__core__/graphics/gui.png",
-            priority = "extra-high-no-scale",
-            width = 32,
-            height = 32,
-            x = 111,
-        },
+        padding = 0
     }
 
 data.raw["gui-style"].default["auto-trash-button"] =

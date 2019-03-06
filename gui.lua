@@ -203,7 +203,7 @@ function GUI.open_frame(player)
     local pane = frame.add{
         type = "scroll-pane",
     }
-    pane.style.maximal_height = math.ceil(40*10)
+    pane.style.maximal_height = math.ceil(44*10)
 
     local ruleset_grid = pane.add{
         type = "table",
@@ -237,7 +237,7 @@ function GUI.open_frame(player)
             type = "sprite-button",
             name = "auto-trash-item-" .. i,
             sprite = style,
-            style = "auto-trash-sprite-button"
+            style = "slot_button"
         }
 
         local amount = ruleset_grid.add{
@@ -371,7 +371,7 @@ function GUI.open_logistics_frame(player, redraw)
             type = "sprite-button",
             name = "auto-trash-item-" .. i,
             sprite = style,
-            style = "auto-trash-sprite-button"
+            style = "slot_button"
         }
 
         local amount = ruleset_grid.add{
