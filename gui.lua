@@ -38,8 +38,6 @@ end
 local GUI = {
     mainFlow = "auto-trash-main-flow",
     mainButton = "auto-trash-config-button",
-    optionsBar = "auto-trash-options-bar",
-    expandButton = "auto-trash-expand-button",
     trash_above_requested = "auto-trash-above-requested",
     trash_unrequested = "auto-trash-unrequested",
     trash_in_main_network = "auto-trash-in-main-network",
@@ -82,50 +80,29 @@ function GUI.init(player, after_research)
         (player.force.technologies["character-logistic-slots-1"].researched or after_research == "requests") then
 
         if player.gui.top[GUI.mainFlow][GUI.mainButton] then player.gui.top[GUI.mainFlow][GUI.mainButton].destroy() end
-        player.gui.top[GUI.mainFlow].add{
-            type = "button",
+        local logistics_button = player.gui.top[GUI.mainFlow].add{
+            type = "sprite-button",
             name = GUI.logisticsButton,
-            style = "auto-trash-logistics-button"
+            style = "auto-trash-sprite-button"
         }
+        logistics_button.sprite = "autotrash_logistics"
     end
 
     if player.gui.top[GUI.mainFlow] and (player.force.technologies["character-logistic-trash-slots-1"].researched or after_research == "trash") then
         if not player.gui.top[GUI.mainFlow][GUI.mainButton] then
-            player.gui.top[GUI.mainFlow].add{
-                type = "button",
+            local trash_button = player.gui.top[GUI.mainFlow].add{
+                type = "sprite-button",
                 name = GUI.mainButton,
-                style = "auto-trash-button"
+                style = "auto-trash-sprite-button"
             }
-        end
-        if not player.gui.top[GUI.mainFlow][GUI.expandButton] then
-            player.gui.top[GUI.mainFlow].add{
-                type = "button",
-                name = GUI.expandButton,
-                style = "auto-trash-expand-button"
-            }
+            trash_button.sprite = "autotrash_trash"
         end
     end
-
-    --  if player.gui.top[GUI.mainFlow] and (player.force.technologies["character-logistic-trash-slots-1"].researched or after_research == "trash") then
-    --    local bar = player.gui.top[GUI.mainFlow][GUI.optionsBar]
-    --    if not bar then
-    --      player.gui.top[GUI.mainFlow].add{
-    --        type = "flow",
-    --        name = GUI.optionsBar,
-    --        direction = "vertical"
-    --      }
-    --    end
-
-    --  end
 end
 
 local function get_settings_group(player)
-    local bar = player.gui.top[GUI.mainFlow][GUI.optionsBar]
     local other = player.gui.left[GUI.configFrame]
     local result = {}
-    if bar then
-        table.insert(result, bar)
-    end
     if other then
         table.insert(result, other)
     end
@@ -139,49 +116,6 @@ function GUI.update_settings(player)
         group[GUI.trash_unrequested].state = global.settings[index].auto_trash_unrequested
         group[GUI.trash_above_requested].state = global.settings[index].auto_trash_above_requested
         group[GUI.trash_in_main_network].state = global.settings[index].auto_trash_in_main_network
-    end
-end
-
-function GUI.toggle_settings(player)
-    local bar = player.gui.top[GUI.mainFlow][GUI.optionsBar]
-
-    global.settings[player.index].options_extended = not global.settings[player.index].options_extended
-    local show = global.settings[player.index].options_extended
-    if show then
-
-        if not bar then
-            bar = player.gui.top[GUI.mainFlow].add{
-                type = "flow",
-                name = GUI.optionsBar,
-                direction = "vertical"
-            }
-        end
-        if not bar[GUI.trash_above_requested] then
-            bar.add{
-                type = "checkbox",
-                name = GUI.trash_above_requested,
-                caption = {"auto-trash-above-requested"},
-                state = global.settings[player.index].auto_trash_above_requested
-            }
-        end
-        if not bar[GUI.trash_unrequested] then
-            bar.add{
-                type = "checkbox",
-                name = GUI.trash_unrequested,
-                caption = {"auto-trash-unrequested"},
-                state = global.settings[player.index].auto_trash_unrequested,
-            }
-        end
-        if not bar[GUI.trash_in_main_network] then
-            bar.add{
-                type = "checkbox",
-                name = GUI.trash_in_main_network,
-                caption = {"auto-trash-in-main-network"},
-                state = global.settings[player.index].auto_trash_in_main_network,
-            }
-        end
-    else
-        if bar then bar.destroy() end
     end
 end
 

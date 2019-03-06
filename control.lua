@@ -1,5 +1,7 @@
 require "util"
 
+local v = require 'semver'
+
 MAX_CONFIG_SIZES = { --luacheck: allow defined top
     ["character-logistic-trash-slots-1"] = 10,
     ["character-logistic-trash-slots-2"] = 30
@@ -128,9 +130,10 @@ local function on_configuration_changed(data)
     --Autotrash changed, got added
     if data.mod_changes.AutoTrash then
         local newVersion = data.mod_changes.AutoTrash.new_version
-        local oldVersion = data.mod_changes.AutoTrash.old_version or "0.0.0"
-
-        if oldVersion < "0.0.55" then
+        newVersion = v(newVersion)
+        local oldVersion = data.mod_changes.AutoTrash.old_version or '0.0.0'
+        oldVersion = v(oldVersion)
+        if oldVersion < v'0.0.55' then
             global = nil
         end
 
@@ -138,13 +141,13 @@ local function on_configuration_changed(data)
         init_forces()
         init_players()
 
-        if oldVersion < "0.1.1" then
+        if oldVersion < v'0.1.1' then
             for _, p in pairs(game.players) do
                 GUI.close(p)
             end
         end
 
-        if oldVersion < "0.1.3" then
+        if oldVersion < v'0.1.3' then
             local cell
             for player_index, network in pairs(global.mainNetwork) do
                 if network and network.valid then
@@ -154,6 +157,10 @@ local function on_configuration_changed(data)
                     end
                 end
             end
+        end
+
+        if oldVersion < v'4.0.0' then
+            init_players(true)
         end
 
         global.version = newVersion
@@ -473,12 +480,12 @@ local function toggle_autotrash_pause(player, element)
     global.active[player.index] = not global.active[player.index]
     local mainButton = player.gui.top[GUI.mainFlow][GUI.mainButton]
     if global.active[player.index] then
-        mainButton.style = "auto-trash-button"
+        mainButton.sprite = "autotrash_trash"
         if element then
             element.caption = {"auto-trash-config-button-pause"}
         end
     else
-        mainButton.style = "auto-trash-button-paused"
+        mainButton.sprite = "autotrash_trash_paused"
         if element then
             element.caption = {"auto-trash-config-button-unpause"}
         end
@@ -490,10 +497,10 @@ local function toggle_autotrash_pause_requests(player)
     global["logistics-active"][player.index] = not global["logistics-active"][player.index]
     local mainButton = player.gui.top[GUI.mainFlow][GUI.logisticsButton]
     if global["logistics-active"][player.index] then
-        mainButton.style = "auto-trash-logistics-button"
+        mainButton.sprite = "autotrash_logistics"
         unpause_requests(player)
     else
-        mainButton.style = "auto-trash-logistics-button-paused"
+        mainButton.sprite = "autotrash_logistics_paused"
         pause_requests(player)
     end
     GUI.close(player)
@@ -515,8 +522,6 @@ local function on_gui_click(event)
             else
                 global.guiData[player_index] = GUI.open_frame(player)
             end
-        elseif element.name == GUI.expandButton then
-            GUI.toggle_settings(player)
         elseif element.name == "auto-trash-apply" or element.name == "auto-trash-logistics-apply" then
             GUI.save_changes(player)
         elseif element.name == "auto-trash-clear-all" or element.name == "auto-trash-logistics-clear-all" then
@@ -689,13 +694,13 @@ remote.add_interface("at",
 
         hide = function()
             if game.player.gui.top[GUI.mainFlow] then
-                game.player.gui.top[GUI.mainFlow].style.visible = false
+                game.player.gui.top[GUI.mainFlow].visible = false
             end
         end,
 
         show = function()
             if game.player.gui.top[GUI.mainFlow] then
-                game.player.gui.top[GUI.mainFlow].style.visible = true
+                game.player.gui.top[GUI.mainFlow].visible = true
             end
         end,
     })
