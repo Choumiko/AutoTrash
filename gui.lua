@@ -35,6 +35,18 @@ local function set_requests(player)
     end
 end
 
+local function show_yarm(index)
+    if remote.interfaces.YARM and global.settings[index].YARM_old_expando then
+        remote.call("YARM", "show_expando", index)
+    end
+end
+
+local function hide_yarm(index)
+    if remote.interfaces.YARM then
+        global.settings[index].YARM_old_expando = remote.call("YARM", "hide_expando", index)
+    end
+end
+
 local GUI = {
     mainFlow = "auto-trash-main-flow",
     mainButton = "auto-trash-config-button",
@@ -144,9 +156,7 @@ function GUI.open_frame(player)
     if frame then
         frame.destroy()
         global["config-tmp"][player.index] = nil
-        if remote.interfaces.YARM and global.settings[player.index].YARM_old_expando then
-            remote.call("YARM", "show_expando", player.index)
-        end
+        show_yarm(player.index)
         return
     end
 
@@ -170,9 +180,9 @@ function GUI.open_frame(player)
             }
         end
     end
-    if remote.interfaces.YARM then
-        global.settings[player.index].YARM_old_expando = remote.call("YARM", "hide_expando", player.index)
-    end
+
+    hide_yarm(player.index)
+
     -- Now we can build the GUI.
     frame = player.gui.left.add{
         type = "frame",
@@ -317,9 +327,7 @@ function GUI.open_logistics_frame(player, redraw)
         end
         if not redraw then
             global["logistics-config-tmp"][player.index] = nil
-            if remote.interfaces.YARM and global.settings[player.index].YARM_old_expando then
-                remote.call("YARM", "show_expando", player.index)
-            end
+            show_yarm(player.index)
             return
         end
     end
@@ -332,9 +340,7 @@ function GUI.open_logistics_frame(player, redraw)
     -- every time the frame is opened.
     global["logistics-config-tmp"][player.index] = get_requests(player)
 
-    if remote.interfaces.YARM then
-        global.settings[player.index].YARM_old_expando = remote.call("YARM", "hide_expando", player.index)
-    end
+    hide_yarm(player.index)
 
     -- Now we can build the GUI.
     frame = player.gui.left.add{
@@ -517,9 +523,7 @@ function GUI.save_changes(player)
             pause_requests(player)
         end
     end
-    if remote.interfaces.YARM and global.settings[player.index].YARM_old_expando then
-        remote.call("YARM", "show_expando", player.index)
-    end
+    show_yarm(player.index)
     --saveVar(global, "saved")
     GUI.close(player)
 end
