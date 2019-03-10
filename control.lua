@@ -157,7 +157,7 @@ local function on_configuration_changed(data)
         end
 
         if oldVersion < v'4.0.1' then
-            saveVar(global, "config_changed")
+            --saveVar(global, "config_changed")
             init_players(true)
             for _, c in pairs(global.config) do
                 for i, p in pairs(c) do
@@ -194,7 +194,7 @@ local function on_configuration_changed(data)
                     s.options_extended = nil
                 end
             end
-            saveVar(global, "config_changed_done")
+            --saveVar(global, "config_changed_done")
         end
 
         global.version = newVersion
@@ -591,7 +591,7 @@ local function on_gui_click(event)
             if not type then
                 type, index, _ = string.match(element.name, "auto%-trash%-logistics%-(%a+)%-(%d+)%-*(%d*)")
             end
-            log(serpent.block({t=type, i=tonumber(index)}))
+            --log(serpent.block({t=type, i=tonumber(index)}))
             if type and index then
                 if type == "restore" then
                     GUI.restore(player, tonumber(index))
@@ -610,9 +610,9 @@ local function on_gui_checked_changed_state(event)
     local status, err = pcall(function()
         local element = event.element
 
-        log(serpent.block(element.name))
-        log(serpent.block(element.state))
-        saveVar(global, "pre_checked_changed")
+        --log(serpent.block(element.name))
+        --log(serpent.block(element.state))
+        --saveVar(global, "pre_checked_changed")
         local player_index = event.player_index
         local player = game.get_player(player_index)
 
@@ -633,7 +633,7 @@ local function on_gui_checked_changed_state(event)
             end
             GUI.update_settings(player)
         end
-        saveVar(global, "post_checked_changed")
+        --saveVar(global, "post_checked_changed")
     end)
     if not status then
         debugDump(err, true)
@@ -642,7 +642,7 @@ end
 
 local function on_gui_elem_changed(event)
     local status, err = pcall(function()
-        log("elem_changed: " .. event.element.name)
+        --log("elem_changed: " .. event.element.name)
         local element = event.element
         local player = game.get_player(event.player_index)
         --event.element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
@@ -650,9 +650,9 @@ local function on_gui_elem_changed(event)
         if not type then
             type, index, _ = string.match(element.name, "auto%-trash%-logistics%-(%a+)%-(%d+)%-*(%d*)")
         end
-        local elem_value = event.element.elem_value
+        --local elem_value = event.element.elem_value
         index = tonumber(index)
-        log(serpent.block({t=type,i=index,s=_, elem_value = elem_value}))
+        --log(serpent.block({t=type,i=index,s=_, elem_value = elem_value}))
 
         if type and index then
             if type == "item" then
@@ -663,30 +663,6 @@ local function on_gui_elem_changed(event)
             --     GUI.remove(player, index)
             end
         end
-
-        -- local item = false
-        -- local recipe, result
-        -- if elem_value then
-        --     recipe = game.recipe_prototypes[elem_value]
-        --     item = recipe.main_product or next(recipe.products)
-        --     -- log(serpent.block(recipe.main_product, {name="main"}))
-        --     -- log(serpent.block(recipe.products, {name="products"}))
-        -- end
-        -- if type == "from" then
-        --     result = item and item_to_entity(item.name)
-        --     GUI.set_rule(game.get_player(event.player_index), tonumber(index), result, event.element)
-        --     -- if result then
-        --     --     log(serpent.block(result.name))
-        --     --     log(result.module_inventory_size)
-        --     -- end
-        -- elseif type == "to" then
-        --     result = item and game.item_prototypes[item.name]
-        --     GUI.set_modules(game.get_player(event.player_index), tonumber(index), tonumber(slot), result)
-        --     -- if result then
-        --     --     log(serpent.block(result.name))
-        --     --     log(serpent.block(result.module_effects))
-        --     -- end
-        -- end
     end)
     if not status then
         debugDump(err, true)

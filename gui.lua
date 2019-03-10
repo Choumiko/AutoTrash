@@ -235,7 +235,7 @@ function GUI.open_frame(player)
         local req = global["config-tmp"][player.index][i]
         local elem_value = req and req.name or nil
 
-        log(serpent.block(req))
+        --log(serpent.block(req))
         choose_button = ruleset_grid.add{
             type = "choose-elem-button",
             name = "auto-trash-item-" .. i,
@@ -531,7 +531,7 @@ function GUI.save_changes(player)
         end
     end
     show_yarm(player_index)
-    saveVar(global, "saved") --luacheck: ignore
+    --saveVar(global, "saved") --luacheck: ignore
     GUI.close(player)
 end
 
