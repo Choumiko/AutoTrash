@@ -1,34 +1,14 @@
 require "__core__/lualib/util"
 
 local v = require '__AutoTrash__/semver'
-
-MAX_CONFIG_SIZES = { --luacheck: allow defined top
+local saveVar = require '__AutoTrash__.lib_control'.saveVar
+local debugDump = require '__AutoTrash__.lib_control'.debugDump
+local MAX_CONFIG_SIZES = {
     ["character-logistic-trash-slots-1"] = 10,
     ["character-logistic-trash-slots-2"] = 30
 }
-MAX_STORAGE_SIZE = 6  --luacheck: allow defined top
-
-function saveVar(var, name) --luacheck: allow defined top
-    var = var or global
-    local n = name or ""
-    game.write_file("autotrash"..n..".lua", serpent.block(var, {name="glob", comment=false}))
-end
 
 local GUI = require "__AutoTrash__/gui"
-
-local function debugDump(var, force)
-    if false or force then
-        for _, player in pairs(game.players) do
-            local msg
-            if type(var) == "string" then
-                msg = var
-            else
-                msg = serpent.dump(var, {name="var", comment=false, sparse=false, sortkeys=true})
-            end
-            player.print(msg)
-        end
-    end
-end
 
 local function init_global()
     global = global or {}
@@ -673,7 +653,7 @@ script.on_event(defines.events.on_gui_click, on_gui_click)
 script.on_event(defines.events.on_gui_checked_state_changed, on_gui_checked_changed_state)
 script.on_event(defines.events.on_gui_elem_changed, on_gui_elem_changed)
 
-script.on_event(defines.events.on_research_finished, function(event)
+local function on_research_finished(event)
     init_global()
     if event.research.name == "character-logistic-trash-slots-1" then
         for _, player in pairs(event.research.force.players) do
@@ -690,23 +670,26 @@ script.on_event(defines.events.on_research_finished, function(event)
     if event.research.name == "character-logistic-trash-slots-2" then
         global.configSize[event.research.force.name] = MAX_CONFIG_SIZES["character-logistic-trash-slots-2"]
     end
-end)
+end
+script.on_event(defines.events.on_research_finished, on_research_finished)
 
-script.on_event("autotrash_pause", function(event)
+local function autotrash_pause(event)
     local player = game.get_player(event.player_index)
     if player.force.technologies["character-logistic-trash-slots-1"].researched then
         toggle_autotrash_pause(player)
     end
-end)
+end
+script.on_event("autotrash_pause", autotrash_pause)
 
-script.on_event("autotrash_pause_requests", function(event)
+local function autotrash_pause_requests(event)
     local player = game.get_player(event.player_index)
     if player.force.technologies["character-logistic-slots-1"].researched then
         toggle_autotrash_pause_requests(player)
     end
-end)
+end
+script.on_event("autotrash_pause_requests", autotrash_pause_requests)
 
-script.on_event("autotrash_trash_cursor", function(event)
+local function autotrash_trash_cursor(event)
     local player = game.get_player(event.player_index)
     if player.force.technologies["character-logistic-trash-slots-1"].researched then
         local cursorStack = player.cursor_stack
@@ -716,7 +699,8 @@ script.on_event("autotrash_trash_cursor", function(event)
             toggle_autotrash_pause(player)
         end
     end
-end)
+end
+script.on_event("autotrash_trash_cursor", autotrash_trash_cursor)
 
 --/c remote.call("at","saveVar")
 remote.add_interface("at",

@@ -1,3 +1,5 @@
+local MAX_STORAGE_SIZE = 6
+
 local function count_keys(hashmap)
     local result = 0
     for _, _ in pairs(hashmap) do
@@ -531,7 +533,6 @@ function GUI.save_changes(player)
         end
     end
     show_yarm(player_index)
-    --saveVar(global, "saved") --luacheck: ignore
     GUI.close(player)
 end
 
