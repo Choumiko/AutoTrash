@@ -621,6 +621,10 @@ local function on_gui_checked_changed_state(event)
             GUI.update_settings(player)
         elseif element.name == GUI.trash_above_requested then
             global.settings[player_index].auto_trash_above_requested = not global.settings[player_index].auto_trash_above_requested
+            if global.settings[player_index].auto_trash_unrequested and not global.settings[player_index].auto_trash_above_requested then
+                global.settings[player_index].auto_trash_above_requested = true
+                player.print({"", "'", {"auto-trash-above-requested"}, "' has to be active if '", {"auto-trash-unrequested"}, "' is active"})
+            end
             GUI.update_settings(player)
         elseif element.name == GUI.trash_unrequested then
             global.settings[player_index].auto_trash_unrequested = not global.settings[player_index].auto_trash_unrequested
