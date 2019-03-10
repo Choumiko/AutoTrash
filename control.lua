@@ -1,6 +1,6 @@
-require "util"
+require "__core__/lualib/util"
 
-local v = require 'semver'
+local v = require '__AutoTrash__/semver'
 
 MAX_CONFIG_SIZES = { --luacheck: allow defined top
     ["character-logistic-trash-slots-1"] = 10,
@@ -8,7 +8,7 @@ MAX_CONFIG_SIZES = { --luacheck: allow defined top
 }
 MAX_STORAGE_SIZE = 6  --luacheck: allow defined top
 
-local GUI = require "gui"
+local GUI = require "__AutoTrash__/gui"
 
 local function debugDump(var, force)
     if false or force then
@@ -184,7 +184,7 @@ local function on_configuration_changed(data)
 end
 
 local function on_player_created(event)
-    init_player(game.players[event.player_index])
+    init_player(game.get_player(event.player_index))
 end
 
 local function on_force_created(event)
@@ -349,7 +349,7 @@ local function on_pre_mined_item(event)
                         end
                     end
                     if not newEntity and global.mainNetwork[player_index] then
-                        game.players[player_index].print("Autotrash main network has been unset")
+                        game.get_player(player_index).print("Autotrash main network has been unset")
                     end
                     global.mainNetwork[player_index] = newEntity
                 end
@@ -511,7 +511,7 @@ local function on_gui_click(event)
         local element = event.element
         --debugDump(element.name, true)
         local player_index = event.player_index
-        local player = game.players[player_index]
+        local player = game.get_player(player_index)
         if element.name == "auto-trash-config-button" then
             if player.cursor_stack.valid_for_read then
                 if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
@@ -605,27 +605,27 @@ script.on_event(defines.events.on_research_finished, function(event)
 end)
 
 script.on_event("autotrash_pause", function(event)
-    local player = game.players[event.player_index]
+    local player = game.get_player(event.player_index)
     if player.force.technologies["character-logistic-trash-slots-1"].researched then
-        toggle_autotrash_pause(game.players[event.player_index])
+        toggle_autotrash_pause(player)
     end
 end)
 
 script.on_event("autotrash_pause_requests", function(event)
-    local player = game.players[event.player_index]
+    local player = game.get_player(event.player_index)
     if player.force.technologies["character-logistic-slots-1"].researched then
         toggle_autotrash_pause_requests(player)
     end
 end)
 
 script.on_event("autotrash_trash_cursor", function(event)
-    local player = game.players[event.player_index]
+    local player = game.get_player(event.player_index)
     if player.force.technologies["character-logistic-trash-slots-1"].researched then
         local cursorStack = player.cursor_stack
         if cursorStack.valid_for_read then
             add_to_trash(player, cursorStack.name, 0)
         else
-            toggle_autotrash_pause(game.players[event.player_index])
+            toggle_autotrash_pause(player)
         end
     end
 end)

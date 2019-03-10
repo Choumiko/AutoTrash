@@ -1,4 +1,4 @@
-require "lib"
+require "__AutoTrash__/lib"
 
 data.raw["gui-style"].default["auto-trash-small-button"] = {
     type = "button_style",
