@@ -8,6 +8,12 @@ MAX_CONFIG_SIZES = { --luacheck: allow defined top
 }
 MAX_STORAGE_SIZE = 6  --luacheck: allow defined top
 
+function saveVar(var, name) --luacheck: allow defined top
+    var = var or global
+    local n = name or ""
+    game.write_file("autotrash"..n..".lua", serpent.block(var, {name="glob", comment=false}))
+end
+
 local GUI = require "__AutoTrash__/gui"
 
 local function debugDump(var, force)
@@ -22,12 +28,6 @@ local function debugDump(var, force)
             player.print(msg)
         end
     end
-end
-
-local function saveVar(var, name)
-    var = var or global
-    local n = name or ""
-    game.write_file("autotrash"..n..".lua", serpent.block(var, {name="glob", comment=false}))
 end
 
 local function init_global()
@@ -65,9 +65,6 @@ local function init_player(player)
     end
     if global.settings[index].auto_trash_unrequested == nil then
         global.settings[index].auto_trash_unrequested = false
-    end
-    if global.settings[index].options_extended == nil then
-        global.settings[index].options_extended = false
     end
     if global.settings[index].auto_trash_in_main_network == nil then
         global.settings[index].auto_trash_in_main_network = false
@@ -159,8 +156,45 @@ local function on_configuration_changed(data)
             end
         end
 
-        if oldVersion < v'4.0.0' then
+        if oldVersion < v'4.0.1' then
+            saveVar(global, "config_changed")
             init_players(true)
+            for _, c in pairs(global.config) do
+                for i, p in pairs(c) do
+                    if p.name == "" then
+                        p.name = false
+                    end
+                end
+            end
+            for _, c in pairs(global["config-tmp"]) do
+                for i, p in pairs(c) do
+                    if p.name == "" then
+                        p.name = false
+                    end
+                end
+            end
+
+            for _, c in pairs(global["logistics-config"]) do
+                for i, p in pairs(c) do
+                    if p.name == "" then
+                        p.name = false
+                    end
+                end
+            end
+            for _, c in pairs(global["logistics-config-tmp"]) do
+                for i, p in pairs(c) do
+                    if p.name == "" then
+                        p.name = false
+                    end
+                end
+            end
+
+            for i, s in pairs(global.settings) do
+                if s.options_extended ~= nil then
+                    s.options_extended = nil
+                end
+            end
+            saveVar(global, "config_changed_done")
         end
 
         global.version = newVersion
@@ -258,7 +292,7 @@ local function on_tick(event)
                     local configSize = global.configSize[player.force.name]
                     local already_trashed = {}
                     for i, item in pairs(global.config[player_index]) do
-                        if item and item.name ~= "" and item.name ~= "blueprint" and item.name ~= "blueprint-book" and i <= configSize then
+                        if item and item.name and item.name ~= "blueprint" and item.name ~= "blueprint-book" and i <= configSize then
                             already_trashed[item.name] = item.count
                             local count = player.get_item_count(item.name)
                             local requested = requests[item.name] and requests[item.name] or 0
@@ -509,6 +543,9 @@ end
 local function on_gui_click(event)
     local status, err = pcall(function()
         local element = event.element
+        if element.type == "checkbox" then
+            return
+        end
         --debugDump(element.name, true)
         local player_index = event.player_index
         local player = game.get_player(player_index)
@@ -534,9 +571,6 @@ local function on_gui_click(event)
             toggle_autotrash_pause_requests(player)
         elseif element.name  == "auto-trash-logistics-storage-store" then
             GUI.store(player)
-        elseif element.name == GUI.trash_in_main_network then
-            global.settings[player_index].auto_trash_in_main_network = not global.settings[player_index].auto_trash_in_main_network
-            GUI.update_settings(player)
         elseif element.name == "auto-trash-set-main-network" then
             if global.mainNetwork[player_index] then
                 global.mainNetwork[player_index] = false
@@ -551,25 +585,15 @@ local function on_gui_click(event)
                 end
             end
             element.caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
-        elseif element.name == GUI.trash_above_requested then
-            global.settings[player_index].auto_trash_above_requested = not global.settings[player_index].auto_trash_above_requested
-            GUI.update_settings(player)
-        elseif element.name == GUI.trash_unrequested then
-            global.settings[player_index].auto_trash_unrequested = not global.settings[player_index].auto_trash_unrequested
-            if global.settings[player_index].auto_trash_unrequested then
-                global.settings[player_index].auto_trash_above_requested = true
-            end
-            GUI.update_settings(player)
         else
             event.element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
             local type, index, _ = string.match(element.name, "auto%-trash%-(%a+)%-(%d+)%-*(%d*)")
             if not type then
                 type, index, _ = string.match(element.name, "auto%-trash%-logistics%-(%a+)%-(%d+)%-*(%d*)")
             end
+            log(serpent.block({t=type, i=tonumber(index)}))
             if type and index then
-                if type == "item" then
-                    GUI.set_item(player, type, tonumber(index))
-                elseif type == "restore" then
+                if type == "restore" then
                     GUI.restore(player, tonumber(index))
                 elseif type == "remove" then
                     GUI.remove(player, tonumber(index))
@@ -582,8 +606,92 @@ local function on_gui_click(event)
     end
 end
 
+local function on_gui_checked_changed_state(event)
+    local status, err = pcall(function()
+        local element = event.element
+
+        log(serpent.block(element.name))
+        log(serpent.block(element.state))
+        saveVar(global, "pre_checked_changed")
+        local player_index = event.player_index
+        local player = game.get_player(player_index)
+
+        if element.name == GUI.trash_in_main_network then
+            global.settings[player_index].auto_trash_in_main_network = not global.settings[player_index].auto_trash_in_main_network
+            GUI.update_settings(player)
+        elseif element.name == GUI.trash_above_requested then
+            global.settings[player_index].auto_trash_above_requested = not global.settings[player_index].auto_trash_above_requested
+            GUI.update_settings(player)
+        elseif element.name == GUI.trash_unrequested then
+            global.settings[player_index].auto_trash_unrequested = not global.settings[player_index].auto_trash_unrequested
+            if global.settings[player_index].auto_trash_unrequested then
+                global.settings[player_index].auto_trash_above_requested = true
+            end
+            GUI.update_settings(player)
+        end
+        saveVar(global, "post_checked_changed")
+    end)
+    if not status then
+        debugDump(err, true)
+    end
+end
+
+local function on_gui_elem_changed(event)
+    local status, err = pcall(function()
+        log("elem_changed: " .. event.element.name)
+        local element = event.element
+        local player = game.get_player(event.player_index)
+        --event.element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
+        local type, index, _ = string.match(element.name, "auto%-trash%-(%a+)%-(%d+)%-*(%d*)")
+        if not type then
+            type, index, _ = string.match(element.name, "auto%-trash%-logistics%-(%a+)%-(%d+)%-*(%d*)")
+        end
+        local elem_value = event.element.elem_value
+        index = tonumber(index)
+        log(serpent.block({t=type,i=index,s=_, elem_value = elem_value}))
+
+        if type and index then
+            if type == "item" then
+                GUI.set_item(player, type, index, event.element)
+            -- elseif type == "restore" then
+            --     GUI.restore(player, index)
+            -- elseif type == "remove" then
+            --     GUI.remove(player, index)
+            end
+        end
+
+        -- local item = false
+        -- local recipe, result
+        -- if elem_value then
+        --     recipe = game.recipe_prototypes[elem_value]
+        --     item = recipe.main_product or next(recipe.products)
+        --     -- log(serpent.block(recipe.main_product, {name="main"}))
+        --     -- log(serpent.block(recipe.products, {name="products"}))
+        -- end
+        -- if type == "from" then
+        --     result = item and item_to_entity(item.name)
+        --     GUI.set_rule(game.get_player(event.player_index), tonumber(index), result, event.element)
+        --     -- if result then
+        --     --     log(serpent.block(result.name))
+        --     --     log(result.module_inventory_size)
+        --     -- end
+        -- elseif type == "to" then
+        --     result = item and game.item_prototypes[item.name]
+        --     GUI.set_modules(game.get_player(event.player_index), tonumber(index), tonumber(slot), result)
+        --     -- if result then
+        --     --     log(serpent.block(result.name))
+        --     --     log(serpent.block(result.module_effects))
+        --     -- end
+        -- end
+    end)
+    if not status then
+        debugDump(err, true)
+    end
+end
+
 script.on_event(defines.events.on_gui_click, on_gui_click)
---script.on_event(defines.events.on_gui_checked_state_changed, on_gui_click)
+script.on_event(defines.events.on_gui_checked_state_changed, on_gui_checked_changed_state)
+script.on_event(defines.events.on_gui_elem_changed, on_gui_elem_changed)
 
 script.on_event(defines.events.on_research_finished, function(event)
     init_global()
