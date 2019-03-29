@@ -3,6 +3,7 @@ require "__core__/lualib/util"
 local v = require '__AutoTrash__/semver'
 local saveVar = require '__AutoTrash__.lib_control'.saveVar
 local debugDump = require '__AutoTrash__.lib_control'.debugDump
+local pause_requests = require '__AutoTrash__.lib_control'.pause_requests
 local MAX_CONFIG_SIZES = {
     ["character-logistic-trash-slots-1"] = 10,
     ["character-logistic-trash-slots-2"] = 30
@@ -452,26 +453,6 @@ end
 --  table.insert(global.temporaryRequests[player_index], {name = item, count = count})
 --  player.print({"", "added ", game.item_prototypes[item].localised_name, " to temporary requests"})
 --end
-
-function pause_requests(player) --luacheck: allow defined top
-    local player_index = player.index
-    if not global.storage[player_index] then
-        global.storage[player_index] = {requests={}}
-    end
-    global.storage[player_index].requests = global.storage[player_index].requests or {}
-
-    local storage = global.storage[player_index].requests
-    if player.character and player.force.character_logistic_slot_count > 0 then
-        for c=1,player.force.character_logistic_slot_count do
-            local request = player.character.get_request_slot(c)
-            if request then
-                storage[c] = {name = request.name, count = request.count}
-                player.character.clear_request_slot(c)
-                --requests[request.name] = request.count
-            end
-        end
-    end
-end
 
 local function unpause_requests(player)
     local player_index = player.index

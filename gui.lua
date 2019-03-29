@@ -1,4 +1,5 @@
 local MAX_STORAGE_SIZE = 6
+local pause_requests = require '__AutoTrash__.lib_control'.pause_requests
 
 local function count_keys(hashmap)
     local result = 0
@@ -29,7 +30,9 @@ local function set_requests(player)
     if player.character and slots > 0 then
         for c=1, slots do
             if storage[c] and storage[c].name and storage[c].name ~= "" then
-                player.character.set_request_slot(storage[c], c)
+                if storage[c].count > 0 then
+                    player.character.set_request_slot(storage[c], c)
+                end
             else
                 player.character.clear_request_slot(c)
             end
