@@ -243,7 +243,7 @@ local function on_tick(event)
                     local godController = player.controller_type == defines.controllers.god
                     local main_inventory = godController and player.get_inventory(defines.inventory.god_main) or player.get_inventory(defines.inventory.player_main)
                     local trash = player.get_inventory(defines.inventory.player_trash)
-
+                    local dirty = false
                     if not global.temporaryTrash[player_index] then global.temporaryTrash[player_index] = {} end
                     local requests = requested_items(player)
                     for i=#global.temporaryTrash[player_index],1,-1 do
@@ -253,20 +253,35 @@ local function on_tick(event)
                             local requested = requests[item.name] and requests[item.name] or 0
                             local desired = math.max(requested, item.count)
                             local diff = count - desired
-                            local stack = {name=item.name, count=diff}
-                            if diff > 0 then
-                                local c = trash.insert(stack)
-                                if c > 0 then
-                                    local removed = player.remove_item{name=item.name, count=c} --temporary items are removed from main,quickbar and cursor
-                                    diff = diff - removed
-                                    if c > removed then
-                                        trash.remove{name=item.name, count = c - removed}
+                            local t_item, t_index = main_inventory.find_item_stack(item.name)
+                            local has_grid = game.item_prototypes[item.name].equipment_grid or (t_item and t_item.grid)
+                            if not has_grid then
+                                local stack = {name=item.name, count=diff}
+                                if diff > 0 then
+                                    local c = trash.insert(stack)
+                                    if c > 0 then
+                                        local removed = player.remove_item{name=item.name, count=c} --temporary items are removed from main,quickbar and cursor
+                                        diff = diff - removed
+                                        if c > removed then
+                                            trash.remove{name=item.name, count = c - removed}
+                                        end
                                     end
                                 end
-                            end
-                            if diff <= 0 then
-                                player.print({"", "removed ", game.item_prototypes[item.name].localised_name, " from temporary trash"})
-                                global.temporaryTrash[player_index][i] = nil
+                                if diff <= 0 then
+                                    player.print({"", "removed ", game.item_prototypes[item.name].localised_name, " from temporary trash"})
+                                    global.temporaryTrash[player_index][i] = nil
+                                end
+                            else --item with equipment grid
+                                if diff > 0 and t_item then
+                                    for ti = #trash, 1, -1 do
+                                        if trash[ti].valid and not trash[ti].valid_for_read then
+                                            if trash[ti].swap_stack(main_inventory[t_index]) then
+                                                dirty = true
+                                                break
+                                            end
+                                        end
+                                    end
+                                end
                             end
                         end
                     end
@@ -279,13 +294,28 @@ local function on_tick(event)
                             local requested = requests[item.name] and requests[item.name] or 0
                             local desired = math.max(requested, item.count)
                             local diff = count - desired
-                            local stack = {name=item.name, count=diff}
-                            if diff > 0 then
-                                local c = trash.insert(stack)
-                                if c > 0 then
-                                    local removed = main_inventory.remove{name=item.name, count=c}
-                                    if c > removed then
-                                        trash.remove{name=item.name, count = c - removed}
+                            local t_item, t_index = main_inventory.find_item_stack(item.name)
+                            local has_grid = game.item_prototypes[item.name].equipment_grid or (t_item and t_item.grid)
+                            if not has_grid then
+                                local stack = {name=item.name, count=diff}
+                                if diff > 0 then
+                                    local c = trash.insert(stack)
+                                    if c > 0 then
+                                        local removed = main_inventory.remove{name=item.name, count=c}
+                                        if c > removed then
+                                            trash.remove{name=item.name, count = c - removed}
+                                        end
+                                    end
+                                end
+                            else
+                                if diff > 0 and t_item then
+                                    for ti = #trash, 1, -1 do
+                                        if trash[ti].valid and not trash[ti].valid_for_read then
+                                            if trash[ti].swap_stack(main_inventory[t_index]) then
+                                                dirty = true
+                                                break
+                                            end
+                                        end
                                     end
                                 end
                             end
@@ -301,12 +331,27 @@ local function on_tick(event)
                                 local count = player.get_item_count(name)
                                 local diff = count - r
                                 if diff > 0 then
-                                    local stack = {name=name, count=diff}
-                                    local c = trash.insert(stack)
-                                    if c > 0 then
-                                        local removed = main_inventory.remove{name=name, count=c}
-                                        if c > removed then
-                                            trash.remove{name=name, count = c - removed}
+                                    local t_item, t_index = main_inventory.find_item_stack(name)
+                                    local has_grid = game.item_prototypes[name].equipment_grid or (t_item and t_item.grid)
+                                    if not has_grid then
+                                        local stack = {name=name, count=diff}
+                                        local c = trash.insert(stack)
+                                        if c > 0 then
+                                            local removed = main_inventory.remove{name=name, count=c}
+                                            if c > removed then
+                                                trash.remove{name=name, count = c - removed}
+                                            end
+                                        end
+                                    else
+                                        if t_item then
+                                            for ti = #trash, 1, -1 do
+                                                if trash[ti].valid and not trash[ti].valid_for_read then
+                                                    if trash[ti].swap_stack(main_inventory[t_index]) then
+                                                        dirty = true
+                                                        break
+                                                    end
+                                                end
+                                            end
                                         end
                                     end
                                 end
@@ -319,18 +364,36 @@ local function on_tick(event)
                             local stack = {name="", count = 0}
                             for name, count in pairs(contents) do
                                 if not requests_by_name[name] and name ~= "blueprint" and name ~= "blueprint-book" then
-                                    stack.name = name
-                                    stack.count = count
-                                    local c = trash.insert(stack)
-                                    if c > 0 then
-                                        local removed = main_inventory.remove{name=name, count=c}
-                                        if c > removed then
-                                            trash.remove{name=name, count = c - removed}
+                                    local t_item, t_index = main_inventory.find_item_stack(name)
+                                    local has_grid = game.item_prototypes[name].equipment_grid or (t_item and t_item.grid)
+                                    if not has_grid then
+                                        stack.name = name
+                                        stack.count = count
+                                        local c = trash.insert(stack)
+                                        if c > 0 then
+                                            local removed = main_inventory.remove{name=name, count=c}
+                                            if c > removed then
+                                                trash.remove{name=name, count = c - removed}
+                                            end
+                                        end
+                                    else
+                                        if t_item then
+                                            for ti = #trash, 1, -1 do
+                                                if trash[ti].valid and not trash[ti].valid_for_read then
+                                                    if trash[ti].swap_stack(main_inventory[t_index]) then
+                                                        dirty = true
+                                                        break
+                                                    end
+                                                end
+                                            end
                                         end
                                     end
                                 end
                             end
                         end
+                    end
+                    if dirty then
+                        trash.sort_and_merge()
                     end
                 end
             end
