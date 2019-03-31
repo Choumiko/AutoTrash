@@ -1,6 +1,6 @@
 local MAX_STORAGE_SIZE = 6
 local pause_requests = require '__AutoTrash__.lib_control'.pause_requests
-
+local mod_gui = require '__core__/lualib/mod-gui'
 local function count_keys(hashmap)
     local result = 0
     for _, _ in pairs(hashmap) do
@@ -118,7 +118,8 @@ function GUI.init(player, after_research)
 end
 
 local function get_settings_group(player)
-    local other = player.gui.left[GUI.configFrame]
+    local left = mod_gui.get_frame_flow(player)
+    local other = left[GUI.configFrame]
     local result = {}
     if other then
         table.insert(result, other)
@@ -148,10 +149,28 @@ function GUI.destroy(player)
     end
 end
 
+--only for moving to mod_gui frame
+function GUI.destroy_frames(player)
+    local left = player.gui.left
+    local frame = left[GUI.configFrame]
+    local frame2 = left[GUI.logisticsConfigFrame]
+    local storage_frame = left[GUI.logisticsStorageFrame]
+    if frame2 then
+        frame2.destroy()
+    end
+    if storage_frame then
+        storage_frame.destroy()
+    end
+    if frame then
+        frame.destroy()
+    end
+end
+
 function GUI.open_frame(player)
-    local frame = player.gui.left[GUI.configFrame]
-    local frame2 = player.gui.left[GUI.logisticsConfigFrame]
-    local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
+    local left = mod_gui.get_frame_flow(player)
+    local frame = left[GUI.configFrame]
+    local frame2 = left[GUI.logisticsConfigFrame]
+    local storage_frame = left[GUI.logisticsStorageFrame]
     if frame2 then
         frame2.destroy()
     end
@@ -189,7 +208,7 @@ function GUI.open_frame(player)
     hide_yarm(player.index)
 
     -- Now we can build the GUI.
-    frame = player.gui.left.add{
+    frame = left.add{
         type = "frame",
         caption = {"auto-trash-config-frame-title"},
         name = GUI.configFrame,
@@ -322,10 +341,11 @@ function GUI.open_frame(player)
 end
 
 function GUI.open_logistics_frame(player, redraw)
-    local frame = player.gui.left[GUI.logisticsConfigFrame]
-    local frame2 = player.gui.left[GUI.configFrame]
+    local left = mod_gui.get_frame_flow(player)
+    local frame = left[GUI.logisticsConfigFrame]
+    local frame2 = left[GUI.configFrame]
 
-    local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
+    local storage_frame = left[GUI.logisticsStorageFrame]
     if frame2 then
         frame2.destroy()
     end
@@ -352,7 +372,7 @@ function GUI.open_logistics_frame(player, redraw)
     hide_yarm(player.index)
 
     -- Now we can build the GUI.
-    frame = player.gui.left.add{
+    frame = left.add{
         type = "frame",
         caption = {"auto-trash-logistics-config-frame-title"},
         name = GUI.logisticsConfigFrame,
@@ -425,7 +445,7 @@ function GUI.open_logistics_frame(player, redraw)
         tooltip = {"auto-trash-tooltip-pause-requests"}
     }
 
-    storage_frame = player.gui.left.add{
+    storage_frame = left.add{
         type = "frame",
         name = GUI.logisticsStorageFrame,
         caption = {"auto-trash-storage-frame-title"},
@@ -491,8 +511,9 @@ function GUI.open_logistics_frame(player, redraw)
 end
 
 function GUI.close(player)
-    local frame = player.gui.left[GUI.configFrame] or player.gui.left[GUI.logisticsConfigFrame]
-    local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
+    local left = mod_gui.get_frame_flow(player)
+    local frame = left[GUI.configFrame] or left[GUI.logisticsConfigFrame]
+    local storage_frame = left[GUI.logisticsStorageFrame]
     if frame then
         frame.destroy()
     end
@@ -507,8 +528,8 @@ function GUI.save_changes(player)
     --   1. copying config-tmp to config
     --   2. removing config-tmp
     --   3. closing the frame
-
-    local key = player.gui.left[GUI.configFrame] and "" or "logistics-"
+    local left = mod_gui.get_frame_flow(player)
+    local key = left[GUI.configFrame] and "" or "logistics-"
     local player_index = player.index
 
     if global[key.."config-tmp"][player_index] then
@@ -540,9 +561,10 @@ function GUI.save_changes(player)
 end
 
 function GUI.clear_all(player)
-    local frame = player.gui.left[GUI.configFrame] or player.gui.left[GUI.logisticsConfigFrame]
-    --local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
-    local key = player.gui.left[GUI.configFrame] and "" or "logistics-"
+    local left = mod_gui.get_frame_flow(player)
+    local frame = left[GUI.configFrame] or left[GUI.logisticsConfigFrame]
+    --local storage_frame = left[GUI.logisticsStorageFrame]
+    local key = left[GUI.configFrame] and "" or "logistics-"
 
     if not frame then return end
     local ruleset_grid = global.guiData[player.index].ruleset_grid
@@ -569,8 +591,9 @@ function GUI.display_message(frame, storage, message)
 end
 
 function GUI.set_item(player, type1, index, element)
-    local frame = player.gui.left[GUI.configFrame] or player.gui.left[GUI.logisticsConfigFrame]
-    local key = player.gui.left[GUI.configFrame] and "config-tmp" or "logistics-config-tmp"
+    local left = mod_gui.get_frame_flow(player)
+    local frame = left[GUI.configFrame] or left[GUI.logisticsConfigFrame]
+    local key = left[GUI.configFrame] and "config-tmp" or "logistics-config-tmp"
     if not frame or not global[key][player.index] then return end
 
     if not global[key][player.index][index] then
@@ -610,7 +633,8 @@ end
 function GUI.store(player)
     global["storage"][player.index] = global["storage"][player.index] or {}
     global["storage"][player.index].store = global["storage"][player.index].store or {}
-    local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
+    local left = mod_gui.get_frame_flow(player)
+    local storage_frame = left[GUI.logisticsStorageFrame]
     if not storage_frame then return end
     local textfield = storage_frame["auto-trash-logistics-storage-buttons"]["auto-trash-logistics-storage-name"]
     local name = textfield.text
@@ -644,8 +668,9 @@ function GUI.store(player)
 end
 
 function GUI.restore(player, index)
-    local frame = player.gui.left[GUI.logisticsConfigFrame]
-    local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
+    local left = mod_gui.get_frame_flow(player)
+    local frame = left[GUI.logisticsConfigFrame]
+    local storage_frame = left[GUI.logisticsStorageFrame]
     if not frame or not storage_frame then return end
 
     local storage_grid = storage_frame["auto-trash-logistics-storage-grid"]
@@ -673,8 +698,8 @@ end
 
 function GUI.remove(player, index)
     if not global["storage"][player.index] then return end
-
-    local storage_frame = player.gui.left[GUI.logisticsStorageFrame]
+    local left = mod_gui.get_frame_flow(player)
+    local storage_frame = left[GUI.logisticsStorageFrame]
     if not storage_frame then return end
     local storage_grid = storage_frame["auto-trash-logistics-storage-grid"]
     local label = storage_grid["auto-trash-logistics-storage-entry-" .. index]

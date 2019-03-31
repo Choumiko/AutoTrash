@@ -4,6 +4,8 @@ local v = require '__AutoTrash__/semver'
 local saveVar = require '__AutoTrash__.lib_control'.saveVar
 local debugDump = require '__AutoTrash__.lib_control'.debugDump
 local pause_requests = require '__AutoTrash__.lib_control'.pause_requests
+local mod_gui = require '__core__/lualib/mod-gui'
+
 local MAX_CONFIG_SIZES = {
     ["character-logistic-trash-slots-1"] = 10,
     ["character-logistic-trash-slots-2"] = 30
@@ -176,6 +178,12 @@ local function on_configuration_changed(data)
                 end
             end
             --saveVar(global, "config_changed_done")
+        end
+
+        if oldVersion < v'4.0.4' then
+            for _, p in pairs(game.players) do
+                GUI.destroy_frames(p)
+            end
         end
 
         global.version = newVersion
@@ -605,7 +613,7 @@ local function on_gui_click(event)
                     global.mainNetwork[player_index] = cell and cell.owner or false
                 end
                 if not global.mainNetwork[player_index] then
-                    GUI.display_message(player.gui.left[GUI.configFrame], false, "auto-trash-not-in-network")
+                    GUI.display_message(mod_gui.get_frame_flow(player)[GUI.configFrame], false, "auto-trash-not-in-network")
                 end
             end
             element.caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}

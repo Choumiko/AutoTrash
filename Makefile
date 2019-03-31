@@ -62,3 +62,4 @@ install_mod:
 
 tag:
 	git tag -f $(VERSION_STRING)
+	git push --tags
