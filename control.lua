@@ -2,6 +2,7 @@ require "__core__/lualib/util"
 
 local v = require '__AutoTrash__/semver'
 local saveVar = require '__AutoTrash__.lib_control'.saveVar
+local convert = require '__AutoTrash__.lib_control'.convert
 local debugDump = require '__AutoTrash__.lib_control'.debugDump
 local pause_requests = require '__AutoTrash__.lib_control'.pause_requests
 local mod_gui = require '__core__/lualib/mod-gui'
@@ -29,6 +30,15 @@ local function init_global()
     global.settings = global.settings or {}
     global.guiData = global.guiData or {}
 end
+
+--config[player_index][slot] = {name = "item", min=0, max=100}
+--min: if > 0 set as request
+--max: if == 0 and trash unrequested
+--if min == max : set req = trash
+--if min and max : set req and trash, ensure max > min
+--if min and not max (== -1?) : set req, unset trash
+--if min == 0 and max : unset req, set trash
+--if min == 0 and max == 0: unset req, set trash to 0
 
 local function init_player(player)
     local index = player.index
@@ -186,6 +196,10 @@ local function on_configuration_changed(data)
             end
         end
 
+        -- if oldVersion < v'4.1.0' then
+        --     convert()
+        -- end
+
         global.version = newVersion
     end
 
@@ -246,7 +260,7 @@ local function on_tick(event)
         local status, err = pcall(function()
             for _, player in pairs(game.players) do
                 local player_index = player.index
-                if player.valid and player.connected and global.config[player_index] and global.active[player_index]
+                if player.valid and player.connected and global.active[player_index]
                     and inMainNetwork(player) then
                     local godController = player.controller_type == defines.controllers.god
                     local main_inventory = godController and player.get_inventory(defines.inventory.god_main) or player.get_inventory(defines.inventory.player_main)
@@ -297,7 +311,7 @@ local function on_tick(event)
                     local already_trashed = {}
                     for i, item in pairs(global.config[player_index]) do
                         if item and item.name and item.name ~= "blueprint" and item.name ~= "blueprint-book" and i <= configSize then
-                            already_trashed[item.name] = item.count
+                            already_trashed[item.name] = true
                             local count = player.get_item_count(item.name)
                             local requested = requests[item.name] and requests[item.name] or 0
                             local desired = math.max(requested, item.count)
@@ -331,7 +345,6 @@ local function on_tick(event)
                     end
                     local requests_by_name = {}
 
-                    --local config = global.config[player_index]
                     for name, r in pairs(requests) do
                         requests_by_name[name] = true
                         if global.settings[player_index].auto_trash_above_requested then
@@ -578,9 +591,14 @@ local function on_gui_click(event)
         if element.type == "checkbox" then
             return
         end
+        -- log(serpent.block(event))
+        -- log(serpent.block({name = element.name}))
         --debugDump(element.name, true)
         local player_index = event.player_index
         local player = game.get_player(player_index)
+        -- if element.name == "auto-trash-item-1" then
+        --     log(serpent.block(element.locked))
+        -- end
         if element.name == "auto-trash-config-button" then
             if player.cursor_stack.valid_for_read then
                 if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
@@ -682,10 +700,17 @@ local function on_gui_elem_changed(event)
         if not type then
             type, index, _ = string.match(element.name, "auto%-trash%-logistics%-(%a+)%-(%d+)%-*(%d*)")
         end
-        --local elem_value = event.element.elem_value
+        -- local elem_value = event.element.elem_value
         index = tonumber(index)
-        --log(serpent.block({t=type,i=index,s=_, elem_value = elem_value}))
-
+        -- log(serpent.block({t=type,i=index,s=_, elem_value = elem_value}))
+        -- if elem_value then
+        --     element.locked = true
+        --     local selected = global.selected[event.player_index]
+        --     if selected and selected.valid then
+        --         selected.locked = false
+        --         global.selected[event.player_index] = element
+        --     end
+        -- end
         if type and index then
             if type == "item" then
                 GUI.set_item(player, type, index, event.element)
@@ -759,6 +784,10 @@ remote.add_interface("at",
     {
         saveVar = function(name)
             saveVar(global, name)
+        end,
+
+        convert = function()
+            convert()
         end,
 
         init = function()
