@@ -1,3 +1,29 @@
+data.raw["gui-style"].default["auto-trash-request-label-bottom"] = {
+    type = "label_style",
+    parent = "count_label",
+    height = 36,
+    width = 36,
+    vertical_align = "bottom",
+    horizontal_align = "right",
+    right_padding = 2
+}
+
+data.raw["gui-style"].default["auto-trash-request-label-top"] = {
+    type = "label_style",
+    parent = "auto-trash-request-label-bottom",
+    vertical_align = "top",
+}
+
+data.raw["gui-style"].default["auto-trash-slot-button"] = {
+    type = "button_style",
+    parent = "logistic_button_slot",
+}
+
+data.raw["gui-style"].default["auto-trash-slot-button-selected"] = {
+    type = "button_style",
+    parent = "logistic_button_selected_slot",
+}
+
 data.raw["gui-style"].default["auto-trash-small-button"] = {
     type = "button_style",
     parent = "button",

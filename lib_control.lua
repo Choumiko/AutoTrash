@@ -51,6 +51,7 @@ local function convert_to_combined_storage()
     local item_to_slot = {}
     local item_config
     local max_slot
+    global.selected = global.selected or {}
     global.config_free_slot = global.config_free_slot or {}
     for player_index, logistics_config in pairs(global["logistics-config"]) do
         tmp[player_index] = {}
@@ -85,6 +86,14 @@ local function convert_to_combined_storage()
     end
     log(serpent.block(tmp))
     global.config_new = tmp
+    local proc = 0
+    for _, d in pairs(global.config_new) do
+        for _,_ in pairs(d) do
+            proc = proc + 1
+        end
+        log(table_size(d))
+    end
+    log(proc)
     tmp = {}
     global.storage_free_slot = global.storage_free_slot or {}
     for player_index, storage_config in pairs(global.storage) do

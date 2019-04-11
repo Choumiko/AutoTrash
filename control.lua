@@ -585,20 +585,66 @@ local function toggle_autotrash_pause_requests(player)
     GUI.close(player)
 end
 
+local function unselect_elem_button(player_index, parent)
+    local selected = global.selected[player_index]
+    if selected and parent[selected] then
+        local element = parent[selected]
+        element.visible = false
+        element.style = "logistic_button_slot"
+        log("unselect: " .. serpent.line({elem=element.elem_value, locked = element.locked}))
+        element.visible = true
+        element.locked = true
+    end
+    global.selected[player_index] = false
+    log("selected: " .. serpent.line(global.selected[player_index]))
+end
+
+--TODO do some trickery with the labels (activate interaction on one of them when the elem-button is locked and vice versa)
+local function select_elem_button(player_index, element)
+    local selected = global.selected[player_index]
+    log("locked: " .. serpent.line(element.locked))
+    log("old selected " .. serpent.line(selected))
+    if selected then
+        if selected ~= element.name then
+            unselect_elem_button(player_index, element.parent)
+        else
+            return
+        end
+    end
+    if element.elem_value and element.locked then
+        element.locked = false
+        element.visible = false
+        element.style = "logistic_button_selected_slot"
+        element.visible = true
+        global.selected[player_index] = element.name
+    end
+    log("new selected " .. serpent.line(global.selected[player_index]))
+end
+
 local function on_gui_click(event)
     local status, err = pcall(function()
         local element = event.element
         if element.type == "checkbox" then
             return
         end
+        local player_index = event.player_index
+        if element.type == "choose-elem-button" then
+            log("on click " .. serpent.line(element.name))
+            log(serpent.line({elem=element.elem_value, locked = element.locked, selected = global.selected[player_index]}))
+            if element.elem_value then
+                if element.locked then
+                    unselect_elem_button(player_index, element.parent)
+                    select_elem_button(player_index, element)
+                else
+                    return
+                end
+            else
+                unselect_elem_button(player_index, element.parent)
+            end
+        end
         -- log(serpent.block(event))
         -- log(serpent.block({name = element.name}))
-        --debugDump(element.name, true)
-        local player_index = event.player_index
         local player = game.get_player(player_index)
-        -- if element.name == "auto-trash-item-1" then
-        --     log(serpent.block(element.locked))
-        -- end
         if element.name == "auto-trash-config-button" then
             if player.cursor_stack.valid_for_read then
                 if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
@@ -656,6 +702,77 @@ local function on_gui_click(event)
     end
 end
 
+-- local function on_gui_click(event)
+--     local status, err = pcall(function()
+--         local element = event.element
+--         if element.type == "checkbox" then
+--             return
+--         end
+--         -- log(serpent.block(event))
+--         -- log(serpent.block({name = element.name}))
+--         --debugDump(element.name, true)
+--         local player_index = event.player_index
+--         local player = game.get_player(player_index)
+--         -- if element.name == "auto-trash-item-1" then
+--         log(serpent.block(element.name))
+--         -- end
+--         if element.name == "auto-trash-config-button" then
+--             if player.cursor_stack.valid_for_read then
+--                 if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
+--                     add_order(player)
+--                 elseif player.cursor_stack.name ~= "blueprint" then
+--                     add_to_trash(player, player.cursor_stack.name, 0)
+--                 end
+--             else
+--                 global.guiData[player_index] = GUI.open_frame(player)
+--             end
+--         elseif element.name == "auto-trash-apply" or element.name == "auto-trash-logistics-apply" then
+--             GUI.save_changes(player)
+--         elseif element.name == "auto-trash-clear-all" or element.name == "auto-trash-logistics-clear-all" then
+--             GUI.clear_all(player)
+--         elseif element.name == "auto-trash-pause" then
+--             toggle_autotrash_pause(player)
+--         elseif element.name == "auto-trash-logistics-button" then
+--             global.guiData[player_index] = GUI.open_logistics_frame2(player)
+--         elseif element.name == "auto-trash-logistics-pause" then
+--             toggle_autotrash_pause_requests(player)
+--         elseif element.name  == "auto-trash-logistics-storage-store" then
+--             GUI.store(player)
+--         elseif element.name == "auto-trash-set-main-network" then
+--             if global.mainNetwork[player_index] then
+--                 global.mainNetwork[player_index] = false
+--             else
+--                 local network = player.surface.find_logistic_network_by_position(player.position, player.force) or false
+--                 if network then
+--                     local cell = network.find_cell_closest_to(player.position)
+--                     global.mainNetwork[player_index] = cell and cell.owner or false
+--                 end
+--                 if not global.mainNetwork[player_index] then
+--                     GUI.display_message(mod_gui.get_frame_flow(player)[GUI.configFrame], false, "auto-trash-not-in-network")
+--                 end
+--             end
+--             element.caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+--         else
+--             event.element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
+--             local type, index, _ = string.match(element.name, "auto%-trash%-(%a+)%-(%d+)%-*(%d*)")
+--             if not type then
+--                 type, index, _ = string.match(element.name, "auto%-trash%-logistics%-(%a+)%-(%d+)%-*(%d*)")
+--             end
+--             --log(serpent.block({t=type, i=tonumber(index)}))
+--             if type and index then
+--                 if type == "restore" then
+--                     GUI.restore(player, tonumber(index))
+--                 elseif type == "remove" then
+--                     GUI.remove(player, tonumber(index))
+--                 end
+--             end
+--         end
+--     end)
+--     if not status then
+--         debugDump(err, true)
+--     end
+-- end
+
 local function on_gui_checked_changed_state(event)
     local status, err = pcall(function()
         local element = event.element
@@ -692,25 +809,20 @@ end
 
 local function on_gui_elem_changed(event)
     local status, err = pcall(function()
-        --log("elem_changed: " .. event.element.name)
+        log("elem_changed: " .. event.element.name)
         local element = event.element
         local player = game.get_player(event.player_index)
         --event.element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
-        local type, index, _ = string.match(element.name, "auto%-trash%-(%a+)%-(%d+)%-*(%d*)")
-        if not type then
-            type, index, _ = string.match(element.name, "auto%-trash%-logistics%-(%a+)%-(%d+)%-*(%d*)")
-        end
-        -- local elem_value = event.element.elem_value
+        local index = tonumber(string.match(element.name, "auto%-trash%-item%-(%d+)"))
+        local elem_value = event.element.elem_value
         index = tonumber(index)
-        -- log(serpent.block({t=type,i=index,s=_, elem_value = elem_value}))
-        -- if elem_value then
-        --     element.locked = true
-        --     local selected = global.selected[event.player_index]
-        --     if selected and selected.valid then
-        --         selected.locked = false
-        --         global.selected[event.player_index] = element
-        --     end
-        -- end
+        --log(serpent.line({i=index, elem_value = elem_value}))
+        if elem_value then
+            element.locked = true
+            select_elem_button(event.player_index, element)
+        else
+            unselect_elem_button(event.player_index, element.parent)
+        end
         if type and index then
             if type == "item" then
                 GUI.set_item(player, type, index, event.element)
@@ -726,9 +838,87 @@ local function on_gui_elem_changed(event)
     end
 end
 
+-- local function on_gui_elem_changed2(event)
+--     local status, err = pcall(function()
+--         --log("elem_changed: " .. event.element.name)
+--         local element = event.element
+--         local player = game.get_player(event.player_index)
+--         --event.element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
+--         local type, index, _ = string.match(element.name, "auto%-trash%-(%a+)%-(%d+)%-*(%d*)")
+--         if not type then
+--             type, index, _ = string.match(element.name, "auto%-trash%-logistics%-(%a+)%-(%d+)%-*(%d*)")
+--         end
+--         -- local elem_value = event.element.elem_value
+--         index = tonumber(index)
+--         -- log(serpent.block({t=type,i=index,s=_, elem_value = elem_value}))
+--         -- if elem_value then
+--         --     element.locked = true
+--         --     local selected = global.selected[event.player_index]
+--         --     if selected and selected.valid then
+--         --         selected.locked = false
+--         --         global.selected[event.player_index] = element
+--         --     end
+--         -- end
+--         if type and index then
+--             if type == "item" then
+--                 GUI.set_item(player, type, index, event.element)
+--             -- elseif type == "restore" then
+--             --     GUI.restore(player, index)
+--             -- elseif type == "remove" then
+--             --     GUI.remove(player, index)
+--             end
+--         end
+--     end)
+--     if not status then
+--         debugDump(err, true)
+--     end
+-- end
+
+local function update_selected_value(player_index, flow, number)
+    local n = math.floor(tonumber(number) or 50)
+    flow["at-config-slider-text"].text = n
+    flow["at-config-slider"].slider_value = n
+    local frame_new = flow.parent.parent["at-config-scroll"]["at-ruleset-grid"]
+    log(global.selected[player_index])
+    log(serpent.line(#frame_new.children))
+    local i = tonumber(string.match(global.selected[player_index], "auto%-trash%-item%-(%d+)"))
+    global["config-tmp"][player_index] = global["config-tmp"][player_index] or {}
+    global["config-tmp"][player_index][i] =
+    global["config-tmp"][player_index][i] or
+    {name = frame_new.children[i].elem_value, trash = 0, request = 0}
+    global["config-tmp"][player_index][i].name = frame_new.children[i].elem_value
+    if flow.name == "at-slider-flow-request" then
+        global["config-tmp"][player_index][i].request = n
+    elseif flow.name == "at-slider-flow-trash" then
+        global["config-tmp"][player_index][i].trash = n
+    end
+end
+
+local function on_gui_value_changed(event)
+    if not global.selected[event.player_index] then
+        return
+    end
+    if not event.element.name == "at-config-slider" then
+        return
+    end
+    update_selected_value(event.player_index, event.element.parent, event.element.slider_value)
+end
+
+local function on_gui_text_changed(event)
+    if not global.selected[event.player_index] then
+        return
+    end
+    if not event.element.name == "at-config-slider-text" then
+        return
+    end
+    update_selected_value(event.player_index, event.element.parent, event.element.text)
+end
+
 script.on_event(defines.events.on_gui_click, on_gui_click)
 script.on_event(defines.events.on_gui_checked_state_changed, on_gui_checked_changed_state)
 script.on_event(defines.events.on_gui_elem_changed, on_gui_elem_changed)
+script.on_event(defines.events.on_gui_value_changed, on_gui_value_changed)
+script.on_event(defines.events.on_gui_text_changed, on_gui_text_changed)
 
 local function on_research_finished(event)
     init_global()
