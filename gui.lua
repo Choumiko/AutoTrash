@@ -398,8 +398,10 @@ function GUI.open_logistics_frame(player, redraw)
         style = "slot_table"
     }
 
+    local item_config
+
     for i = 1, slots do
-        local req = global["config_new"][player.index].config[i]
+        local req = global["config_tmp"][player.index].config[i]
         local elem_value = req and req.name or nil
         local button_name = "auto-trash-item-" .. i
         local choose_button = ruleset_grid.add{
@@ -411,6 +413,7 @@ function GUI.open_logistics_frame(player, redraw)
         choose_button.elem_value = elem_value
         if global.selected[player.index] == button_name then
             choose_button.style = "logistic_button_selected_slot"
+            item_config = global["config_tmp"][player.index].config[i]
         end
 
         local lbl_top = choose_button.add{
@@ -429,7 +432,7 @@ function GUI.open_logistics_frame(player, redraw)
 
         if elem_value then
             lbl_top.caption = (req.request) and req.request or (req.trash and "0") or ""
-            lbl_bottom.caption = req.trash and req.trash or "∞"
+            lbl_bottom.caption = (req.trash and req.trash > -1) and req.trash or "∞"
             choose_button.locked = choose_button.name ~= global.selected[player.index] --disable popup gui, keeps on_click active
         end
     end
@@ -439,55 +442,62 @@ function GUI.open_logistics_frame(player, redraw)
         column_count = 2
     }
     slider_vertical_flow.style.minimal_width = 60
-    slider_vertical_flow.add{
+    local lbl_request = slider_vertical_flow.add{
         type = "label",
         caption = "Request"
     }
-    local slider_flow = slider_vertical_flow.add{
+    local slider_flow_request = slider_vertical_flow.add{
         type = "flow",
         name = "at-slider-flow-request",
         direction = "horizontal",
     }
-    slider_flow.style.vertical_align = "center"
+    slider_flow_request.style.vertical_align = "center"
 
-    slider_flow.add{
+    slider_flow_request.add{
         type = "slider",
         name = "at-config-slider",
         minimum_value = -1,
         maximum_value = 50000,
-        value = 50
+        value = item_config and tonumber((item_config.request) and item_config.request or (item_config.trash and 0) or -1) or 50
     }
-    slider_flow.add{
+    slider_flow_request.add{
         type = "textfield",
         name = "at-config-slider-text",
         style = "slider_value_textfield",
-        text = 50
+        text = item_config and tonumber((item_config.request) and item_config.request or (item_config.trash and 0) or -1) or 50
     }
 
-    slider_vertical_flow.add{
+    local lbl_trash = slider_vertical_flow.add{
         type = "label",
         caption = "Trash"
     }
-    slider_flow = slider_vertical_flow.add{
+    local slider_flow_trash = slider_vertical_flow.add{
         type = "flow",
         name = "at-slider-flow-trash",
         direction = "horizontal",
     }
-    slider_flow.style.vertical_align = "center"
+    slider_flow_trash.style.vertical_align = "center"
 
-    slider_flow.add{
+    slider_flow_trash.add{
         type = "slider",
         name = "at-config-slider",
         minimum_value = -1,
         maximum_value = 50000,
-        value = 50
+        value = item_config and tonumber(item_config.trash and item_config.trash or -1) or -1
     }
-    slider_flow.add{
+    slider_flow_trash.add{
         type = "textfield",
         name = "at-config-slider-text",
         style = "slider_value_textfield",
-        text = 50
+        text = item_config and tonumber(item_config.trash and item_config.trash or -1) or -1
     }
+
+    if not global.selected[player.index] then
+        lbl_request.visible = false
+        lbl_trash.visible = false
+        slider_flow_request.visible = false
+        slider_flow_trash.visible = false
+    end
 
     local button_grid = frame_new.add{
         type = "table",
@@ -633,43 +643,6 @@ function GUI.save_changes(player)
     show_yarm(player_index)
     GUI.close(player)
 end
-
--- function GUI.save_changes(player)
---     -- Saving changes consists in:
---     --   1. copying config-tmp to config <- that's bull, just get it from the gui
---     --   2. removing config-tmp
---     --   3. closing the frame
---     local left = mod_gui.get_frame_flow(player)
---     local key = left[GUI.configFrame] and "" or "logistics-"
---     local player_index = player.index
-
---     if global[key.."config-tmp"][player_index] then
---         global[key.."config"][player_index] = {}
---         local grid = global.guiData[player_index].ruleset_grid
---         for i, _ in pairs(global[key.."config-tmp"][player_index]) do
---             if not global[key.."config-tmp"][player_index][i].name then
---                 global[key.."config"][player_index][i] = { name = false, count = 0 }
---             else
---                 global[key.."config-tmp"][player_index][i].count = GUI.sanitizeNumber(grid["auto-trash-amount-"..i].text,0)
---                 local amount = global[key.."config-tmp"][player_index][i].count
---                 global[key.."config"][player_index][i] = {
---                     name = global[key.."config-tmp"][player_index][i].name,
---                     count = amount or 0
---                 }
---             end
---         end
---         global[key.."config-tmp"][player_index] = nil
---     end
-
---     if key == "logistics-" then
---         set_requests(player, global["logistics-config"][player_index])
---         if not global["logistics-active"][player_index] then
---             pause_requests(player)
---         end
---     end
---     show_yarm(player_index)
---     GUI.close(player)
--- end
 
 function GUI.clear_all(player)
     local left = mod_gui.get_frame_flow(player)
