@@ -604,7 +604,6 @@ function GUI.close(player)
     if frame_new then
         frame_new.destroy()
     end
-    global.guiData[player.index] = nil
 end
 
 function GUI.save_changes(player)
