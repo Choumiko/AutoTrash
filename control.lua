@@ -587,19 +587,16 @@ end
 
 local function unselect_elem_button(player_index, parent)
     local selected = global.selected[player_index]
-    if selected and parent[selected] then
-        local element = parent[selected]
-        element.visible = false
+    local element = selected and parent[selected]
+    if selected and element then
         element.style = "logistic_button_slot"
         log("unselect: " .. serpent.line({elem=element.elem_value, locked = element.locked}))
-        element.visible = true
         element.locked = true
     end
     global.selected[player_index] = false
     log("selected: " .. serpent.line(global.selected[player_index]))
 end
 
---TODO do some trickery with the labels (activate interaction on one of them when the elem-button is locked and vice versa)
 local function select_elem_button(player_index, element)
     local selected = global.selected[player_index]
     log("locked: " .. serpent.line(element.locked))
@@ -618,6 +615,7 @@ local function select_elem_button(player_index, element)
         element.visible = true
         global.selected[player_index] = element.name
     end
+    GUI.open_logistics_frame(game.get_player(player_index), true)
     log("new selected " .. serpent.line(global.selected[player_index]))
 end
 
@@ -635,6 +633,7 @@ local function on_gui_click(event)
                 if element.locked then
                     unselect_elem_button(player_index, element.parent)
                     select_elem_button(player_index, element)
+                    return
                 else
                     return
                 end
@@ -814,7 +813,7 @@ local function on_gui_elem_changed(event)
         local player = game.get_player(event.player_index)
         --event.element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
         local index = tonumber(string.match(element.name, "auto%-trash%-item%-(%d+)"))
-        local elem_value = event.element.elem_value
+        local elem_value = element.elem_value
         index = tonumber(index)
         --log(serpent.line({i=index, elem_value = elem_value}))
         if elem_value then
@@ -825,7 +824,7 @@ local function on_gui_elem_changed(event)
         end
         if type and index then
             if type == "item" then
-                GUI.set_item(player, type, index, event.element)
+                GUI.set_item(player, type, index, element)
             -- elseif type == "restore" then
             --     GUI.restore(player, index)
             -- elseif type == "remove" then

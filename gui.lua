@@ -9,7 +9,7 @@ local function count_keys(hashmap)
     return result
 end
 
-local function get_requests(player)
+local function get_requests(player) --luacheck: ignore
     local requests = {}
     -- get requested items
     if player.character and player.force.character_logistic_slot_count > 0 then
@@ -340,290 +340,6 @@ function GUI.open_frame(player)
     return {ruleset_grid = ruleset_grid}
 end
 
-function GUI.open_logistics_frame2(player, redraw)
-    local left = mod_gui.get_frame_flow(player)
-    local frame = left[GUI.logisticsConfigFrame]
-    local frame2 = left[GUI.configFrame]
-    local frame_new = left["at-config-frame"]
-
-    local storage_frame = left[GUI.logisticsStorageFrame]
-    if frame2 then
-        frame2.destroy()
-    end
-    if frame_new then
-        frame_new.destroy()
-    end
-    if frame then
-        frame.destroy()
-        if storage_frame then
-            storage_frame.destroy()
-        end
-        if not redraw then
-            global["logistics-config-tmp"][player.index] = nil
-            show_yarm(player.index)
-            return
-        end
-    end
-
-    -- If player config does not exist, we need to create it.
-    global["logistics-config"][player.index] = global["logistics-config"][player.index] or {}
-    if global["logistics-active"][player.index] == nil then global["logistics-active"][player.index] = true end
-
-    -- Temporary config lives as long as the frame is open, so it has to be created
-    -- every time the frame is opened.
-    global["logistics-config-tmp"][player.index] = get_requests(player)
-
-    hide_yarm(player.index)
-
-    -- Now we can build the GUI.
-    frame = left.add{
-        type = "frame",
-        caption = {"auto-trash-logistics-config-frame-title"},
-        name = GUI.logisticsConfigFrame,
-        direction = "vertical"
-    }
-    local error_label = frame.add{
-        type = "label",
-        caption = "---",
-        name = "auto-trash-error-label"
-    }
-    error_label.style.minimal_width = 200
-    local slots = player.force.character_logistic_slot_count
-    local column_count = 15
-    local ruleset_grid = frame.add{
-        type = "table",
-        column_count = column_count,
-        name = "auto-trash-ruleset-grid",
-    }
-
-    local choose_button
-    for i = 1, slots do
-        local req = global["logistics-config-tmp"][player.index][i]
-        local elem_value = req and req.name or nil
-
-        choose_button = ruleset_grid.add{
-            type = "choose-elem-button",
-            name = "auto-trash-item-" .. i,
-            style = "slot_button",
-            elem_type = "item"
-        }
-        choose_button.elem_value = elem_value
-
-        local amount = ruleset_grid.add{
-            type = "textfield",
-            name = "auto-trash-amount-" .. i,
-            style = "auto-trash-textfield-small",
-            text = ""
-        }
-        ruleset_grid.add{
-            type = "label",
-            caption = ""
-        }
-
-        local count = req and tonumber(req.count) or 0
-        if req and req.name and count and count >= 0 then
-            amount.text = count
-        end
-    end
-
-    local button_grid = frame.add{
-        type = "table",
-        column_count = 3,
-        name = "auto-trash-button-grid"
-    }
-    button_grid.add{
-        type = "button",
-        name = "auto-trash-logistics-apply",
-        caption = {"auto-trash-config-button-apply"}
-    }
-    button_grid.add{
-        type = "button",
-        name = "auto-trash-logistics-clear-all",
-        caption = {"auto-trash-config-button-clear-all"}
-    }
-    local caption = global["logistics-active"][player.index] and {"auto-trash-config-button-pause"} or {"auto-trash-config-button-unpause"}
-    button_grid.add{
-        type = "button",
-        name = "auto-trash-logistics-pause",
-        caption = caption,
-        tooltip = {"auto-trash-tooltip-pause-requests"}
-    }
-
-
-    frame_new = left.add{
-        type = "frame",
-        caption = {"auto-trash-logistics-config-frame-title"},
-        name = "at-config-frame",
-        direction = "vertical"
-    }
-
-    local scroll_pane = frame_new.add{
-        type = "scroll-pane",
-        name = "at-config-scroll",
-        --vertical_scroll_policy = "auto-and-reserve-space"
-    }
-    scroll_pane.style.maximal_height = math.ceil(38*10+4)
-
-    slots = 60
-    --slots = player.force.character_logistic_slot_count
-    column_count = 6
-    ruleset_grid = scroll_pane.add{
-        type = "table",
-        column_count = column_count,
-        name = "auto-trash-ruleset-grid2",
-        style = "slot_table"
-    }
-
-    for i = 1, slots do
-        local req = global["config_new"][player.index][i]
-        local elem_value = req and req.name or nil
-
-        choose_button = ruleset_grid.add{
-            type = "choose-elem-button",
-            name = "auto-trash-item-" .. i,
-            style = "logistic_button_slot",
-            elem_type = "item"
-        }
-        choose_button.elem_value = elem_value
-        if elem_value then
-            -- caption = req.request and req.request .. "\n" or "\n"
-            -- caption = req.trash and caption .. req.trash or caption
-            local lbl = choose_button.add{
-                type = "label",
-                style = "auto-trash-request-label-top",
-                ignored_by_interaction = true,
-            }
-            lbl.caption = (req.request) and req.request or (req.trash and "0") or ""
-            lbl = choose_button.add{
-                type = "label",
-                style = "auto-trash-request-label-bottom",
-                ignored_by_interaction = true,
-                caption = "3"
-            }
-            lbl.caption = req.trash and req.trash or "∞"
-        end
-    end
-    local slider_vertical_flow = frame_new.add{
-        type = "table",
-        name = "at-slider-flow-vertical",
-        column_count = 2
-    }
-    slider_vertical_flow.add{
-        type = "label",
-        caption = "Request"
-    }
-    local slider_flow = slider_vertical_flow.add{
-        type = "flow",
-        name = "at-slider-flow-request",
-        direction = "horizontal",
-    }
-    slider_flow.style.vertical_align = "center"
-
-    slider_flow.add{
-        type = "slider",
-        name = "at-config-slider-request",
-        minimum_value = -1,
-        maximum_value = 50000,
-        value = 50
-    }
-    slider_flow.add{
-        type = "textfield",
-        name = "at-config-slider-text",
-        style = "slider_value_textfield",
-        text = 50
-    }
-
-    slider_vertical_flow.add{
-        type = "label",
-        caption = "Trash"
-    }
-    slider_flow = slider_vertical_flow.add{
-        type = "flow",
-        name = "at-slider-flow-trash",
-        direction = "horizontal",
-    }
-    slider_flow.style.vertical_align = "center"
-
-    slider_flow.add{
-        type = "slider",
-        name = "at-config-slider-trash",
-        minimum_value = -1,
-        maximum_value = 50000,
-        value = 50
-    }
-    slider_flow.add{
-        type = "textfield",
-        name = "at-config-slider-text",
-        style = "slider_value_textfield",
-        text = 50
-    }
-
-
-
-    storage_frame = left.add{
-        type = "frame",
-        name = GUI.logisticsStorageFrame,
-        caption = {"auto-trash-storage-frame-title"},
-        direction = "vertical"
-    }
-    local storage_frame_error_label = storage_frame.add{
-        type = "label",
-        name = "auto-trash-logistics-storage-error-label",
-        caption = "---"
-    }
-    storage_frame_error_label.style.minimal_width = 200
-    local storage_frame_buttons = storage_frame.add{
-        type = "table",
-        column_count = 3,
-        name = "auto-trash-logistics-storage-buttons"
-    }
-    storage_frame_buttons.add{
-        type = "label",
-        caption = {"auto-trash-storage-name-label"},
-        name = "auto-trash-logistics-storage-name-label"
-    }
-    storage_frame_buttons.add{
-        type = "textfield",
-        text = "",
-        name = "auto-trash-logistics-storage-name"
-    }
-    storage_frame_buttons.add{
-        type = "button",
-        caption = {"auto-trash-storage-store"},
-        name = "auto-trash-logistics-storage-store",
-        style = "auto-trash-small-button"
-    }
-    local storage_grid = storage_frame.add{
-        type = "table",
-        column_count = 3,
-        name = "auto-trash-logistics-storage-grid"
-    }
-
-    if global["storage"][player.index] and global["storage"][player.index].store then
-        local i = 1
-        for key, _ in pairs(global["storage"][player.index].store) do
-            storage_grid.add{
-                type = "label",
-                caption = key .. "        ",
-                name = "auto-trash-logistics-storage-entry-" .. i
-            }
-            storage_grid.add{
-                type = "button",
-                caption = {"auto-trash-storage-restore"},
-                name = "auto-trash-logistics-restore-" .. i,
-                style = "auto-trash-small-button"
-            }
-            storage_grid.add{
-                type = "button",
-                caption = {"auto-trash-storage-remove"},
-                name = "auto-trash-logistics-remove-" .. i,
-                style = "auto-trash-small-button"
-            }
-            i = i + 1
-        end
-    end
-    return {ruleset_grid = ruleset_grid}
-end
 
 function GUI.open_logistics_frame(player, redraw)
     local left = mod_gui.get_frame_flow(player)
@@ -641,10 +357,10 @@ function GUI.open_logistics_frame(player, redraw)
             storage_frame.destroy()
         end
         if not redraw then
+            global.selected[player.index] = false
             show_yarm(player.index)
             return
         end
-        global.selected[player.index] = false
     end
     if frame then
         frame.destroy()
@@ -657,7 +373,7 @@ function GUI.open_logistics_frame(player, redraw)
             return
         end
     end
-
+    log("Selected: " .. serpent.line(global.selected[player.index]))
     frame_new = left.add{
         type = "frame",
         caption = {"auto-trash-logistics-config-frame-title"},
@@ -683,7 +399,7 @@ function GUI.open_logistics_frame(player, redraw)
     }
 
     for i = 1, slots do
-        local req = global["config_new"][player.index][i]
+        local req = global["config_new"][player.index].config[i]
         local elem_value = req and req.name or nil
         local button_name = "auto-trash-item-" .. i
         local choose_button = ruleset_grid.add{
@@ -697,23 +413,24 @@ function GUI.open_logistics_frame(player, redraw)
             choose_button.style = "logistic_button_selected_slot"
         end
 
+        local lbl_top = choose_button.add{
+            type = "label",
+            style = "auto-trash-request-label-top",
+            ignored_by_interaction = true,
+            caption = ""
+        }
+
+        local lbl_bottom = choose_button.add{
+            type = "label",
+            style = "auto-trash-request-label-bottom",
+            ignored_by_interaction = true,
+            caption = ""
+        }
+
         if elem_value then
-            choose_button.locked = true --disable popup gui, keeps on_click active
-            -- caption = req.request and req.request .. "\n" or "\n"
-            -- caption = req.trash and caption .. req.trash or caption
-            local lbl = choose_button.add{
-                type = "label",
-                style = "auto-trash-request-label-top",
-                ignored_by_interaction = true,
-            }
-            lbl.caption = (req.request) and req.request or (req.trash and "0") or ""
-            lbl = choose_button.add{
-                type = "label",
-                style = "auto-trash-request-label-bottom",
-                ignored_by_interaction = true,
-                caption = "3"
-            }
-            lbl.caption = req.trash and req.trash or "∞"
+            lbl_top.caption = (req.request) and req.request or (req.trash and "0") or ""
+            lbl_bottom.caption = req.trash and req.trash or "∞"
+            choose_button.locked = choose_button.name ~= global.selected[player.index] --disable popup gui, keeps on_click active
         end
     end
     local slider_vertical_flow = frame_new.add{
@@ -721,6 +438,7 @@ function GUI.open_logistics_frame(player, redraw)
         name = "at-slider-flow-vertical",
         column_count = 2
     }
+    slider_vertical_flow.style.minimal_width = 60
     slider_vertical_flow.add{
         type = "label",
         caption = "Request"
