@@ -5,6 +5,7 @@ local saveVar = require '__AutoTrash__.lib_control'.saveVar
 local convert = require '__AutoTrash__.lib_control'.convert
 local debugDump = require '__AutoTrash__.lib_control'.debugDump
 local pause_requests = require '__AutoTrash__.lib_control'.pause_requests
+local format_number = require '__AutoTrash__.lib_control'.format_number
 local mod_gui = require '__core__/lualib/mod-gui'
 
 local MAX_CONFIG_SIZES = {
@@ -13,34 +14,6 @@ local MAX_CONFIG_SIZES = {
 }
 
 local GUI = require "__AutoTrash__/gui"
-
-local function format_number(amount, append_suffix)
-  local suffix = ""
-  if append_suffix then
-    local suffix_list =
-      {
-        ["T"] = 1000000000000,
-        ["B"] = 1000000000,
-        ["M"] = 1000000,
-        ["k"] = 1000
-      }
-    for letter, limit in pairs (suffix_list) do
-      if math.abs(amount) >= limit then
-        amount = math.floor(amount/limit)
-        suffix = letter
-        break
-      end
-    end
-  end
-  local formatted, k = amount
-  while true do
-    formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
-    if (k==0) then
-      break
-    end
-  end
-  return formatted..suffix
-end
 
 local function init_global()
     global = global or {}
@@ -184,10 +157,12 @@ local function on_configuration_changed(data)
                     end
                 end
             end
-            for _, c in pairs(global["config-tmp"]) do
-                for i, p in pairs(c) do
-                    if p.name == "" then
-                        p.name = false
+            if global["config-tmp"] then
+                for _, c in pairs(global["config-tmp"]) do
+                    for i, p in pairs(c) do
+                        if p.name == "" then
+                            p.name = false
+                        end
                     end
                 end
             end
@@ -620,6 +595,7 @@ local function unselect_elem_button(player_index, parent)
         element.locked = element.elem_value or false
     end
     global.selected[player_index] = false
+    GUI.update_sliders(player_index, false)
     log("selected: " .. serpent.line(global.selected[player_index]))
 end
 
@@ -671,6 +647,7 @@ local function on_gui_click(event)
                 else
                     unselect_elem_button(player_index, element.parent)
                 end
+            -- clear the button here, since it's locked and gui_elem_changed doesn't trigger
             elseif event.button == defines.mouse_button_type.right then
                 element.elem_value = nil
                 element.locked = false
@@ -815,8 +792,8 @@ local function update_selected_value(player_index, flow, number)
     flow["at-config-slider-text"].text = n > -1 and n or "∞"
     flow["at-config-slider"].slider_value = n
     local frame_new = flow.parent.parent["at-config-scroll"]["at-ruleset-grid"]
-    log(global.selected[player_index])
-    log(serpent.line(#frame_new.children))
+    -- log(global.selected[player_index])
+    -- log(serpent.line(#frame_new.children))
     local i = tonumber(string.match(global.selected[player_index], "auto%-trash%-item%-(%d+)"))
 
     local button = frame_new.children[i]
@@ -826,8 +803,6 @@ local function update_selected_value(player_index, flow, number)
     local item_config = global["config_tmp"][player_index].config[i] and global["config_tmp"][player_index].config[i] or {name = false, trash = 0, request = 0}
     item_config.name = button.elem_value
 
-    log(serpent.line(button))
-    log(serpent.line(button.name))
     if flow.name == "at-slider-flow-request" then
         item_config.request = n
         if button then

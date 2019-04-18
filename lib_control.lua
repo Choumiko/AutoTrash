@@ -38,6 +38,38 @@ local function pause_requests(player)
     end
 end
 
+local function format_number(n, append_suffix)
+  local amount = tonumber(n)
+  if not amount then
+    return n
+  end
+  local suffix = ""
+  if append_suffix then
+    local suffix_list =
+      {
+        ["T"] = 1000000000000,
+        ["B"] = 1000000000,
+        ["M"] = 1000000,
+        ["k"] = 1000
+      }
+    for letter, limit in pairs (suffix_list) do
+      if math.abs(amount) >= limit then
+        amount = math.floor(amount/limit)
+        suffix = letter
+        break
+      end
+    end
+  end
+  local formatted, k = amount
+  while true do
+    formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
+    if (k==0) then
+      break
+    end
+  end
+  return formatted..suffix
+end
+
 --config[player_index][slot] = {name = "item", min=0, max=100}
 --min: if > 0 set as request
 --max: if == 0 and trash unrequested
@@ -125,6 +157,7 @@ local M = {
     saveVar = saveVar,
     debugDump = debugDump,
     pause_requests = pause_requests,
+    format_number = format_number,
     convert = convert_to_combined_storage
 }
 

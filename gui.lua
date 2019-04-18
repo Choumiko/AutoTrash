@@ -1,5 +1,6 @@
 local MAX_STORAGE_SIZE = 6
 local pause_requests = require '__AutoTrash__.lib_control'.pause_requests
+local format_number = require '__AutoTrash__.lib_control'.format_number
 local mod_gui = require '__core__/lualib/mod-gui'
 local function count_keys(hashmap)
     local result = 0
@@ -340,6 +341,15 @@ function GUI.open_frame(player)
     return {ruleset_grid = ruleset_grid}
 end
 
+function GUI.update_sliders(player_index, visible)
+    local player = game.get_player(player_index)
+    local left = mod_gui.get_frame_flow(player)["at-config-frame"]
+    if left and left["at-slider-flow-vertical"] then
+        for _, child in pairs(left["at-slider-flow-vertical"].children) do
+            child.visible = visible
+        end
+    end
+end
 
 function GUI.open_logistics_frame(player, redraw)
     local left = mod_gui.get_frame_flow(player)
@@ -431,8 +441,8 @@ function GUI.open_logistics_frame(player, redraw)
         }
 
         if elem_value then
-            lbl_top.caption = (req.request) and req.request or (req.trash and "0") or ""
-            lbl_bottom.caption = (req.trash and req.trash > -1) and req.trash or "∞"
+            lbl_top.caption = (req.request) and format_number(req.request, true) or (req.trash and "0") or ""
+            lbl_bottom.caption = (req.trash and req.trash > -1) and format_number(req.trash, true) or "∞"
             choose_button.locked = choose_button.name ~= global.selected[player.index] --disable popup gui, keeps on_click active
         end
     end
@@ -441,7 +451,7 @@ function GUI.open_logistics_frame(player, redraw)
         name = "at-slider-flow-vertical",
         column_count = 2
     }
-    slider_vertical_flow.style.minimal_width = 60
+    slider_vertical_flow.style.minimal_height = 60
     local lbl_request = slider_vertical_flow.add{
         type = "label",
         caption = "Request"
