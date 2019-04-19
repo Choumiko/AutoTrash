@@ -121,7 +121,7 @@ local function convert_to_combined_storage()
     end
     log(serpent.block(tmp))
     global.config_new = tmp
-    global.config_tmp = tmp
+    global.config_tmp = util.table.deepcopy(tmp)
     local proc = 0
     for _, d in pairs(global.config_new) do
         for _,_ in pairs(d) do

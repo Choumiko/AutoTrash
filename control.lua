@@ -767,13 +767,16 @@ local function on_gui_elem_changed(event)
         local elem_value = element.elem_value
 
         --log(serpent.line({i=index, elem_value = elem_value}))
-        global["config_tmp"][player_index].config[index] = global["config_tmp"][player_index].config[index] or {name = elem_value, request = 50, trash = false}
-        global["config_tmp"][player_index].config[index].name = elem_value
         if elem_value then
-            global["config_tmp"][player_index].config[index].request = game.item_prototypes[elem_value].default_request_amount
-            GUI.set_item(game.get_player(player_index), type, index, element)
-            element.locked = true
-            select_elem_button(event.player_index, element)
+            local i = GUI.set_item(game.get_player(player_index), index, element)
+            log("set_item " .. serpent.line(i))
+            if i == true then
+                element.locked = true
+                select_elem_button(event.player_index, element)
+            elseif i then
+                local name = "auto-trash-item-" .. i
+                select_elem_button(event.player_index, element.parent[name])
+            end
         else
             global["config_tmp"][player_index].config[index] = nil
             element.children[1].caption = ""

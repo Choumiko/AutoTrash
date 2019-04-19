@@ -466,7 +466,7 @@ function GUI.open_logistics_frame(player, redraw)
     slider_flow_request.add{
         type = "slider",
         name = "at-config-slider",
-        minimum_value = -1,
+        minimum_value = 0,
         maximum_value = 50000,
         value = item_config and tonumber((item_config.request) and item_config.request or (item_config.trash and 0) or -1) or 50
     }
@@ -625,6 +625,8 @@ function GUI.save_changes(player)
     local key = left[GUI.configFrame] and "" or "logistics-"
     local player_index = player.index
 
+    global.config_new[player_index] = util.table.deepcopy(global.config_tmp[player_index])
+
     if global[key.."config-tmp"][player_index] then
         global[key.."config"][player_index] = {}
         local grid = global.guiData[player_index].ruleset_grid
@@ -683,44 +685,28 @@ function GUI.display_message(frame, storage, message)
     error_label.caption = message
 end
 
-function GUI.set_item(player, type1, index, element)
+function GUI.set_item(player, index, element)
     local left = mod_gui.get_frame_flow(player)
-    local frame = left[GUI.configFrame] or left[GUI.logisticsConfigFrame]
-    local key = left[GUI.configFrame] and "config-tmp" or "logistics-config-tmp"
-    if not frame or not global[key][player.index] then return end
-
-    if not global[key][player.index][index] then
-        global[key][player.index][index] = {name=false, count=0}
+    local frame = left["at-config-frame"]
+    --local key = left[GUI.configFrame] and "config-tmp" or "logistics-config-tmp"
+    local player_index = player.index
+    if not frame or not index then
+        return
     end
 
     local elem_value = element.elem_value
     if elem_value then
-        for i, _ in pairs(global[key][player.index]) do
-            if index ~= i and global[key][player.index][i].name == elem_value then
-                GUI.display_message(frame, false, "auto-trash-item-already-set")
+        for i, item in pairs(global.config_tmp[player_index].config) do
+            if index ~= i and item.name == elem_value then
+                -- GUI.display_message(frame, false, "auto-trash-item-already-set")
+                player.print({"auto-trash-item-already-set"})
                 element.elem_value = nil
-                return
+                return i
             end
         end
     end
-
-    if not elem_value or elem_value ~= global[key][player.index][index].name then
-        global[key][player.index][index].count = 0
-    end
-
-    global[key][player.index][index].name = elem_value
-    if elem_value then
-        if key == "logistics-config-tmp" then
-            global[key][player.index][index].count = game.item_prototypes[elem_value].default_request_amount
-        else
-            global[key][player.index][index].count = 0
-        end
-    end
-
-    local ruleset_grid = global.guiData[player.index].ruleset_grid
-    local style = global[key][player.index][index].name and global[key][player.index][index].name or nil
-    ruleset_grid["auto-trash-" .. type1 .. "-" .. index].elem_value = style
-    ruleset_grid["auto-trash-amount" .. "-" .. index].text = global[key][player.index][index].count
+    global["config_tmp"][player_index].config[index] = {name = elem_value, request = game.item_prototypes[elem_value].default_request_amount, trash = false}
+    return true
 end
 
 function GUI.store(player)
