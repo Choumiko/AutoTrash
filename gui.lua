@@ -22,18 +22,14 @@ local function get_requests(player) --luacheck: ignore
 end
 
 local function set_requests(player)
-    local index = player.index
-    if not global["logistics-config"][index] then
-        global["logistics-config"][index] = {}
-    end
-    local storage = global["logistics-config"][index]
+    local storage = global.config_new[player.index].config
     local slots = player.force.character_logistic_slot_count
     if player.character and slots > 0 then
+        local req
         for c=1, slots do
-            if storage[c] and storage[c].name and storage[c].name ~= "" then
-                if storage[c].count > 0 then
-                    player.character.set_request_slot(storage[c], c)
-                end
+            req = storage[c]
+            if req then
+                player.character.set_request_slot({name = req.name, count = req.request or 0}, c)
             else
                 player.character.clear_request_slot(c)
             end
@@ -621,36 +617,14 @@ function GUI.save_changes(player)
     --   1. copying config-tmp to config <- that's bull, just get it from the gui <- not bull now, i only have 2 textfields
     --   2. removing config-tmp
     --   3. closing the frame
-    local left = mod_gui.get_frame_flow(player)
-    local key = left[GUI.configFrame] and "" or "logistics-"
     local player_index = player.index
 
     global.config_new[player_index] = util.table.deepcopy(global.config_tmp[player_index])
-
-    if global[key.."config-tmp"][player_index] then
-        global[key.."config"][player_index] = {}
-        local grid = global.guiData[player_index].ruleset_grid
-        for i, _ in pairs(global[key.."config-tmp"][player_index]) do
-            if not global[key.."config-tmp"][player_index][i].name then
-                global[key.."config"][player_index][i] = { name = false, count = 0 }
-            else
-                global[key.."config-tmp"][player_index][i].count = GUI.sanitizeNumber(grid["auto-trash-amount-"..i].text,0)
-                local amount = global[key.."config-tmp"][player_index][i].count
-                global[key.."config"][player_index][i] = {
-                    name = global[key.."config-tmp"][player_index][i].name,
-                    count = amount or 0
-                }
-            end
-        end
-        global[key.."config-tmp"][player_index] = nil
+    set_requests(player, global["logistics-config"][player_index])
+    if not global["logistics-active"][player_index] then
+        pause_requests(player)
     end
 
-    if key == "logistics-" then
-        set_requests(player, global["logistics-config"][player_index])
-        if not global["logistics-active"][player_index] then
-            pause_requests(player)
-        end
-    end
     show_yarm(player_index)
     GUI.close(player)
 end
