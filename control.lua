@@ -6,7 +6,6 @@ local convert = require '__AutoTrash__.lib_control'.convert
 local debugDump = require '__AutoTrash__.lib_control'.debugDump
 local pause_requests = require '__AutoTrash__.lib_control'.pause_requests
 local format_number = require '__AutoTrash__.lib_control'.format_number
-local mod_gui = require '__core__/lualib/mod-gui'
 
 local MAX_CONFIG_SIZES = {
     ["character-logistic-trash-slots-1"] = 10,
@@ -23,8 +22,8 @@ local function init_global()
     global["logistics-config-tmp"] = global["logistics-config-tmp"] or {}
     global["storage"] = global["storage"] or {}
     global.active = global.active or {}
-    global.mainNetwork = global.mainNetwork or {}
     global["logistics-active"] = global["logistics-active"] or {}
+    global.mainNetwork = global.mainNetwork or {}
     global.configSize = global.configSize or {}
     global.temporaryTrash = global.temporaryTrash or {}
     global.temporaryRequests = global.temporaryRequests or {}
@@ -694,7 +693,7 @@ local function on_gui_click(event)
                     global.mainNetwork[player_index] = cell and cell.owner or false
                 end
                 if not global.mainNetwork[player_index] then
-                    GUI.display_message(mod_gui.get_frame_flow(player)[GUI.configFrame], false, "auto-trash-not-in-network")
+                    GUI.display_message(player, {"auto-trash-not-in-network"})
                 end
             end
             element.caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
@@ -811,6 +810,12 @@ local function update_selected_value(player_index, flow, number)
         if button then
             button.children[1].caption = format_number(n, true)
         end
+        if item_config.request > item_config.trash then
+            item_config.trash = item_config.request
+            local trash_flow = flow.parent["at-slider-flow-trash"]
+            trash_flow["at-config-slider"].slider_value = item_config.trash
+            trash_flow["at-config-slider-text"].text = item_config.trash > -1 and item_config.trash or "∞"
+        end
     elseif flow.name == "at-slider-flow-trash" then
         item_config.trash = n
         if button then
@@ -824,20 +829,18 @@ local function on_gui_value_changed(event)
     if not global.selected[event.player_index] then
         return
     end
-    if not event.element.name == "at-config-slider" then
-        return
+    if event.element.name == "at-config-slider" then
+        update_selected_value(event.player_index, event.element.parent, event.element.slider_value)
     end
-    update_selected_value(event.player_index, event.element.parent, event.element.slider_value)
 end
 
 local function on_gui_text_changed(event)
     if not global.selected[event.player_index] then
         return
     end
-    if not event.element.name == "at-config-slider-text" then
-        return
+    if event.element.name == "at-config-slider-text" then
+        update_selected_value(event.player_index, event.element.parent, event.element.text)
     end
-    update_selected_value(event.player_index, event.element.parent, event.element.text)
 end
 
 script.on_event(defines.events.on_gui_click, on_gui_click)
