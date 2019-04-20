@@ -40,7 +40,7 @@ end
 
 local function format_number(n, append_suffix)
   local amount = tonumber(n)
-  if not amount then
+    if not amount then
     return n
   end
   local suffix = ""
@@ -68,6 +68,14 @@ local function format_number(n, append_suffix)
     end
   end
   return formatted..suffix
+end
+
+local function format_request(item_config)
+    return item_config.request > -1 and item_config.request or " "
+end
+
+local function format_trash(item_config)
+    return (item_config.trash and item_config.trash > -1) and item_config.trash or "∞"
 end
 
 --config[player_index][slot] = {name = "item", min=0, max=100}
@@ -158,6 +166,8 @@ local M = {
     debugDump = debugDump,
     pause_requests = pause_requests,
     format_number = format_number,
+    format_request = format_request,
+    format_trash = format_trash,
     convert = convert_to_combined_storage
 }
 

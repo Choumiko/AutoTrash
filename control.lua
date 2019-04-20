@@ -6,6 +6,8 @@ local convert = require '__AutoTrash__.lib_control'.convert
 local debugDump = require '__AutoTrash__.lib_control'.debugDump
 local pause_requests = require '__AutoTrash__.lib_control'.pause_requests
 local format_number = require '__AutoTrash__.lib_control'.format_number
+local format_request = require '__AutoTrash__.lib_control'.format_request
+local format_trash = require '__AutoTrash__.lib_control'.format_trash
 
 local MAX_CONFIG_SIZES = {
     ["character-logistic-trash-slots-1"] = 10,
@@ -213,7 +215,7 @@ local function on_configuration_changed(data)
     end
     for player_index, p in pairs(global["config_tmp"]) do
         for i=#p.config,1,-1 do
-            if not items[p.config[i].name] then
+            if p.config[i] and not items[p.config[i].name] then
                 table.remove(global["config_tmp"][player_index].config, i)
             end
         end
@@ -587,35 +589,44 @@ end
 
 local function unselect_elem_button(player_index, parent)
     local selected = global.selected[player_index]
-    local element = selected and parent[selected]
+    local element = selected and parent.children[selected]
     if selected and element then
         element.style = "logistic_button_slot"
-        log("unselect: " .. serpent.line({elem=element.elem_value, locked = element.locked}))
+        log("Unselect: " .. serpent.line({i=selected, item = element.elem_value}))
         element.locked = element.elem_value or false
     end
     global.selected[player_index] = false
     GUI.update_sliders(player_index, false)
-    log("selected: " .. serpent.line(global.selected[player_index]))
 end
 
 local function select_elem_button(player_index, element)
     local selected = global.selected[player_index]
-    log("locked: " .. serpent.line(element.locked))
-    log("old selected " .. serpent.line(selected))
     if selected then
-        if selected ~= element.name then
+        if element.parent.children[selected].name ~= element.name then
             unselect_elem_button(player_index, element.parent)
         else
             return
         end
     end
-    if element.elem_value and element.locked then
-        element.locked = false
-        element.style = "logistic_button_selected_slot"
-        global.selected[player_index] = element.name
+    if element.elem_value then
+        if element.locked then
+            element.locked = false
+            element.style = "logistic_button_selected_slot"
+            global.selected[player_index] = tonumber(string.match(element.name, "auto%-trash%-item%-(%d+)"))
+        end
+        GUI.update_sliders(player_index, true)
     end
-    GUI.open_logistics_frame(game.get_player(player_index), true)
-    log("new selected " .. serpent.line(global.selected[player_index]))
+    log("Selected " .. serpent.line({i = global.selected[player_index], item = element.elem_value}))
+    GUI.create_buttons(game.get_player(player_index))
+end
+
+local function clear_elem_button(player_index, index, element)
+    element.elem_value = nil
+    element.locked = false
+    global["config_tmp"][player_index].config[index] = nil
+    element.children[1].caption = " "
+    element.children[2].caption = " "
+    unselect_elem_button(player_index, element.parent)
 end
 
 local function on_gui_click(event)
@@ -628,9 +639,9 @@ local function on_gui_click(event)
         if element.type == "choose-elem-button" then
             local index = tonumber(string.match(element.name, "auto%-trash%-item%-(%d+)"))
             index = tonumber(index)
-            log("on click " .. serpent.line(element.name))
-            log(serpent.line(event))
-            log(serpent.line({elem=element.elem_value, locked = element.locked, selected = global.selected[player_index]}))
+            -- log("on click " .. serpent.line(element.name))
+            -- log(serpent.line(event))
+            --log(serpent.line({elem=element.elem_value, locked = element.locked, selected = global.selected[player_index]}))
             if not index then
                 return
             end
@@ -648,18 +659,11 @@ local function on_gui_click(event)
                 end
             -- clear the button here, since it's locked and gui_elem_changed doesn't trigger
             elseif event.button == defines.mouse_button_type.right then
-                element.elem_value = nil
-                element.locked = false
-                global["config_tmp"][player_index].config[index] = nil
-                element.children[1].caption = ""
-                element.children[2].caption = ""
-                unselect_elem_button(player_index, element.parent)
-                GUI.open_logistics_frame(game.get_player(player_index), true)
+                clear_elem_button(player_index, index, element)
             end
             return
         end
-        -- log(serpent.block(event))
-        -- log(serpent.block({name = element.name}))
+
         local player = game.get_player(player_index)
         if element.name == "auto-trash-config-button" then
             if player.cursor_stack.valid_for_read then
@@ -777,11 +781,7 @@ local function on_gui_elem_changed(event)
                 select_elem_button(event.player_index, element.parent[name])
             end
         else
-            global["config_tmp"][player_index].config[index] = nil
-            element.children[1].caption = ""
-            element.children[2].caption = ""
-            unselect_elem_button(event.player_index, element.parent)
-            GUI.open_logistics_frame(game.get_player(player_index), true)
+            clear_elem_button(player_index, index, element)
         end
     end)
     if not status then
@@ -791,12 +791,10 @@ end
 
 local function update_selected_value(player_index, flow, number)
     local n = math.floor(tonumber(number) or 50)
-    flow["at-config-slider-text"].text = n > -1 and n or "∞"
-    flow["at-config-slider"].slider_value = n
     local frame_new = flow.parent.parent["at-config-scroll"]["at-ruleset-grid"]
     -- log(global.selected[player_index])
     -- log(serpent.line(#frame_new.children))
-    local i = tonumber(string.match(global.selected[player_index], "auto%-trash%-item%-(%d+)"))
+    local i = global.selected[player_index]
 
     local button = frame_new.children[i]
     if not button or not button.valid then
@@ -805,28 +803,32 @@ local function update_selected_value(player_index, flow, number)
     local item_config = global["config_tmp"][player_index].config[i] and global["config_tmp"][player_index].config[i] or {name = false, trash = 0, request = 0}
     item_config.name = button.elem_value
 
+    local formated
     if flow.name == "at-slider-flow-request" then
         item_config.request = n
-        if button then
-            button.children[1].caption = format_number(n, true)
-        end
-        if item_config.request > item_config.trash then
+        formated = format_request(item_config)
+        button.children[1].caption = format_number(formated, true)
+        if item_config.trash and item_config.request > item_config.trash then
             item_config.trash = item_config.request
-            local trash_flow = flow.parent["at-slider-flow-trash"]
-            trash_flow["at-config-slider"].slider_value = item_config.trash
-            trash_flow["at-config-slider-text"].text = item_config.trash > -1 and item_config.trash or "∞"
+            button.children[2].caption = format_number(format_trash(item_config), true)
         end
     elseif flow.name == "at-slider-flow-trash" then
         item_config.trash = n
+        formated = format_trash(item_config)
         if button then
-            button.children[2].caption = n > -1 and format_number(n, true) or "∞"
+            button.children[2].caption = format_number(formated, true)
         end
+        -- if item_config.request and item_config.request > n then
+        --     item_config.request = item_config.trash
+        -- end
     end
     global["config_tmp"][player_index].config[i] = item_config
+    GUI.update_sliders(player_index, true)
 end
 
 local function on_gui_value_changed(event)
     if not global.selected[event.player_index] then
+        GUI.update_sliders(event.player.index, false)
         return
     end
     if event.element.name == "at-config-slider" then
@@ -836,6 +838,7 @@ end
 
 local function on_gui_text_changed(event)
     if not global.selected[event.player_index] then
+        GUI.update_sliders(event.player.index, false)
         return
     end
     if event.element.name == "at-config-slider-text" then

@@ -340,11 +340,83 @@ end
 function GUI.update_sliders(player_index, visible)
     local player = game.get_player(player_index)
     local left = mod_gui.get_frame_flow(player)["at-config-frame"]
-    if left and left["at-slider-flow-vertical"] then
-        for _, child in pairs(left["at-slider-flow-vertical"].children) do
-            child.visible = visible
+    local slider_flow = left and left["at-slider-flow-vertical"]
+    if not slider_flow or not slider_flow.valid then
+        return
+    end
+    for _, child in pairs(slider_flow.children) do
+        child.visible = visible
+    end
+    if global.selected[player_index] then
+        local req = global.config_tmp[player_index].config[global.selected[player_index]]
+        slider_flow["at-slider-flow-request"]["at-config-slider"].slider_value = tonumber((req.request) and req.request or (req.trash and 0) or -1) or 50
+        slider_flow["at-slider-flow-request"]["at-config-slider-text"].text = (req.request) and req.request or (req.trash and "0") or ""
+        slider_flow["at-slider-flow-trash"]["at-config-slider"].slider_value = tonumber(req.trash and req.trash or -1) or -1
+        slider_flow["at-slider-flow-trash"]["at-config-slider-text"].text = (req.trash and req.trash > -1) and req.trash or "∞"
+    end
+end
+
+function GUI.create_buttons(player)
+    local left = mod_gui.get_frame_flow(player)
+    local frame_new = (left and left.valid) and left["at-config-frame"]
+    if not frame_new or not frame_new.valid or not frame_new["at-config-scroll"] then
+        return
+    end
+    local ruleset_grid = frame_new["at-config-scroll"]["at-ruleset-grid"]
+    if ruleset_grid and ruleset_grid.valid then
+        ruleset_grid.destroy()
+    end
+
+    local column_count = 6
+    ruleset_grid = frame_new["at-config-scroll"].add{
+        type = "table",
+        column_count = column_count,
+        name = "at-ruleset-grid",
+        style = "slot_table"
+    }
+
+    local player_index = player.index
+    local item_config
+    local slots = 60
+    --slots = player.force.character_logistic_slot_count
+    for i = 1, slots do
+        local req = global["config_tmp"][player_index].config[i]
+        local elem_value = req and req.name or nil
+        local button_name = "auto-trash-item-" .. i
+        local choose_button = ruleset_grid.add{
+            type = "choose-elem-button",
+            name = button_name,
+            style = "logistic_button_slot",
+            elem_type = "item"
+        }
+        choose_button.elem_value = elem_value
+        if global.selected[player_index] == i then
+            choose_button.style = "logistic_button_selected_slot"
+            item_config = global["config_tmp"][player_index].config[i]
+        end
+
+        local lbl_top = choose_button.add{
+            type = "label",
+            style = "auto-trash-request-label-top",
+            ignored_by_interaction = true,
+            caption = " "
+        }
+
+        local lbl_bottom = choose_button.add{
+            type = "label",
+            style = "auto-trash-request-label-bottom",
+            ignored_by_interaction = true,
+            caption = " "
+        }
+
+        if elem_value then
+            lbl_top.caption = (req.request and req.request > -1) and format_number(req.request, true) or (req.trash and " ") or " "
+            lbl_bottom.caption = (req.trash and req.trash > -1) and format_number(req.trash, true) or "∞"
+            --disable popup gui, keeps on_click active
+            choose_button.locked = choose_button.name ~=  "auto-trash-item-" .. tostring(global.selected[player_index])
         end
     end
+    return item_config
 end
 
 function GUI.open_logistics_frame(player, redraw)
@@ -394,54 +466,8 @@ function GUI.open_logistics_frame(player, redraw)
     }
     scroll_pane.style.maximal_height = math.ceil(38*10+4)
 
-    local slots = 60
-    --slots = player.force.character_logistic_slot_count
-    local column_count = 6
-    local ruleset_grid = scroll_pane.add{
-        type = "table",
-        column_count = column_count,
-        name = "at-ruleset-grid",
-        style = "slot_table"
-    }
+    local item_config = GUI.create_buttons(player)
 
-    local item_config
-
-    for i = 1, slots do
-        local req = global["config_tmp"][player_index].config[i]
-        local elem_value = req and req.name or nil
-        local button_name = "auto-trash-item-" .. i
-        local choose_button = ruleset_grid.add{
-            type = "choose-elem-button",
-            name = button_name,
-            style = "logistic_button_slot",
-            elem_type = "item"
-        }
-        choose_button.elem_value = elem_value
-        if global.selected[player_index] == button_name then
-            choose_button.style = "logistic_button_selected_slot"
-            item_config = global["config_tmp"][player_index].config[i]
-        end
-
-        local lbl_top = choose_button.add{
-            type = "label",
-            style = "auto-trash-request-label-top",
-            ignored_by_interaction = true,
-            caption = ""
-        }
-
-        local lbl_bottom = choose_button.add{
-            type = "label",
-            style = "auto-trash-request-label-bottom",
-            ignored_by_interaction = true,
-            caption = ""
-        }
-
-        if elem_value then
-            lbl_top.caption = (req.request) and format_number(req.request, true) or (req.trash and "0") or ""
-            lbl_bottom.caption = (req.trash and req.trash > -1) and format_number(req.trash, true) or "∞"
-            choose_button.locked = choose_button.name ~= global.selected[player_index] --disable popup gui, keeps on_click active
-        end
-    end
     local slider_vertical_flow = frame_new.add{
         type = "table",
         name = "at-slider-flow-vertical",
@@ -462,7 +488,7 @@ function GUI.open_logistics_frame(player, redraw)
     slider_flow_request.add{
         type = "slider",
         name = "at-config-slider",
-        minimum_value = 0,
+        minimum_value = -1,
         maximum_value = 50000,
         value = item_config and tonumber((item_config.request) and item_config.request or (item_config.trash and 0) or -1) or 50
     }
@@ -528,9 +554,6 @@ function GUI.open_logistics_frame(player, redraw)
         tooltip = {"auto-trash-tooltip-pause-requests"}
     }
 
-
-
-
     storage_frame = left.add{
         type = "frame",
         name = GUI.logisticsStorageFrame,
@@ -589,7 +612,6 @@ function GUI.open_logistics_frame(player, redraw)
             i = i + 1
         end
     end
-    return {ruleset_grid = ruleset_grid}
 end
 
 function GUI.close(player)
@@ -609,13 +631,11 @@ function GUI.close(player)
 end
 
 function GUI.save_changes(player)
-    -- Saving changes consists in:
-    --   1. copying config-tmp to config <- that's bull, just get it from the gui <- not bull now, i only have 2 textfields
-    --   2. removing config-tmp
-    --   3. closing the frame
     local player_index = player.index
-
     global.config_new[player_index] = util.table.deepcopy(global.config_tmp[player_index])
+
+    --TODO ensure trash >= requests
+
     set_requests(player, global["logistics-config"][player_index])
     if not global["logistics-active"][player_index] then
         pause_requests(player)
@@ -662,8 +682,8 @@ function GUI.set_item(player, index, element)
                 return i
             end
         end
+        global["config_tmp"][player_index].config[index] = {name = elem_value, request = game.item_prototypes[elem_value].default_request_amount, trash = false}
     end
-    global["config_tmp"][player_index].config[index] = {name = elem_value, request = game.item_prototypes[elem_value].default_request_amount, trash = false}
     return true
 end
 
