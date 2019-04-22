@@ -627,6 +627,7 @@ local function clear_elem_button(player_index, index, element)
     element.children[1].caption = " "
     element.children[2].caption = " "
     unselect_elem_button(player_index, element.parent)
+    GUI.create_buttons(game.get_player(player_index))
 end
 
 local function on_gui_click(event)
@@ -638,7 +639,6 @@ local function on_gui_click(event)
         local player_index = event.player_index
         if element.type == "choose-elem-button" then
             local index = tonumber(string.match(element.name, "auto%-trash%-item%-(%d+)"))
-            index = tonumber(index)
             -- log("on click " .. serpent.line(element.name))
             -- log(serpent.line(event))
             --log(serpent.line({elem=element.elem_value, locked = element.locked, selected = global.selected[player_index]}))
@@ -672,8 +672,6 @@ local function on_gui_click(event)
                 elseif player.cursor_stack.name ~= "blueprint" then
                     add_to_trash(player, player.cursor_stack.name, 0)
                 end
-            else
-                GUI.open_frame(player)
             end
         elseif element.name == "auto-trash-apply" or element.name == "auto-trash-logistics-apply" then
             GUI.save_changes(player)

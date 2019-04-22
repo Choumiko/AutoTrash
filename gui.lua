@@ -163,180 +163,6 @@ function GUI.destroy_frames(player)
     end
 end
 
-function GUI.open_frame(player)
-    local left = mod_gui.get_frame_flow(player)
-    local frame = left[GUI.configFrame]
-    local frame2 = left[GUI.logisticsConfigFrame]
-    local storage_frame = left[GUI.logisticsStorageFrame]
-    if frame2 then
-        frame2.destroy()
-    end
-    if storage_frame then
-        storage_frame.destroy()
-    end
-    if frame then
-        frame.destroy()
-        global["config-tmp"][player.index] = nil
-        show_yarm(player.index)
-        return
-    end
-
-    -- If player config does not exist, we need to create it.
-    global["config"][player.index] = global["config"][player.index] or {}
-    if global.active[player.index] == nil then global.active[player.index] = true end
-
-    -- Temporary config lives as long as the frame is open, so it has to be created
-    -- every time the frame is opened.
-    global["config-tmp"][player.index] = {}
-    local configSize = global.configSize[player.force.name]
-    -- We need to copy all items from normal config to temporary config.
-
-    for i = 1, configSize  do
-        if i > #global["config"][player.index] then
-            global["config-tmp"][player.index][i] = { name = false, count = 0 }
-        else
-            global["config-tmp"][player.index][i] = {
-                name = global["config"][player.index][i].name,
-                count = global["config"][player.index][i].count
-            }
-        end
-    end
-
-    hide_yarm(player.index)
-
-    -- Now we can build the GUI.
-    frame = left.add{
-        type = "frame",
-        caption = {"auto-trash-config-frame-title"},
-        name = GUI.configFrame,
-        direction = "vertical"
-    }
-
-    local error_label = frame.add{
-        type = "label",
-        caption = "---",
-        name = "auto-trash-error-label"
-    }
-    error_label.style.minimal_width = 200
-    local column_count = configSize > 10 and 9 or 6
-    column_count = configSize > 54 and 12 or column_count
-
-    local pane = frame.add{
-        type = "scroll-pane",
-    }
-    pane.style.maximal_height = math.ceil(44*10)
-
-    local ruleset_grid = pane.add{
-        type = "table",
-        column_count = column_count,
-        name = "auto-trash-ruleset-grid"
-    }
-    local j = 1
-    for _=1,column_count/3 do
-        ruleset_grid.add{
-            type = "label",
-            name = "auto-trash-grid-header-"..j,
-            caption = {"auto-trash-config-header-1"}
-        }
-        j = j+1
-        ruleset_grid.add{
-            type = "label",
-            name = "auto-trash-grid-header-"..j,
-            caption = {"auto-trash-config-header-2"}
-        }
-        j=j+1
-        ruleset_grid.add{
-            type = "label",
-            caption = ""
-        }
-    end
-
-    local choose_button
-    for i = 1, configSize do
-        local req = global["config-tmp"][player.index][i]
-        local elem_value = req and req.name or nil
-
-        --log(serpent.block(req))
-        choose_button = ruleset_grid.add{
-            type = "choose-elem-button",
-            name = "auto-trash-item-" .. i,
-            style = "slot_button",
-            elem_type = "item"
-        }
-        choose_button.elem_value = elem_value
-
-        local amount = ruleset_grid.add{
-            type = "textfield",
-            name = "auto-trash-amount-" .. i,
-            style = "auto-trash-textfield-small",
-            text = ""
-        }
-        ruleset_grid.add{
-            type = "label",
-            caption = ""
-        }
-
-        local count = tonumber(global["config-tmp"][player.index][i].count)
-        if global["config-tmp"][player.index][i].name and count and count >= 0 then
-            amount.text = count
-        end
-    end
-
-    frame.add{
-        type = "checkbox",
-        name = GUI.trash_above_requested,
-        caption = {"auto-trash-above-requested"},
-        state = global.settings[player.index].auto_trash_above_requested
-    }
-
-    frame.add{
-        type = "checkbox",
-        name = GUI.trash_unrequested,
-        caption = {"auto-trash-unrequested"},
-        state = global.settings[player.index].auto_trash_unrequested,
-    }
-
-    frame.add{
-        type = "checkbox",
-        name = GUI.trash_in_main_network,
-        caption = {"auto-trash-in-main-network"},
-        state = global.settings[player.index].auto_trash_in_main_network,
-    }
-
-    local caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
-    frame.add{
-        type = "button",
-        name = "auto-trash-set-main-network",
-        caption = caption
-    }
-
-    local button_grid = frame.add{
-        type = "table",
-        column_count = 3,
-        name = "auto-trash-button-grid"
-    }
-
-    button_grid.add{
-        type = "button",
-        name = "auto-trash-apply",
-        caption = {"auto-trash-config-button-apply"}
-    }
-    button_grid.add{
-        type = "button",
-        name = "auto-trash-clear-all",
-        caption = {"auto-trash-config-button-clear-all"}
-    }
-    caption = global.active[player.index] and {"auto-trash-config-button-pause"} or {"auto-trash-config-button-unpause"}
-    button_grid.add{
-        type = "button",
-        name = "auto-trash-pause",
-        caption = caption,
-        tooltip = {"auto-trash-tooltip-pause"}
-    }
-
-    return {ruleset_grid = ruleset_grid}
-end
-
 function GUI.update_sliders(player_index, visible)
     local player = game.get_player(player_index)
     local left = mod_gui.get_frame_flow(player)["at-config-frame"]
@@ -451,6 +277,9 @@ function GUI.open_logistics_frame(player, redraw)
             return
         end
     end
+
+    hide_yarm(player_index)
+
     log("Selected: " .. serpent.line(global.selected[player_index]))
     frame_new = left.add{
         type = "frame",
@@ -531,6 +360,35 @@ function GUI.open_logistics_frame(player, redraw)
         slider_flow_trash.visible = false
     end
 
+    frame_new.add{
+        type = "checkbox",
+        name = GUI.trash_above_requested,
+        caption = {"auto-trash-above-requested"},
+        state = global.settings[player.index].auto_trash_above_requested
+    }
+
+    frame_new.add{
+        type = "checkbox",
+        name = GUI.trash_unrequested,
+        caption = {"auto-trash-unrequested"},
+        state = global.settings[player.index].auto_trash_unrequested,
+    }
+
+    frame_new.add{
+        type = "checkbox",
+        name = GUI.trash_in_main_network,
+        caption = {"auto-trash-in-main-network"},
+        state = global.settings[player.index].auto_trash_in_main_network,
+    }
+
+    local caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+    frame_new.add{
+        type = "button",
+        name = "auto-trash-set-main-network",
+        caption = caption
+    }
+
+
     local button_grid = frame_new.add{
         type = "table",
         column_count = 3,
@@ -546,7 +404,7 @@ function GUI.open_logistics_frame(player, redraw)
         name = "auto-trash-logistics-clear-all",
         caption = {"auto-trash-config-button-clear-all"}
     }
-    local caption = global["logistics-active"][player_index] and {"auto-trash-config-button-pause"} or {"auto-trash-config-button-unpause"}
+    caption = global["logistics-active"][player_index] and {"auto-trash-config-button-pause"} or {"auto-trash-config-button-unpause"}
     button_grid.add{
         type = "button",
         name = "auto-trash-logistics-pause",
@@ -677,7 +535,7 @@ function GUI.set_item(player, index, element)
     if elem_value then
         for i, item in pairs(global.config_tmp[player_index].config) do
             if index ~= i and item.name == elem_value then
-                GUI.display_message(player, {"auto-trash-item-already-set"})
+                GUI.display_message(player, {"", {"cant-set-duplicate-request", game.item_prototypes[item.name].localised_name}})
                 element.elem_value = nil
                 return i
             end
