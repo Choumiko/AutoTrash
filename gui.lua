@@ -443,7 +443,7 @@ function GUI.open_logistics_frame(player, redraw)
     }
     local storage_grid = storage_frame.add{
         type = "table",
-        column_count = 3,
+        column_count = 2,
         name = "auto-trash-logistics-storage-grid"
     }
 
@@ -451,22 +451,20 @@ function GUI.open_logistics_frame(player, redraw)
         local i = 1
         for key, _ in pairs(global.storage_new[player_index]) do
             storage_grid.add{
-                type = "label",
-                caption = key .. "        ",
-                name = "auto-trash-logistics-storage-entry-" .. i
-            }
-            storage_grid.add{
                 type = "button",
-                caption = {"auto-trash-storage-restore"},
+                caption = key,
                 name = "auto-trash-logistics-restore-" .. i,
-                style = "auto-trash-small-button"
             }
-            storage_grid.add{
-                type = "button",
-                caption = {"auto-trash-storage-remove"},
+            local remove = storage_grid.add{
+                type = "sprite-button",
                 name = "auto-trash-logistics-remove-" .. i,
-                style = "auto-trash-small-button"
+                style = "red_icon_button",
+                sprite = "utility/remove"
             }
+            remove.style.left_padding = 0
+            remove.style.right_padding = 0
+            remove.style.top_padding = 0
+            remove.style.bottom_padding = 0
             i = i + 1
         end
     end
@@ -582,10 +580,10 @@ function GUI.restore(player, index)
     if not frame or not storage_frame then return end
 
     local storage_grid = storage_frame["auto-trash-logistics-storage-grid"]
-    local storage_entry = storage_grid["auto-trash-logistics-storage-entry-" .. index]
+    local storage_entry = storage_grid["auto-trash-logistics-restore-" .. index]
     if not storage_entry then return end
     local player_index = player.index
-    local name = string.match(storage_entry.caption, "^%s*(.-)%s*$")
+    local name = storage_entry.caption
     assert(global.storage_new[player_index]) --TODO remove
     assert(global.storage_new[player_index][name]) --TODO remove
 
@@ -594,23 +592,22 @@ function GUI.restore(player, index)
 end
 
 function GUI.remove(player, index)
-    if not global["storage"][player.index] then return end
     local left = mod_gui.get_frame_flow(player)
     local storage_frame = left[GUI.logisticsStorageFrame]
     if not storage_frame then return end
     local storage_grid = storage_frame["auto-trash-logistics-storage-grid"]
-    local label = storage_grid["auto-trash-logistics-storage-entry-" .. index]
     local btn1 = storage_grid["auto-trash-logistics-restore-" .. index]
     local btn2 = storage_grid["auto-trash-logistics-remove-" .. index]
 
-    if not label or not btn1 or not btn2 then return end
+    if not btn1 or not btn2 then return end
 
-    local name = string.match(label.caption, "^%s*(.-)%s*$")
-    label.destroy()
+    local name = btn1.caption
+    assert(global.storage_new[player.index]) --TODO remove
+    assert(global.storage_new[player.index][name]) --TODO remove
     btn1.destroy()
     btn2.destroy()
 
-    global["storage"][player.index].store[name] = nil
+    global["storage_new"][player.index][name] = nil
 end
 
 return GUI

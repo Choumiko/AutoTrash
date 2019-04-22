@@ -825,6 +825,9 @@ local function update_selected_value(player_index, flow, number)
 end
 
 local function on_gui_value_changed(event)
+    if event.element.name ~= "at-config-slider" then
+        return
+    end
     if not global.selected[event.player_index] then
         GUI.update_sliders(event.player.index, false)
         return
@@ -835,8 +838,11 @@ local function on_gui_value_changed(event)
 end
 
 local function on_gui_text_changed(event)
+    if event.element.name ~= "at-config-slider-text" then
+        return
+    end
     if not global.selected[event.player_index] then
-        GUI.update_sliders(event.player.index, false)
+        GUI.update_sliders(event.player_index, false)
         return
     end
     if event.element.name == "at-config-slider-text" then
