@@ -8,6 +8,9 @@ local pause_requests = require '__AutoTrash__.lib_control'.pause_requests
 local format_number = require '__AutoTrash__.lib_control'.format_number
 local format_request = require '__AutoTrash__.lib_control'.format_request
 local format_trash = require '__AutoTrash__.lib_control'.format_trash
+local convert_from_slider = require '__AutoTrash__.lib_control'.convert_from_slider
+
+local floor = math.floor
 
 local MAX_CONFIG_SIZES = {
     ["character-logistic-trash-slots-1"] = 10,
@@ -596,7 +599,7 @@ local function unselect_elem_button(player_index, parent)
         element.locked = element.elem_value or false
     end
     global.selected[player_index] = false
-    GUI.update_sliders(player_index, false)
+    GUI.update_sliders(player_index)
 end
 
 local function select_elem_button(player_index, element)
@@ -614,7 +617,7 @@ local function select_elem_button(player_index, element)
             element.style = "logistic_button_selected_slot"
             global.selected[player_index] = tonumber(string.match(element.name, "auto%-trash%-item%-(%d+)"))
         end
-        GUI.update_sliders(player_index, true)
+        GUI.update_sliders(player_index)
     end
     log("Selected " .. serpent.line({i = global.selected[player_index], item = element.elem_value}))
     GUI.create_buttons(game.get_player(player_index))
@@ -788,7 +791,7 @@ local function on_gui_elem_changed(event)
 end
 
 local function update_selected_value(player_index, flow, number)
-    local n = math.floor(tonumber(number) or 50)
+    local n = floor(tonumber(number) or 0)
     local frame_new = flow.parent.parent["at-config-scroll"]["at-ruleset-grid"]
     -- log(global.selected[player_index])
     -- log(serpent.line(#frame_new.children))
@@ -801,27 +804,24 @@ local function update_selected_value(player_index, flow, number)
     local item_config = global["config_tmp"][player_index].config[i] and global["config_tmp"][player_index].config[i] or {name = false, trash = 0, request = 0}
     item_config.name = button.elem_value
 
-    local formated
     if flow.name == "at-slider-flow-request" then
         item_config.request = n
-        formated = format_request(item_config)
-        button.children[1].caption = format_number(formated, true)
-        if item_config.trash and item_config.request > item_config.trash then
+        button.children[1].caption = format_number(format_request(item_config), true)
+        --prevent trash being set to a lower value than request to prevent infinite robo loop
+        if item_config.trash and item_config.trash > -1 and item_config.request > item_config.trash then
             item_config.trash = item_config.request
             button.children[2].caption = format_number(format_trash(item_config), true)
         end
     elseif flow.name == "at-slider-flow-trash" then
         item_config.trash = n
-        formated = format_trash(item_config)
-        if button then
-            button.children[2].caption = format_number(formated, true)
-        end
+        button.children[2].caption = format_number(format_trash(item_config), true)
+
         -- if item_config.request and item_config.request > n then
         --     item_config.request = item_config.trash
         -- end
     end
     global["config_tmp"][player_index].config[i] = item_config
-    GUI.update_sliders(player_index, true)
+    GUI.update_sliders(player_index)
 end
 
 local function on_gui_value_changed(event)
@@ -829,11 +829,11 @@ local function on_gui_value_changed(event)
         return
     end
     if not global.selected[event.player_index] then
-        GUI.update_sliders(event.player.index, false)
+        GUI.update_sliders(event.player.index)
         return
     end
     if event.element.name == "at-config-slider" then
-        update_selected_value(event.player_index, event.element.parent, event.element.slider_value)
+        update_selected_value(event.player_index, event.element.parent, convert_from_slider(event.element.slider_value))
     end
 end
 
@@ -842,7 +842,7 @@ local function on_gui_text_changed(event)
         return
     end
     if not global.selected[event.player_index] then
-        GUI.update_sliders(event.player_index, false)
+        GUI.update_sliders(event.player_index)
         return
     end
     if event.element.name == "at-config-slider-text" then

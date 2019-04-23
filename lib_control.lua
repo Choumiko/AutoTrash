@@ -1,3 +1,4 @@
+local floor = math.floor
 local function saveVar(var, name)
     var = var or global
     local n = name or ""
@@ -54,7 +55,7 @@ local function format_number(n, append_suffix)
       }
     for letter, limit in pairs (suffix_list) do
       if math.abs(amount) >= limit then
-        amount = math.floor(amount/limit)
+        amount = floor(amount/(limit/10))/10
         suffix = letter
         break
       end
@@ -71,11 +72,43 @@ local function format_number(n, append_suffix)
 end
 
 local function format_request(item_config)
-    return item_config.request > -1 and item_config.request or " "
+    return (item_config.request and item_config.request > -1) and item_config.request or (item_config.trash and 0) or " "
 end
 
 local function format_trash(item_config)
     return (item_config.trash and item_config.trash > -1) and item_config.trash or "∞"
+end
+
+local function convert_from_slider(n)
+    if not n then
+        return -1
+    end
+    n = floor(n)
+    if n <= 10 then
+        return n
+    elseif n <= 19 then
+        return (n-9)*10
+    elseif n <= 28 then
+        return (n-18)*100
+    elseif n <= 37 then
+        return (n-27)*1000
+    else
+        return (n-36)*10000
+    end
+end
+
+local function convert_to_slider(n)
+    if n <= 10 then
+        return n
+    elseif n <= 100 then
+        return n/10+9
+    elseif n <= 1000 then
+        return n/100+18
+    elseif n <= 10000 then
+        return n/1000+27
+    else
+        return n/10000+36
+    end
 end
 
 --config[player_index][slot] = {name = "item", min=0, max=100}
@@ -168,6 +201,8 @@ local M = {
     format_number = format_number,
     format_request = format_request,
     format_trash = format_trash,
+    convert_to_slider = convert_to_slider,
+    convert_from_slider = convert_from_slider,
     convert = convert_to_combined_storage
 }
 
