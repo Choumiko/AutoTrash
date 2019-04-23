@@ -163,14 +163,7 @@ local function convert_to_combined_storage()
     log(serpent.block(tmp))
     global.config_new = tmp
     global.config_tmp = util.table.deepcopy(tmp)
-    local proc = 0
-    for _, d in pairs(global.config_new) do
-        for _,_ in pairs(d) do
-            proc = proc + 1
-        end
-        log(table_size(d))
-    end
-    log(proc)
+
     tmp = {}
     for player_index, storage_config in pairs(global.storage) do
         if game.get_player(player_index) then
@@ -191,6 +184,8 @@ local function convert_to_combined_storage()
     end
     log(serpent.block(tmp))
     global.storage_new = tmp
+    global["logistics-config-tmp"] = nil
+    global["logistics-config"] = nil
     return tmp
 end
 

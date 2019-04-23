@@ -25,18 +25,33 @@ local function get_requests(player) --luacheck: ignore
 end
 
 local function set_requests(player)
-    local storage = global.config_new[player.index].config
-    local slots = player.force.character_logistic_slot_count
-    if player.character and slots > 0 then
-        local req
-        for c=1, slots do
-            req = storage[c]
-            if req then
-                player.character.set_request_slot({name = req.name, count = req.request or 0}, c)
-            else
-                player.character.clear_request_slot(c)
+    if player.force.technologies["character-logistic-slots-1"].researched and player.character then
+        local storage = global.config_new[player.index].config
+        local slots = player.force.character_logistic_slot_count
+        if slots > 0 then
+            local req
+            for c=1, slots do
+                req = storage[c]
+                if req then
+                    player.character.set_request_slot({name = req.name, count = req.request or 0}, c)
+                else
+                    player.character.clear_request_slot(c)
+                end
             end
         end
+    end
+end
+
+local function set_trash(player)
+    if player.force.technologies["character-logistic-trash-slots-1"].researched and player.character then
+        local storage = global.config_new[player.index].config
+        local trash_filters = {}
+        for _, item_config in pairs(storage) do
+            if item_config.trash and item_config.trash > -1 then
+                trash_filters[item_config.name] = item_config.trash
+            end
+        end
+        player.auto_trash_filters = trash_filters
     end
 end
 
@@ -53,15 +68,13 @@ local function hide_yarm(index)
 end
 
 local GUI = {
-    mainFlow = "auto-trash-main-flow",
     mainButton = "auto-trash-config-button",
+    storage_frame = "auto-trash-logistics-storage-frame",
+    config_frame = "at-config-frame",
     trash_above_requested = "auto-trash-above-requested",
     trash_unrequested = "auto-trash-unrequested",
     trash_in_main_network = "auto-trash-in-main-network",
-    logisticsButton = "auto-trash-logistics-button",
-    configFrame = "auto-trash-config-frame",
-    logisticsConfigFrame = "auto-trash-logistics-config-frame",
-    logisticsStorageFrame = "auto-trash-logistics-storage-frame",
+
     sanitizeName = function(name_)
         local name = string.gsub(name_, "_", " ")
         name = string.gsub(name, "^%s", "")
@@ -82,44 +95,24 @@ local GUI = {
 }
 
 function GUI.init(player, after_research)
-    if not player.gui.top[GUI.mainFlow] and
-        (player.force.technologies["character-logistic-trash-slots-1"].researched or after_research == "trash"
-        or player.force.technologies["character-logistic-slots-1"].researched or after_research == "requests") then
-
-        player.gui.top.add{
-            type = "flow",
-            name = GUI.mainFlow,
-            direction = "horizontal"
-        }
+    local button_flow = mod_gui.get_button_flow(player)
+    if button_flow[GUI.mainButton] then
+        button_flow[GUI.mainButton].destroy()
     end
+    if player.force.technologies["character-logistic-slots-1"].researched or after_research == "requests" or
+        player.force.technologies["character-logistic-trash-slots-1"].researched or after_research == "trash" then
 
-    if player.gui.top[GUI.mainFlow] and not player.gui.top[GUI.mainFlow][GUI.logisticsButton] and
-        (player.force.technologies["character-logistic-slots-1"].researched or after_research == "requests") then
-
-        if player.gui.top[GUI.mainFlow][GUI.mainButton] then player.gui.top[GUI.mainFlow][GUI.mainButton].destroy() end
-        local logistics_button = player.gui.top[GUI.mainFlow].add{
+        local button = button_flow.add{
             type = "sprite-button",
-            name = GUI.logisticsButton,
+            name = GUI.mainButton,
             style = "auto-trash-sprite-button"
         }
-        logistics_button.sprite = "autotrash_logistics"
-    end
-
-    if player.gui.top[GUI.mainFlow] and (player.force.technologies["character-logistic-trash-slots-1"].researched or after_research == "trash") then
-        if not player.gui.top[GUI.mainFlow][GUI.mainButton] then
-            local trash_button = player.gui.top[GUI.mainFlow].add{
-                type = "sprite-button",
-                name = GUI.mainButton,
-                style = "auto-trash-sprite-button"
-            }
-            trash_button.sprite = "autotrash_trash"
-        end
+        button.sprite = "autotrash_trash"
     end
 end
 
 local function get_settings_group(player)
-    local left = mod_gui.get_frame_flow(player)
-    local other = left[GUI.configFrame]
+    local other = mod_gui.get_frame_flow(player)[GUI.config_frame]
     local result = {}
     if other then
         table.insert(result, other)
@@ -138,23 +131,18 @@ function GUI.update_settings(player)
 end
 
 function GUI.destroy(player)
-    if player.gui.top[GUI.mainButton] then
-        player.gui.top[GUI.mainButton].destroy()
-    end
-    if player.gui.top[GUI.logisticsButton] then
-        player.gui.top[GUI.logisticsButton].destroy()
-    end
-    if player.gui.top[GUI.mainFlow] then
-        player.gui.top[GUI.mainFlow].destroy()
+    local button_flow = mod_gui.get_button_flow(player)
+    if button_flow[GUI.mainButton] then
+        button_flow[GUI.mainButton].destroy()
     end
 end
 
---only for moving to mod_gui frame
+--only for moving to mod_gui frame/buttons
 function GUI.destroy_frames(player)
     local left = player.gui.left
-    local frame = left[GUI.configFrame]
-    local frame2 = left[GUI.logisticsConfigFrame]
-    local storage_frame = left[GUI.logisticsStorageFrame]
+    local frame = left["auto-trash-config-frame"]
+    local frame2 = left["auto-trash-logistics-config-frame"]
+    local storage_frame = left["auto-trash-logistics-storage-frame"]
     if frame2 then
         frame2.destroy()
     end
@@ -164,11 +152,20 @@ function GUI.destroy_frames(player)
     if frame then
         frame.destroy()
     end
+
+    if player.gui.top["auto-trash-config-button"] then
+        player.gui.top["auto-trash-config-button"].destroy()
+    end
+    if player.gui.top["auto-trash-logistics-button"] then
+        player.gui.top["auto-trash-logistics-button"].destroy()
+    end
+    if player.gui.top["auto-trash-main-flow"] then
+        player.gui.top["auto-trash-main-flow"].destroy()
+    end
 end
 
 function GUI.update_sliders(player_index)
-    local player = game.get_player(player_index)
-    local left = mod_gui.get_frame_flow(player)["at-config-frame"]
+    local left = mod_gui.get_frame_flow(game.get_player(player_index))[GUI.config_frame]
     local slider_flow = left and left["at-slider-flow-vertical"]
     if not slider_flow or not slider_flow.valid then
         return
@@ -188,7 +185,7 @@ end
 
 function GUI.create_buttons(player)
     local left = mod_gui.get_frame_flow(player)
-    local frame_new = (left and left.valid) and left["at-config-frame"]
+    local frame_new = (left and left.valid) and left[GUI.config_frame]
     if not frame_new or not frame_new.valid or not frame_new["at-config-scroll"] then
         return
     end
@@ -248,14 +245,10 @@ end
 
 function GUI.open_logistics_frame(player, redraw)
     local left = mod_gui.get_frame_flow(player)
-    local frame = left[GUI.logisticsConfigFrame]
-    local frame2 = left[GUI.configFrame]
-    local frame_new = left["at-config-frame"]
+    local frame_new = left[GUI.config_frame]
     local player_index = player.index
-    local storage_frame = left[GUI.logisticsStorageFrame]
-    if frame2 then
-        frame2.destroy()
-    end
+    local storage_frame = left[GUI.storage_frame]
+
     if frame_new then
         frame_new.destroy()
         if storage_frame then
@@ -267,17 +260,6 @@ function GUI.open_logistics_frame(player, redraw)
             return
         end
     end
-    if frame then
-        frame.destroy()
-        if storage_frame then
-            storage_frame.destroy()
-        end
-        if not redraw then
-            global["logistics-config-tmp"][player_index] = nil
-            show_yarm(player_index)
-            return
-        end
-    end
 
     hide_yarm(player_index)
 
@@ -285,7 +267,7 @@ function GUI.open_logistics_frame(player, redraw)
     frame_new = left.add{
         type = "frame",
         caption = {"auto-trash-logistics-config-frame-title"},
-        name = "at-config-frame",
+        name = GUI.config_frame,
         direction = "vertical"
     }
 
@@ -406,7 +388,7 @@ function GUI.open_logistics_frame(player, redraw)
 
     storage_frame = left.add{
         type = "frame",
-        name = GUI.logisticsStorageFrame,
+        name = GUI.storage_frame,
         caption = {"auto-trash-storage-frame-title"},
         direction = "vertical"
     }
@@ -464,12 +446,9 @@ end
 
 function GUI.close(player)
     local left = mod_gui.get_frame_flow(player)
-    local frame = left[GUI.configFrame] or left[GUI.logisticsConfigFrame]
-    local storage_frame = left[GUI.logisticsStorageFrame]
-    local frame_new = left["at-config-frame"]
-    if frame then
-        frame.destroy()
-    end
+    local storage_frame = left[GUI.storage_frame]
+    local frame_new = left[GUI.config_frame]
+
     if storage_frame then
         storage_frame.destroy()
     end
@@ -483,8 +462,12 @@ function GUI.save_changes(player)
     global.config_new[player_index] = util.table.deepcopy(global.config_tmp[player_index])
 
     --TODO ensure trash >= requests
-
-    set_requests(player, global["logistics-config"][player_index])
+    global.config_new[player_index].max_slot = table_size(global.config_new[player_index].config)
+    set_requests(player)
+    set_trash(player)
+    -- if not global.active[player_index] then
+    --     pause_trash(player)
+    -- end
     if not global["logistics-active"][player_index] then
         pause_requests(player)
     end
@@ -495,29 +478,24 @@ end
 
 function GUI.clear_all(player)
     local left = mod_gui.get_frame_flow(player)
-    local frame = left[GUI.configFrame] or left[GUI.logisticsConfigFrame]
-    --local storage_frame = left[GUI.logisticsStorageFrame]
-    local key = left[GUI.configFrame] and "" or "logistics-"
-
+    local frame = left[GUI.config_frame]
     if not frame then return end
-    local ruleset_grid = global.guiData[player.index].ruleset_grid
-    for i, _ in pairs(global[key.."config-tmp"][player.index]) do
-        global[key.."config-tmp"][player.index][i] = { name = false, count = 0 }
-        ruleset_grid["auto-trash-item-" .. i].elem_value = nil
-        ruleset_grid["auto-trash-amount-" .. i].text = "0"
+
+    global.config_tmp[player.index].config = {}
+    global.selected[player.index] = false
+    GUI.open_logistics_frame(player, true)
+end
+
+function GUI.display_message(player, message, sound)
+    player.create_local_flying_text{position=player.position, text=message}
+    if sound then
+        player.play_sound{path = "utility/cannot_build", position = player.position}
     end
 end
 
-function GUI.display_message(player, message)
-    player.print(message)
-end
-
 function GUI.set_item(player, index, element)
-    local left = mod_gui.get_frame_flow(player)
-    local frame = left["at-config-frame"]
-    --local key = left[GUI.configFrame] and "config-tmp" or "logistics-config-tmp"
     local player_index = player.index
-    if not frame or not index then
+    if not index then
         return
     end
 
@@ -525,7 +503,7 @@ function GUI.set_item(player, index, element)
     if elem_value then
         for i, item in pairs(global.config_tmp[player_index].config) do
             if index ~= i and item.name == elem_value then
-                GUI.display_message(player, {"", {"cant-set-duplicate-request", game.item_prototypes[item.name].localised_name}})
+                GUI.display_message(player, {"", {"cant-set-duplicate-request", game.item_prototypes[item.name].localised_name}}, true)
                 element.elem_value = nil
                 return i
             end
@@ -539,26 +517,25 @@ function GUI.store(player)
     local player_index = player.index
     assert(global.storage_new[player_index]) --TODO remove
 
-    local left = mod_gui.get_frame_flow(player)
-    local storage_frame = left[GUI.logisticsStorageFrame]
+    local storage_frame = mod_gui.get_frame_flow(player)[GUI.storage_frame]
     if not storage_frame then return end
     local textfield = storage_frame["auto-trash-logistics-storage-buttons"]["auto-trash-logistics-storage-name"]
     local name = textfield.text
     name = string.match(name, "^%s*(.-)%s*$")
 
     if not name or name == "" then
-        GUI.display_message(player, {"auto-trash-storage-name-not-set"})
+        GUI.display_message(player, {"auto-trash-storage-name-not-set"}, true)
         return
     end
     if global.storage_new[player_index][name] then
-        GUI.display_message(player, {"auto-trash-storage-name-in-use"})
+        GUI.display_message(player, {"auto-trash-storage-name-in-use"}, true)
         return
     end
 
     --local storage_grid = storage_frame["auto-trash-logistics-storage-grid"]
     local index = count_keys(global["storage"][player_index]) + 1
     if index > MAX_STORAGE_SIZE then
-        GUI.display_message(player, {"auto-trash-storage-too-long"})
+        GUI.display_message(player, {"auto-trash-storage-too-long"}, true)
         return
     end
     global.storage_new[player_index][name] = util.table.deepcopy(global.config_tmp[player_index])
@@ -566,13 +543,11 @@ function GUI.store(player)
 end
 
 function GUI.restore(player, index)
-    local left = mod_gui.get_frame_flow(player)
-    local frame = left["at-config-frame"]
-    local storage_frame = left[GUI.logisticsStorageFrame]
-    if not frame or not storage_frame then return end
+    local storage_frame = mod_gui.get_frame_flow(player)[GUI.storage_frame]
+    if not storage_frame then return end
 
     local storage_grid = storage_frame["auto-trash-logistics-storage-grid"]
-    local storage_entry = storage_grid["auto-trash-logistics-restore-" .. index]
+    local storage_entry = storage_grid and storage_grid["auto-trash-logistics-restore-" .. index]
     if not storage_entry then return end
     local player_index = player.index
     local name = storage_entry.caption
@@ -584,22 +559,25 @@ function GUI.restore(player, index)
 end
 
 function GUI.remove(player, index)
-    local left = mod_gui.get_frame_flow(player)
-    local storage_frame = left[GUI.logisticsStorageFrame]
-    if not storage_frame then return end
+    local storage_frame = mod_gui.get_frame_flow(player)[GUI.storage_frame]
+    if not storage_frame then
+        return
+    end
     local storage_grid = storage_frame["auto-trash-logistics-storage-grid"]
+    if not storage_grid then
+        return
+    end
     local btn1 = storage_grid["auto-trash-logistics-restore-" .. index]
     local btn2 = storage_grid["auto-trash-logistics-remove-" .. index]
 
     if not btn1 or not btn2 then return end
 
-    local name = btn1.caption
     assert(global.storage_new[player.index]) --TODO remove
-    assert(global.storage_new[player.index][name]) --TODO remove
+    assert(global.storage_new[player.index][btn1.caption]) --TODO remove
     btn1.destroy()
     btn2.destroy()
 
-    global["storage_new"][player.index][name] = nil
+    global["storage_new"][player.index][btn1.caption] = nil
 end
 
 return GUI

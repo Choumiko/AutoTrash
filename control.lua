@@ -9,6 +9,7 @@ local format_number = require '__AutoTrash__.lib_control'.format_number
 local format_request = require '__AutoTrash__.lib_control'.format_request
 local format_trash = require '__AutoTrash__.lib_control'.format_trash
 local convert_from_slider = require '__AutoTrash__.lib_control'.convert_from_slider
+local mod_gui = require '__core__/lualib/mod-gui'
 
 local floor = math.floor
 
@@ -22,10 +23,12 @@ local GUI = require "__AutoTrash__/gui"
 local function init_global()
     global = global or {}
     global["config"] = global["config"] or {}
+    global["config_new"] = global["config_new"] or {}
     global["config_tmp"] =  global["config_tmp"] or {}
-    global["logistics-config"] = global["logistics-config"] or {}
-    global["logistics-config-tmp"] = global["logistics-config-tmp"] or {}
+    global.selected = global.selected or {}
     global["storage"] = global["storage"] or {}
+    global["storage_new"] = global["storage_new"] or {}
+
     global.active = global.active or {}
     global["logistics-active"] = global["logistics-active"] or {}
     global.mainNetwork = global.mainNetwork or {}
@@ -47,13 +50,14 @@ end
 local function init_player(player)
     local index = player.index
     global.config[index] = global.config[index] or {}
-    global["logistics-config"][index] = global["logistics-config"][index] or {}
+    global.config_new[index] = global.config_new[index] or {}
     global["config_tmp"][index] = global["config_tmp"][index] or {config = {}, settings = {}, max_slot = 0}
-    global["logistics-config-tmp"][index] = global["logistics-config-tmp"][index] or {}
+    global.selected[index] = global.selected[index] or false
     global["logistics-active"][index] = true
     global.active[index] = true
     global.mainNetwork[index] = false
     global.storage[index] = global.storage[index] or {}
+    global.storage_new[index] = global.storage_new[index] or {}
     global.temporaryRequests[index] = global.temporaryRequests[index] or {}
     global.temporaryTrash[index] = global.temporaryTrash[index] or {}
     global.settings[index] = global.settings[index] or {}
@@ -194,9 +198,10 @@ local function on_configuration_changed(data)
             --saveVar(global, "config_changed_done")
         end
 
-        if oldVersion < v'4.0.4' then
+        if oldVersion < v'4.0.5' then
             for _, p in pairs(game.players) do
                 GUI.destroy_frames(p)
+                GUI.init(p)
             end
         end
 
@@ -260,18 +265,18 @@ local function inMainNetwork(player)
     return false
 end
 
-local function on_tick(event)
+local function on_tick(event) --luacheck: ignore
     if event.tick % 120 == 0 then
         local status, err = pcall(function()
             for _, player in pairs(game.players) do
                 local player_index = player.index
-                if player.valid and player.connected and global.active[player_index]
+                if player.valid and player.character and global.active[player_index]
                     and inMainNetwork(player) then
                     local godController = player.controller_type == defines.controllers.god
                     local main_inventory = godController and player.get_inventory(defines.inventory.god_main) or player.get_inventory(defines.inventory.player_main)
                     local trash = player.get_inventory(defines.inventory.player_trash)
                     local dirty = false
-                    if not global.temporaryTrash[player_index] then global.temporaryTrash[player_index] = {} end
+
                     local requests = requested_items(player)
                     for i=#global.temporaryTrash[player_index],1,-1 do
                         local item = global.temporaryTrash[player_index][i]
@@ -435,7 +440,7 @@ script.on_load(on_load)
 script.on_configuration_changed(on_configuration_changed)
 script.on_event(defines.events.on_player_created, on_player_created)
 script.on_event(defines.events.on_force_created, on_force_created)
-script.on_event(defines.events.on_tick, on_tick)
+--script.on_event(defines.events.on_tick, on_tick)
 
 local function on_pre_mined_item(event)
     local status, err = pcall(function()
@@ -487,8 +492,7 @@ end
 
 local function add_to_trash(player, item, count)
     local player_index = player.index
-    global.temporaryTrash[player_index] = global.temporaryTrash[player_index] or {}
-    if global.active[player_index] == nil then global.active[player_index] = true end
+
     for i=#global.temporaryTrash[player_index],1,-1 do
         local t_item = global.temporaryTrash[player_index][i]
         if t_item and t_item.name == "" then
@@ -545,9 +549,6 @@ end
 
 local function unpause_requests(player)
     local player_index = player.index
-    if not global.storage[player_index] then
-        global.storage[player_index] = {}
-    end
     local storage = global.storage[player_index].requests or {}
     local slots = player.force.character_logistic_slot_count
     if player.character and slots > 0 then
@@ -561,8 +562,11 @@ local function unpause_requests(player)
 end
 
 local function toggle_autotrash_pause(player, element)
+    local mainButton = mod_gui.get_button_flow(player)[GUI.mainButton]
+    if not mainButton then
+        return
+    end
     global.active[player.index] = not global.active[player.index]
-    local mainButton = player.gui.top[GUI.mainFlow][GUI.mainButton]
     if global.active[player.index] then
         mainButton.sprite = "autotrash_trash"
         if element then
@@ -578,8 +582,11 @@ local function toggle_autotrash_pause(player, element)
 end
 
 local function toggle_autotrash_pause_requests(player)
+    local mainButton = mod_gui.get_button_flow(player)[GUI.mainButton]
+    if not mainButton then
+        return
+    end
     global["logistics-active"][player.index] = not global["logistics-active"][player.index]
-    local mainButton = player.gui.top[GUI.mainFlow][GUI.logisticsButton]
     if global["logistics-active"][player.index] then
         mainButton.sprite = "autotrash_logistics"
         unpause_requests(player)
@@ -668,13 +675,15 @@ local function on_gui_click(event)
         end
 
         local player = game.get_player(player_index)
-        if element.name == "auto-trash-config-button" then
+        if element.name == GUI.mainButton then
             if player.cursor_stack.valid_for_read then
                 if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
                     add_order(player)
                 elseif player.cursor_stack.name ~= "blueprint" then
                     add_to_trash(player, player.cursor_stack.name, 0)
                 end
+            else
+                GUI.open_logistics_frame(player)
             end
         elseif element.name == "auto-trash-apply" or element.name == "auto-trash-logistics-apply" then
             GUI.save_changes(player)
@@ -682,8 +691,6 @@ local function on_gui_click(event)
             GUI.clear_all(player)
         elseif element.name == "auto-trash-pause" then
             toggle_autotrash_pause(player)
-        elseif element.name == "auto-trash-logistics-button" then
-            GUI.open_logistics_frame(player)
         elseif element.name == "auto-trash-logistics-pause" then
             toggle_autotrash_pause_requests(player)
         elseif element.name  == "auto-trash-logistics-storage-store" then
@@ -698,7 +705,7 @@ local function on_gui_click(event)
                     global.mainNetwork[player_index] = cell and cell.owner or false
                 end
                 if not global.mainNetwork[player_index] then
-                    GUI.display_message(player, {"auto-trash-not-in-network"})
+                    GUI.display_message(player, {"auto-trash-not-in-network"}, true)
                 end
             end
             element.caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
@@ -735,21 +742,19 @@ local function on_gui_checked_changed_state(event)
 
         if element.name == GUI.trash_in_main_network then
             global.settings[player_index].auto_trash_in_main_network = not global.settings[player_index].auto_trash_in_main_network
-            GUI.update_settings(player)
         elseif element.name == GUI.trash_above_requested then
             global.settings[player_index].auto_trash_above_requested = not global.settings[player_index].auto_trash_above_requested
             if global.settings[player_index].auto_trash_unrequested and not global.settings[player_index].auto_trash_above_requested then
                 global.settings[player_index].auto_trash_above_requested = true
                 player.print({"", "'", {"auto-trash-above-requested"}, "' has to be active if '", {"auto-trash-unrequested"}, "' is active"})
             end
-            GUI.update_settings(player)
         elseif element.name == GUI.trash_unrequested then
             global.settings[player_index].auto_trash_unrequested = not global.settings[player_index].auto_trash_unrequested
             if global.settings[player_index].auto_trash_unrequested then
                 global.settings[player_index].auto_trash_above_requested = true
             end
-            GUI.update_settings(player)
         end
+        GUI.update_settings(player)
         --saveVar(global, "post_checked_changed")
     end)
     if not status then
@@ -829,7 +834,7 @@ local function on_gui_value_changed(event)
         return
     end
     if not global.selected[event.player_index] then
-        GUI.update_sliders(event.player.index)
+        GUI.update_sliders(event.player_index)
         return
     end
     if event.element.name == "at-config-slider" then
@@ -974,14 +979,16 @@ remote.add_interface("at",
         end,
 
         hide = function()
-            if game.player.gui.top[GUI.mainFlow] then
-                game.player.gui.top[GUI.mainFlow].visible = false
+            local button = mod_gui.get_button_flow(game.player)[GUI.mainButton]
+            if button then
+                button.visible = false
             end
         end,
 
         show = function()
-            if game.player.gui.top[GUI.mainFlow] then
-                game.player.gui.top[GUI.mainFlow].visible = true
+            local button = mod_gui.get_button_flow(game.player)[GUI.mainButton]
+            if button then
+                button.visible = true
             end
         end,
     })
