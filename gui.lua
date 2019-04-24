@@ -1,30 +1,11 @@
 local lib_control = require '__AutoTrash__.lib_control'
 local saveVar = lib_control.saveVar --luacheck: ignore
-local pause_requests = lib_control.pause_requests
-local set_trash = lib_control.set_trash
+local display_message = lib_control.display_message
 local format_number = lib_control.format_number
 local format_request = lib_control.format_request
 local format_trash = lib_control.format_trash
 local convert_to_slider = lib_control.convert_to_slider
 local mod_gui = require '__core__/lualib/mod-gui'
-
-local function set_requests(player)
-    if player.force.technologies["character-logistic-slots-1"].researched and player.character then
-        local storage = global.config_new[player.index].config
-        local slots = player.force.character_logistic_slot_count
-        if slots > 0 then
-            local req
-            for c=1, slots do
-                req = storage[c]
-                if req then
-                    player.character.set_request_slot({name = req.name, count = req.request or 0}, c)
-                else
-                    player.character.clear_request_slot(c)
-                end
-            end
-        end
-    end
-end
 
 local function show_yarm(index)
     if remote.interfaces.YARM and global.settings[index].YARM_old_expando then
@@ -44,25 +25,7 @@ local GUI = {
     config_frame = "at-config-frame",
     trash_above_requested = "auto-trash-above-requested",
     trash_unrequested = "auto-trash-unrequested",
-    trash_in_main_network = "auto-trash-in-main-network",
-
-    sanitizeName = function(name_)
-        local name = string.gsub(name_, "_", " ")
-        name = string.gsub(name, "^%s", "")
-        name = string.gsub(name, "%s$", "")
-        local pattern = "(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)"
-        local element = "activeLine__"..name.."__".."something"
-        local t1, t2, t3, _ = element:match(pattern)
-        if t1 == "activeLine" and t2 == name and t3 == "something" then
-            return name
-        else
-            return false
-        end
-    end,
-
-    sanitizeNumber = function(number, default)
-        return tonumber(number) or default
-    end
+    trash_in_main_network = "auto-trash-in-main-network"
 }
 
 function GUI.init(player, after_research)
@@ -82,15 +45,6 @@ function GUI.init(player, after_research)
     end
 end
 
-local function get_settings_group(player)
-    local other = mod_gui.get_frame_flow(player)[GUI.config_frame]
-    local result = {}
-    if other then
-        table.insert(result, other)
-    end
-    return result
-end
-
 function GUI.update(player)
     local mainButton = mod_gui.get_button_flow(player)[GUI.mainButton]
     if not mainButton then
@@ -104,13 +58,14 @@ function GUI.update(player)
 end
 
 function GUI.update_settings(player)
-    local groups = get_settings_group(player)
-    local index = player.index
-    for _, group in pairs(groups) do
-        group[GUI.trash_unrequested].state = global.settings[index].auto_trash_unrequested
-        group[GUI.trash_above_requested].state = global.settings[index].auto_trash_above_requested
-        group[GUI.trash_in_main_network].state = global.settings[index].auto_trash_in_main_network
+    local frame = mod_gui.get_frame_flow(player)[GUI.config_frame]
+    if not frame or not frame.valid then
+        return
     end
+    local index = player.index
+    frame[GUI.trash_unrequested].state = global.settings[index].auto_trash_unrequested
+    frame[GUI.trash_above_requested].state = global.settings[index].auto_trash_above_requested
+    frame[GUI.trash_in_main_network].state = global.settings[index].auto_trash_in_main_network
 end
 
 function GUI.destroy(player)
@@ -168,17 +123,17 @@ end
 
 function GUI.create_buttons(player, slots)
     local left = mod_gui.get_frame_flow(player)
-    local frame_new = (left and left.valid) and left[GUI.config_frame]
-    if not frame_new or not frame_new.valid or not frame_new["at-config-scroll"] then
+    local frame = (left and left.valid) and left[GUI.config_frame]
+    if not frame or not frame.valid or not frame["at-config-scroll"] then
         return
     end
-    local ruleset_grid = frame_new["at-config-scroll"]["at-ruleset-grid"]
+    local ruleset_grid = frame["at-config-scroll"]["at-ruleset-grid"]
     if ruleset_grid and ruleset_grid.valid then
         ruleset_grid.destroy()
     end
 
     local column_count = 6
-    ruleset_grid = frame_new["at-config-scroll"].add{
+    ruleset_grid = frame["at-config-scroll"].add{
         type = "table",
         column_count = column_count,
         name = "at-ruleset-grid",
@@ -227,12 +182,12 @@ end
 
 function GUI.open_logistics_frame(player, redraw)
     local left = mod_gui.get_frame_flow(player)
-    local frame_new = left[GUI.config_frame]
+    local frame = left[GUI.config_frame]
     local player_index = player.index
     local storage_frame = left[GUI.storage_frame]
 
-    if frame_new then
-        frame_new.destroy()
+    if frame then
+        frame.destroy()
         if storage_frame then
             storage_frame.destroy()
         end
@@ -246,17 +201,16 @@ function GUI.open_logistics_frame(player, redraw)
     hide_yarm(player_index)
 
     log("Selected: " .. serpent.line(global.selected[player_index]))
-    frame_new = left.add{
+    frame = left.add{
         type = "frame",
         caption = {"auto-trash-logistics-config-frame-title"},
         name = GUI.config_frame,
         direction = "vertical"
     }
 
-    local scroll_pane = frame_new.add{
+    local scroll_pane = frame.add{
         type = "scroll-pane",
         name = "at-config-scroll",
-        --vertical_scroll_policy = "auto-and-reserve-space"
     }
 
     local display_rows = 6
@@ -264,7 +218,7 @@ function GUI.open_logistics_frame(player, redraw)
 
     GUI.create_buttons(player,60)
 
-    local slider_vertical_flow = frame_new.add{
+    local slider_vertical_flow = frame.add{
         type = "table",
         name = "at-slider-flow-vertical",
         column_count = 2
@@ -318,21 +272,21 @@ function GUI.open_logistics_frame(player, redraw)
 
     GUI.update_sliders(player_index)
 
-    frame_new.add{
+    frame.add{
         type = "checkbox",
         name = GUI.trash_above_requested,
         caption = {"auto-trash-above-requested"},
         state = global.settings[player.index].auto_trash_above_requested
     }
 
-    frame_new.add{
+    frame.add{
         type = "checkbox",
         name = GUI.trash_unrequested,
         caption = {"auto-trash-unrequested"},
         state = global.settings[player.index].auto_trash_unrequested,
     }
 
-    frame_new.add{
+    frame.add{
         type = "checkbox",
         name = GUI.trash_in_main_network,
         caption = {"auto-trash-in-main-network"},
@@ -340,14 +294,14 @@ function GUI.open_logistics_frame(player, redraw)
     }
 
     local caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
-    frame_new.add{
+    frame.add{
         type = "button",
         name = "auto-trash-set-main-network",
         caption = caption
     }
 
 
-    local button_grid = frame_new.add{
+    local button_grid = frame.add{
         type = "table",
         column_count = 3,
         name = "auto-trash-button-grid"
@@ -437,13 +391,13 @@ end
 function GUI.close(player)
     local left = mod_gui.get_frame_flow(player)
     local storage_frame = left[GUI.storage_frame]
-    local frame_new = left[GUI.config_frame]
+    local frame = left[GUI.config_frame]
 
     if storage_frame then
         storage_frame.destroy()
     end
-    if frame_new then
-        frame_new.destroy()
+    if frame then
+        frame.destroy()
     end
 end
 
@@ -451,32 +405,16 @@ function GUI.save_changes(player)
     local player_index = player.index
     global.config_new[player_index] = util.table.deepcopy(global.config_tmp[player_index])
 
-    --TODO ensure trash >= requests
-    set_requests(player)
-    set_trash(player)
-    -- if not global.active[player_index] then
-    --     pause_trash(player)
-    -- end
-    if not global["logistics-active"][player_index] then
-        pause_requests(player)
-    end
-
     show_yarm(player_index)
     GUI.close(player)
 end
 
 function GUI.clear_all(player)
-    global.config_tmp[player.index].config = {}
-    global.config_tmp[player.index].config_by_name = {}
-    global.selected[player.index] = false
+    local player_index = player.index
+    global.config_tmp[player_index].config = {}
+    global.config_tmp[player_index].config_by_name = {}
+    global.selected[player_index] = false
     GUI.open_logistics_frame(player, true)
-end
-
-function GUI.display_message(player, message, sound)
-    player.create_local_flying_text{position=player.position, text=message}
-    if sound then
-        player.play_sound{path = "utility/cannot_build", position = player.position}
-    end
 end
 
 function GUI.set_item(player, index, element)
@@ -488,7 +426,7 @@ function GUI.set_item(player, index, element)
     local elem_value = element.elem_value
     if elem_value then
         if global.config_tmp[player_index].config_by_name[elem_value] then
-            GUI.display_message(player, {"", {"cant-set-duplicate-request", game.item_prototypes[elem_value].localised_name}}, true)
+            display_message(player, {"", {"cant-set-duplicate-request", game.item_prototypes[elem_value].localised_name}}, true)
             element.elem_value = nil
             return global.config_tmp[player_index].config_by_name[elem_value].slot
         end
@@ -506,11 +444,11 @@ function GUI.store(player, element)
     name = string.match(name, "^%s*(.-)%s*$")
 
     if not name or name == "" then
-        GUI.display_message(player, {"auto-trash-storage-name-not-set"}, true)
+        display_message(player, {"auto-trash-storage-name-not-set"}, true)
         return
     end
     if global.storage_new[player_index][name] then
-        GUI.display_message(player, {"auto-trash-storage-name-in-use"}, true)
+        display_message(player, {"auto-trash-storage-name-in-use"}, true)
         return
     end
 

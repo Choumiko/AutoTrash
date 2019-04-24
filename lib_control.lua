@@ -19,35 +19,10 @@ local function debugDump(var, force)
     end
 end
 
-local function pause_requests(player)
-    local player_index = player.index
-    if not global.storage[player_index] then
-        global.storage[player_index] = {requests={}}
-    end
-    global.storage[player_index].requests = global.storage[player_index].requests or {}
-
-    local storage = global.storage[player_index].requests
-    if player.character and player.force.character_logistic_slot_count > 0 then
-        for c=1,player.force.character_logistic_slot_count do
-            local request = player.character.get_request_slot(c)
-            if request then
-                storage[c] = {name = request.name, count = request.count}
-                player.character.clear_request_slot(c)
-                --requests[request.name] = request.count
-            end
-        end
-    end
-end
-
-local function set_trash(player)
-    if player.force.technologies["character-logistic-trash-slots-1"].researched and player.character then
-        local trash_filters = {}
-        for name, item_config in pairs(global.config_new[player.index].config_by_name) do
-            if item_config.trash and item_config.trash > -1 then
-                trash_filters[name] = item_config.trash
-            end
-        end
-        player.auto_trash_filters = trash_filters
+local function display_message(player, message, sound)
+    player.create_local_flying_text{position=player.position, text=message}
+    if sound then
+        player.play_sound{path = "utility/cannot_build", position = player.position}
     end
 end
 
@@ -154,14 +129,11 @@ local function convert_to_combined_storage()
             end
             local slot
             max_index = max_index + 1
-            --log(serpent.block(tmp[player_index]))
-            --log(serpent.block(item_config))
+
             for _, trash_data in pairs(global.config[player_index]) do
                 if trash_data and trash_data.name then
-                    --log(serpent.line({_, trash_data.name, trash_data.count}))
                     slot = item_to_slot[trash_data.name]
                     if slot then
-                        --log(serpent.line(item_config[slot]))
                         item_config.config[slot].trash = (item_config.config[slot].request > trash_data.count) and item_config.config[slot].request or trash_data.count
                     else
                         item_config.config[max_index] = {name = trash_data.name, trash = trash_data.count, request = false}
@@ -202,8 +174,7 @@ end
 local M = {
     saveVar = saveVar,
     debugDump = debugDump,
-    pause_requests = pause_requests,
-    set_trash = set_trash,
+    display_message = display_message,
     format_number = format_number,
     format_request = format_request,
     format_trash = format_trash,

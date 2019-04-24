@@ -5,13 +5,14 @@ local lib_control = require '__AutoTrash__.lib_control'
 local saveVar = lib_control.saveVar
 local convert = lib_control.convert
 local debugDump = lib_control.debugDump
-local pause_requests = lib_control.pause_requests
-local set_trash = lib_control.set_trash
+local display_message = lib_control.display_message
 local format_number = lib_control.format_number
 local format_request = lib_control.format_request
 local format_trash = lib_control.format_trash
 local convert_from_slider = lib_control.convert_from_slider
 local mod_gui = require '__core__/lualib/mod-gui'
+
+local GUI = require "__AutoTrash__/gui"
 
 local floor = math.floor
 
@@ -20,14 +21,31 @@ local MAX_CONFIG_SIZES = {
     ["character-logistic-trash-slots-2"] = 30
 }
 
+local function set_requests(player)
+    if player.force.technologies["character-logistic-slots-1"].researched and player.character then
+        local storage = global.config_new[player.index].config
+        local slots = player.force.character_logistic_slot_count
+        if slots > 0 then
+            local req
+            for c=1, slots do
+                req = storage[c]
+                if req then
+                    player.character.set_request_slot({name = req.name, count = req.request or 0}, c)
+                else
+                    player.character.clear_request_slot(c)
+                end
+            end
+        end
+    end
+end
+
 local function get_requests(player)
     local requests = {}
-    -- get requested items
     if player.character and player.force.character_logistic_slot_count > 0 then
         local character = player.character
-        -- local t = {name = false, count = 0}
+        local t
         for c=1,player.force.character_logistic_slot_count do
-            local t = character.get_request_slot(c)
+            t = character.get_request_slot(c)
             if t then
                 requests[t.name] = t.count
             end
@@ -36,7 +54,18 @@ local function get_requests(player)
     return requests
 end
 
-local GUI = require "__AutoTrash__/gui"
+local function set_trash(player)
+    if player.force.technologies["character-logistic-trash-slots-1"].researched and player.character then
+        local trash_filters = {}
+        --TODO ensure trash >= requests
+        for name, item_config in pairs(global.config_new[player.index].config_by_name) do
+            if item_config.trash and item_config.trash > -1 then
+                trash_filters[name] = item_config.trash
+            end
+        end
+        player.auto_trash_filters = trash_filters
+    end
+end
 
 local function init_global()
     global = global or {}
@@ -56,14 +85,16 @@ local function init_global()
     global.settings = global.settings or {}
 end
 
---config[player_index][slot] = {name = "item", min=0, max=100}
---min: if > 0 set as request
---max: if == 0 and trash unrequested
---if min == max : set req = trash
---if min and max : set req and trash, ensure max > min
---if min and not max (== -1?) : set req, unset trash
---if min == 0 and max : unset req, set trash
---if min == 0 and max == 0: unset req, set trash to 0
+--[[
+config[player_index][slot] = {name = "item", min=0, max=100}
+min: if > 0 set as request
+max: if == 0 and trash unrequested
+if min == max : set req = trash
+if min and max : set req and trash, ensure max > min
+if min and not max (== -1?) : set req, unset trash
+if min == 0 and max : unset req, set trash
+if min == 0 and max == 0: unset req, set trash to 0
+]]
 
 local function init_player(player)
     local index = player.index
@@ -87,6 +118,9 @@ local function init_player(player)
     end
     if global.settings[index].auto_trash_in_main_network == nil then
         global.settings[index].auto_trash_in_main_network = false
+    end
+    if global.settings[index].pause_on_death == nil then
+        global.settings[index].pause_on_death = true
     end
 
     GUI.init(player)
@@ -123,25 +157,19 @@ local function init_forces()
     end
 end
 
---run once per save
 local function on_init()
     init_global()
     init_forces()
-    --script.on_event(defines.events.on_tick, function() update_gui() end)
 end
 
--- run when loading/when player joins mp (only on connecting player)
 local function on_load()
 
 end
 
-
--- run once
 local function on_configuration_changed(data)
     if not data or not data.mod_changes then
         return
     end
-    --Autotrash changed, got added
     if data.mod_changes.AutoTrash then
         local newVersion = data.mod_changes.AutoTrash.new_version
         newVersion = v(newVersion)
@@ -174,7 +202,6 @@ local function on_configuration_changed(data)
         end
 
         if oldVersion < v'4.0.1' then
-            --saveVar(global, "config_changed")
             init_players(true)
             for _, c in pairs(global.config) do
                 for i, p in pairs(c) do
@@ -213,7 +240,6 @@ local function on_configuration_changed(data)
                     s.options_extended = nil
                 end
             end
-            --saveVar(global, "config_changed_done")
         end
 
         if oldVersion < v'4.0.5' then
@@ -289,7 +315,6 @@ end
 
 local function requested_items(player)
     local requests = {}
-    -- get requested items
     if player.character and player.force.character_logistic_slot_count > 0 then
         for c=1,player.force.character_logistic_slot_count do
             local request = player.character.get_request_slot(c)
@@ -316,6 +341,9 @@ local function inMainNetwork(player)
 end
 
 local function pause_trash(player)
+    if not player.character then
+        return
+    end
     global.active[player.index] = false
     --TODO backup current filters?
     player.character.auto_trash_filters = {}
@@ -323,10 +351,48 @@ local function pause_trash(player)
 end
 
 local function unpause_trash(player)
+    if not player.character then
+        return
+    end
     global.active[player.index] = true
     --TODO restore current filters?
     set_trash(player)
     GUI.update(player)
+end
+
+local function pause_requests(player)
+    local player_index = player.index
+    if not global.storage[player_index] then
+        global.storage[player_index] = {requests={}}
+    end
+    global.storage[player_index].requests = global.storage[player_index].requests or {}
+
+    local storage = global.storage[player_index].requests
+    if player.character and player.force.character_logistic_slot_count > 0 then
+        for c=1,player.force.character_logistic_slot_count do
+            local request = player.character.get_request_slot(c)
+            if request then
+                storage[c] = {name = request.name, count = request.count}
+                player.character.clear_request_slot(c)
+                --requests[request.name] = request.count
+            end
+        end
+    end
+end
+
+local function unpause_requests(player)
+    error("Needs rewrite!")
+    local player_index = player.index
+    local storage = global.storage[player_index].requests or {}
+    local slots = player.force.character_logistic_slot_count
+    if player.character and slots > 0 then
+        for c=1, slots do
+            if storage[c] then
+                player.character.set_request_slot(storage[c], c)
+            end
+        end
+        global.storage[player_index].requests = {}
+    end
 end
 
 local function on_tick(event) --luacheck: ignore
@@ -345,7 +411,7 @@ local function on_tick(event) --luacheck: ignore
                     for i=#global.temporaryTrash[player_index],1,-1 do
                         local item = global.temporaryTrash[player_index][i]
                         if item and item.name ~= "" and item.name ~= "blueprint" and item.name ~= "blueprint-book" then
-                            local count = player.get_item_count(item.name) --counts main,quick + cursor
+                            local count = player.get_item_count(item.name)
                             local requested = requests[item.name] and requests[item.name] or 0
                             local desired = math.max(requested, item.count)
                             local diff = count - desired
@@ -356,7 +422,7 @@ local function on_tick(event) --luacheck: ignore
                                 if diff > 0 then
                                     local c = trash.insert(stack)
                                     if c > 0 then
-                                        local removed = player.remove_item{name=item.name, count=c} --temporary items are removed from main,quickbar and cursor
+                                        local removed = player.remove_item{name=item.name, count=c}
                                         diff = diff - removed
                                         if c > removed then
                                             trash.remove{name=item.name, count = c - removed}
@@ -367,7 +433,7 @@ local function on_tick(event) --luacheck: ignore
                                     player.print({"", "removed ", game.item_prototypes[item.name].localised_name, " from temporary trash"})
                                     global.temporaryTrash[player_index][i] = nil
                                 end
-                            else --item with equipment grid
+                            else
                                 if diff > 0 and t_item then
                                     for ti = #trash, 1, -1 do
                                         if trash[ti].valid and not trash[ti].valid_for_read then
@@ -512,28 +578,32 @@ local function on_player_toggled_map_editor(event)
 end
 
 local function on_pre_player_removed(event)
-    log("pre player removed " .. serpent.block(event))
-    --clean global stuff
+    for k, name in pairs(global) do
+        if name ~= "configSize" then
+            global[name][event.player_index] = nil
+        end
+    end
 end
 
 local function on_pre_player_died(event)
     log("pre player died " .. serpent.block(event))
-    --pause requests/trash
+    if global.settings[event.player_index].pause_on_death then
+        pause_requests(game.get_player(event.player_index))
+    end
 end
 
 local function on_player_changed_position(event)
-    --local player = game.get_player(event.player_index)
-    --log(serpent.block(player.character.get_logistic_point())) <- trash and request info should be available
     if not global.settings[event.player_index].auto_trash_in_main_network or not global.active[event.player_index] then
         return
     end
     local player = game.get_player(event.player_index)
-    log(serpent.line(inMainNetwork(player)))
-    if not inMainNetwork(player) then
-        pause_trash(player)
-        GUI.display_message(player, "AutoTrash paused")
+    if player.character then
+        log(serpent.line(inMainNetwork(player)))
+        if not inMainNetwork(player) then
+            pause_trash(player)
+            display_message(player, "AutoTrash paused")
+        end
     end
-    -- global.active[event.player_index] = inMainNetwork(game.get_player(event.player_index))
 end
 
 script.on_init(on_init)
@@ -582,10 +652,6 @@ script.on_event(defines.events.on_pre_player_mined_item, on_pre_mined_item)
 script.on_event(defines.events.on_robot_pre_mined, on_pre_mined_item)
 script.on_event(defines.events.on_entity_died, on_pre_mined_item)
 
---script.on_event(defines.events.on_built_entity, on_built_entity)
---script.on_event(defines.events.on_robot_built_entity, on_built_entity)
-
-
 local function add_order(player)
     local entities = player.cursor_stack.get_blueprint_entities()
     local orders = {}
@@ -595,7 +661,6 @@ local function add_order(player)
         end
         orders[ent.name] = orders[ent.name] + 1
     end
-    --debugDump(orders,true)
 end
 
 local function add_to_trash(player, item, count)
@@ -625,49 +690,8 @@ local function add_to_trash(player, item, count)
     player.print({"", "added ", game.item_prototypes[item].localised_name, " to temporary trash"})
 end
 
---function add_to_requests(player, item, count)
---  local player_index = player.index
---  global.temporaryRequests[player_index] = global.temporaryRequests[player_index] or {}
---  if global["logistics-active"][player_index] == nil then global["logistics-active"][player_index] = true end
---  local index = false
---
---  for i=#global.temporaryRequests[player_index],1,-1 do
---    local req = global.temporaryRequests[player_index][i]
---    if req and req.name == "" then
---      break
---    end
---    if req.name == item then
---      index = i
---    end
---  end
---
---  if #global.temporaryRequests[player_index] > player.force.character_logistic_slot_count then
---    player.print({"", "Couldn't add ", game.item_prototypes[item].localised_name, " to temporary requests."})
---    return
---  end
---
---  if not index then
---    table.insert(global.temporaryTrash[player_index], {name = item, count = count})
---  else
---    global.temporaryTrash[player_index][index].count = global.temporaryTrash[player_index][index].count + count
---  end
---
---  table.insert(global.temporaryRequests[player_index], {name = item, count = count})
---  player.print({"", "added ", game.item_prototypes[item].localised_name, " to temporary requests"})
---end
+function add_to_requests(player, item, count)--luacheck: ignore
 
-local function unpause_requests(player)
-    local player_index = player.index
-    local storage = global.storage[player_index].requests or {}
-    local slots = player.force.character_logistic_slot_count
-    if player.character and slots > 0 then
-        for c=1, slots do
-            if storage[c] then
-                player.character.set_request_slot(storage[c], c)
-            end
-        end
-        global.storage[player_index].requests = {}
-    end
 end
 
 local function toggle_autotrash_pause(player)
@@ -787,6 +811,14 @@ local function on_gui_click(event)
             end
         elseif element.name == "auto-trash-apply" or element.name == "auto-trash-logistics-apply" then
             GUI.save_changes(player)
+            set_requests(player)
+            set_trash(player)
+            if not global.active[player_index] then
+                pause_trash(player)
+            end
+            if not global["logistics-active"][player_index] then
+                pause_requests(player)
+            end
         elseif element.name == "auto-trash-clear-all" or element.name == "auto-trash-logistics-clear-all" then
             GUI.clear_all(player)
         elseif element.name == "auto-trash-pause" then
@@ -805,7 +837,7 @@ local function on_gui_click(event)
                     global.mainNetwork[player_index] = cell and cell.owner or false
                 end
                 if not global.mainNetwork[player_index] then
-                    GUI.display_message(player, {"auto-trash-not-in-network"}, true)
+                    display_message(player, {"auto-trash-not-in-network"}, true)
                 end
             end
             element.caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
@@ -834,9 +866,6 @@ local function on_gui_checked_changed_state(event)
     local status, err = pcall(function()
         local element = event.element
 
-        --log(serpent.block(element.name))
-        --log(serpent.block(element.state))
-        --saveVar(global, "pre_checked_changed")
         local player_index = event.player_index
         local player = game.get_player(player_index)
 
@@ -855,7 +884,6 @@ local function on_gui_checked_changed_state(event)
             end
         end
         GUI.update_settings(player)
-        --saveVar(global, "post_checked_changed")
     end)
     if not status then
         debugDump(err, true)
@@ -867,7 +895,6 @@ local function on_gui_elem_changed(event)
         log("elem_changed: " .. event.element.name)
         local element = event.element
         local player_index = event.player_index
-        --event.element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
         local index = tonumber(string.match(element.name, "auto%-trash%-item%-(%d+)"))
         index = tonumber(index)
         if not index then
@@ -875,7 +902,6 @@ local function on_gui_elem_changed(event)
         end
         local elem_value = element.elem_value
 
-        --log(serpent.line({i=index, elem_value = elem_value}))
         if elem_value then
             local i = GUI.set_item(game.get_player(player_index), index, element)
             if i == true then
@@ -897,8 +923,6 @@ end
 local function update_selected_value(player_index, flow, number)
     local n = floor(tonumber(number) or 0)
     local frame_new = flow.parent.parent["at-config-scroll"]["at-ruleset-grid"]
-    -- log(global.selected[player_index])
-    -- log(serpent.line(#frame_new.children))
     local i = global.selected[player_index]
 
     local button = frame_new.children[i]
@@ -1019,42 +1043,6 @@ remote.add_interface("at",
             init_global()
             init_forces()
             init_players()
-        end,
-
-        setConfigSize = function(size1, size2)
-            local s1 = size1 and size1 or MAX_CONFIG_SIZES["character-logistic-trash-slots-1"]
-            local s2 = size2 and size2 or MAX_CONFIG_SIZES["character-logistic-trash-slots-2"]
-            if s1 > s2 then
-                s1, s2 = s2, s1
-            end
-            --check max size (to avoid gui hanging out of the game
-            s1 = s1 > 80 and 80 or s1
-            s2 = s2 > 80 and 80 or s2
-            --update all forces
-            if not global.configSize then
-                init_global()
-            end
-            for _, force in pairs(game.forces) do
-                if force.technologies["character-logistic-trash-slots-2"].researched then
-                    global.configSize[force.name] = s2
-                else
-                    global.configSize[force.name] = s1
-                end
-            end
-        end,
-
-        debugLog = function()
-            for i,p in pairs(game.players) do
-                local name = p.name or "noName"
-                local c_valid = "not connected"
-                if p.connected then
-                    c_valid = (p.character and p.character.valid) and p.character.name or "false"
-                end
-                if p.controller_type == defines.controllers.god then
-                    c_valid = "god controller"
-                end
-                debugDump("Player: "..name.." index: "..i.." character: "..c_valid,true)
-            end
         end,
 
         reset = function(confirm)
