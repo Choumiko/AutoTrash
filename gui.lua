@@ -1,17 +1,10 @@
-local MAX_STORAGE_SIZE = 6
-local pause_requests = require '__AutoTrash__.lib_control'.pause_requests
-local format_number = require '__AutoTrash__.lib_control'.format_number
-local format_request = require '__AutoTrash__.lib_control'.format_request
-local format_trash = require '__AutoTrash__.lib_control'.format_trash
-local convert_to_slider = require '__AutoTrash__.lib_control'.convert_to_slider
+local lib_control = require '__AutoTrash__.lib_control'
+local pause_requests = lib_control.pause_requests
+local format_number = lib_control.format_number
+local format_request = lib_control.format_request
+local format_trash = lib_control.format_trash
+local convert_to_slider = lib_control.convert_to_slider
 local mod_gui = require '__core__/lualib/mod-gui'
-local function count_keys(hashmap)
-    local result = 0
-    for _, _ in pairs(hashmap) do
-        result = result + 1
-    end
-    return result
-end
 
 local function get_requests(player) --luacheck: ignore
     local requests = {}
@@ -415,7 +408,13 @@ function GUI.open_logistics_frame(player, redraw)
         name = "auto-trash-logistics-storage-store",
         style = "auto-trash-small-button"
     }
-    local storage_grid = storage_frame.add{
+    local storage_scroll = storage_frame.add{
+        type = "scroll-pane",
+        name = "at-storage-scroll",
+    }
+
+    storage_scroll.style.maximal_height = math.ceil(38*10+4)
+    local storage_grid = storage_scroll.add{
         type = "table",
         column_count = 2,
         name = "auto-trash-logistics-storage-grid"
@@ -532,12 +531,6 @@ function GUI.store(player)
         return
     end
 
-    --local storage_grid = storage_frame["auto-trash-logistics-storage-grid"]
-    local index = count_keys(global["storage"][player_index]) + 1
-    if index > MAX_STORAGE_SIZE then
-        GUI.display_message(player, {"auto-trash-storage-too-long"}, true)
-        return
-    end
     global.storage_new[player_index][name] = util.table.deepcopy(global.config_tmp[player_index])
     GUI.open_logistics_frame(player,true)
 end
