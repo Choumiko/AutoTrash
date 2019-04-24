@@ -123,25 +123,25 @@ local function convert_to_combined_storage()
     local tmp = {}
     local item_to_slot
     local item_config
-    local max_slot
+    local max_index
     global.selected = global.selected or {}
     global.config_tmp = {}
     for player_index, logistics_config in pairs(global["logistics-config"]) do
         if game.get_player(player_index) then
-            global.config_tmp[player_index] = global.config_tmp[player_index] or {config = {}, settings = {}, max_slot = 0}
+            global.config_tmp[player_index] = global.config_tmp[player_index] or {config = {}, settings = {}}
             item_to_slot = {}
-            tmp[player_index] = {config = {}, settings = {}, max_slot = 0}
+            tmp[player_index] = {config = {}, settings = {}}
             item_config = tmp[player_index]
-            max_slot = 0
+            max_index = 0
             for i, data in pairs(logistics_config) do
                 if data.name then
                     item_to_slot[data.name] = i
                     item_config.config[i] = {name = data.name, request = data.count, trash = false}
-                    max_slot = i > max_slot and i or max_slot
+                    max_index = i > max_index and i or max_index
                 end
             end
             local slot
-            max_slot = max_slot + 1
+            max_index = max_index + 1
             --log(serpent.block(tmp[player_index]))
             --log(serpent.block(item_config))
             for _, trash_data in pairs(global.config[player_index]) do
@@ -152,12 +152,11 @@ local function convert_to_combined_storage()
                         --log(serpent.line(item_config[slot]))
                         item_config.config[slot].trash = (item_config.config[slot].request > trash_data.count) and item_config.config[slot].request or trash_data.count
                     else
-                        item_config.config[max_slot] = {name = trash_data.name, trash = trash_data.count, request = false}
-                        max_slot = max_slot + 1
+                        item_config.config[max_index] = {name = trash_data.name, trash = trash_data.count, request = false}
+                        max_index = max_index + 1
                     end
                 end
             end
-            item_config.max_slot = max_slot
         end
     end
     log(serpent.block(tmp))
@@ -171,13 +170,12 @@ local function convert_to_combined_storage()
             item_config = tmp[player_index]
             if storage_config and storage_config.store then
                 for name, stored in pairs(storage_config.store) do
-                    max_slot = 0
-                    item_config[name] = {config = {}, settings = {}, max_slot = 0}
+                    max_index = 0
+                    item_config[name] = {config = {}, settings = {}}
                     for i, data in pairs(stored) do
                         item_config[name].config[i] = {name = data.name, request = data.count, trash = false}
-                        max_slot = i > max_slot and i or max_slot
+                        max_index = i > max_index and i or max_index
                     end
-                    item_config[name].max_slot = max_slot + 1
                 end
             end
         end

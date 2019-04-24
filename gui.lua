@@ -1,4 +1,5 @@
 local lib_control = require '__AutoTrash__.lib_control'
+local saveVar = lib_control.saveVar --luacheck: ignore
 local pause_requests = lib_control.pause_requests
 local format_number = lib_control.format_number
 local format_request = lib_control.format_request
@@ -37,11 +38,10 @@ end
 
 local function set_trash(player)
     if player.force.technologies["character-logistic-trash-slots-1"].researched and player.character then
-        local storage = global.config_new[player.index].config
         local trash_filters = {}
-        for _, item_config in pairs(storage) do
+        for name, item_config in pairs(global.config_new[player.index].config_by_name) do
             if item_config.trash and item_config.trash > -1 then
-                trash_filters[item_config.name] = item_config.trash
+                trash_filters[name] = item_config.trash
             end
         end
         player.auto_trash_filters = trash_filters
@@ -176,7 +176,7 @@ function GUI.update_sliders(player_index)
     end
 end
 
-function GUI.create_buttons(player)
+function GUI.create_buttons(player, slots)
     local left = mod_gui.get_frame_flow(player)
     local frame_new = (left and left.valid) and left[GUI.config_frame]
     if not frame_new or not frame_new.valid or not frame_new["at-config-scroll"] then
@@ -196,8 +196,7 @@ function GUI.create_buttons(player)
     }
 
     local player_index = player.index
-    local slots = 60
-    --slots = player.force.character_logistic_slot_count
+    slots = slots or player.force.character_logistic_slot_count
     for i = 1, slots do
         local req = global["config_tmp"][player_index].config[i]
         local elem_value = req and req.name or nil
@@ -269,9 +268,11 @@ function GUI.open_logistics_frame(player, redraw)
         name = "at-config-scroll",
         --vertical_scroll_policy = "auto-and-reserve-space"
     }
-    scroll_pane.style.maximal_height = math.ceil(38*10+4)
 
-    GUI.create_buttons(player)
+    local display_rows = 6
+    scroll_pane.style.maximal_height = math.ceil(38*display_rows+6)
+
+    GUI.create_buttons(player,60)
 
     local slider_vertical_flow = frame_new.add{
         type = "table",
@@ -461,7 +462,6 @@ function GUI.save_changes(player)
     global.config_new[player_index] = util.table.deepcopy(global.config_tmp[player_index])
 
     --TODO ensure trash >= requests
-    global.config_new[player_index].max_slot = table_size(global.config_new[player_index].config)
     set_requests(player)
     set_trash(player)
     -- if not global.active[player_index] then
@@ -476,11 +476,8 @@ function GUI.save_changes(player)
 end
 
 function GUI.clear_all(player)
-    local left = mod_gui.get_frame_flow(player)
-    local frame = left[GUI.config_frame]
-    if not frame then return end
-
     global.config_tmp[player.index].config = {}
+    global.config_tmp[player.index].config_by_name = {}
     global.selected[player.index] = false
     GUI.open_logistics_frame(player, true)
 end
@@ -500,25 +497,21 @@ function GUI.set_item(player, index, element)
 
     local elem_value = element.elem_value
     if elem_value then
-        for i, item in pairs(global.config_tmp[player_index].config) do
-            if index ~= i and item.name == elem_value then
-                GUI.display_message(player, {"", {"cant-set-duplicate-request", game.item_prototypes[item.name].localised_name}}, true)
-                element.elem_value = nil
-                return i
-            end
+        if global.config_tmp[player_index].config_by_name[elem_value] then
+            GUI.display_message(player, {"", {"cant-set-duplicate-request", game.item_prototypes[elem_value].localised_name}}, true)
+            element.elem_value = nil
+            return global.config_tmp[player_index].config_by_name[elem_value].slot
         end
-        global["config_tmp"][player_index].config[index] = {name = elem_value, request = game.item_prototypes[elem_value].default_request_amount, trash = false}
+        global.config_tmp[player_index].config[index] = {name = elem_value, request = game.item_prototypes[elem_value].default_request_amount, trash = false, slot = index}
+        global.config_tmp[player_index].config_by_name[elem_value] = global.config_tmp[player_index].config[index]
     end
     return true
 end
 
-function GUI.store(player)
+function GUI.store(player, element)
     local player_index = player.index
-    assert(global.storage_new[player_index]) --TODO remove
 
-    local storage_frame = mod_gui.get_frame_flow(player)[GUI.storage_frame]
-    if not storage_frame then return end
-    local textfield = storage_frame["auto-trash-logistics-storage-buttons"]["auto-trash-logistics-storage-name"]
+    local textfield = element.parent["auto-trash-logistics-storage-name"]
     local name = textfield.text
     name = string.match(name, "^%s*(.-)%s*$")
 
@@ -535,15 +528,8 @@ function GUI.store(player)
     GUI.open_logistics_frame(player,true)
 end
 
-function GUI.restore(player, index)
-    local storage_frame = mod_gui.get_frame_flow(player)[GUI.storage_frame]
-    if not storage_frame then return end
-
-    local storage_grid = storage_frame["auto-trash-logistics-storage-grid"]
-    local storage_entry = storage_grid and storage_grid["auto-trash-logistics-restore-" .. index]
-    if not storage_entry then return end
+function GUI.restore(player, name)
     local player_index = player.index
-    local name = storage_entry.caption
     assert(global.storage_new[player_index]) --TODO remove
     assert(global.storage_new[player_index][name]) --TODO remove
 
@@ -551,26 +537,18 @@ function GUI.restore(player, index)
     GUI.open_logistics_frame(player, true)
 end
 
-function GUI.remove(player, index)
-    local storage_frame = mod_gui.get_frame_flow(player)[GUI.storage_frame]
-    if not storage_frame then
-        return
-    end
-    local storage_grid = storage_frame["auto-trash-logistics-storage-grid"]
-    if not storage_grid then
-        return
-    end
+function GUI.remove(player, element, index)
+    local storage_grid = element.parent
+    assert(storage_grid and storage_grid.valid) --TODO remove
     local btn1 = storage_grid["auto-trash-logistics-restore-" .. index]
     local btn2 = storage_grid["auto-trash-logistics-remove-" .. index]
 
     if not btn1 or not btn2 then return end
-
     assert(global.storage_new[player.index]) --TODO remove
     assert(global.storage_new[player.index][btn1.caption]) --TODO remove
+    global["storage_new"][player.index][btn1.caption] = nil
     btn1.destroy()
     btn2.destroy()
-
-    global["storage_new"][player.index][btn1.caption] = nil
 end
 
 return GUI

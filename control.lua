@@ -1,14 +1,15 @@
 require "__core__/lualib/util"
 
 local v = require '__AutoTrash__/semver'
-local saveVar = require '__AutoTrash__.lib_control'.saveVar
-local convert = require '__AutoTrash__.lib_control'.convert
-local debugDump = require '__AutoTrash__.lib_control'.debugDump
-local pause_requests = require '__AutoTrash__.lib_control'.pause_requests
-local format_number = require '__AutoTrash__.lib_control'.format_number
-local format_request = require '__AutoTrash__.lib_control'.format_request
-local format_trash = require '__AutoTrash__.lib_control'.format_trash
-local convert_from_slider = require '__AutoTrash__.lib_control'.convert_from_slider
+local lib_control = require '__AutoTrash__.lib_control'
+local saveVar = lib_control.saveVar
+local convert = lib_control.convert
+local debugDump = lib_control.debugDump
+local pause_requests = lib_control.pause_requests
+local format_number = lib_control.format_number
+local format_request = lib_control.format_request
+local format_trash = lib_control.format_trash
+local convert_from_slider = lib_control.convert_from_slider
 local mod_gui = require '__core__/lualib/mod-gui'
 
 local floor = math.floor
@@ -51,7 +52,7 @@ local function init_player(player)
     local index = player.index
     global.config[index] = global.config[index] or {}
     global.config_new[index] = global.config_new[index] or {}
-    global["config_tmp"][index] = global["config_tmp"][index] or {config = {}, settings = {}, max_slot = 0}
+    global["config_tmp"][index] = global["config_tmp"][index] or {config = {}, config_by_name = {}, settings = {}, slot = false}
     global.selected[index] = global.selected[index] or false
     global["logistics-active"][index] = true
     global.active[index] = true
@@ -199,9 +200,40 @@ local function on_configuration_changed(data)
         end
 
         if oldVersion < v'4.0.5' then
-            for _, p in pairs(game.players) do
+            for i, p in pairs(game.players) do
                 GUI.destroy_frames(p)
                 GUI.init(p)
+                global.config_tmp[i].config_by_name = global.config_tmp[i].config_by_name or {}
+                global.config_new[i].config_by_name = global.config_new[i].config_by_name or {}
+            end
+            for pi, config in pairs(global.config_tmp) do
+                for i, item in pairs(config.config) do
+                    if item then
+                        item.slot = i
+                        global.config_tmp[pi].config_by_name[item.name] = item
+                    end
+                end
+            end
+
+            for pi, config in pairs(global.config_new) do
+                for i, item in pairs(config.config) do
+                    if item then
+                        item.slot = i
+                        global.config_new[pi].config_by_name[item.name] = item
+                    end
+                end
+            end
+            for pi, pstorage in pairs(global.storage_new) do
+                for name, config in pairs(pstorage) do
+                    global.storage_new[pi][name].config_by_name = global.storage_new[pi][name].config_by_name or {}
+                    log(serpent.block(config.config))
+                    for i, item in pairs(config.config) do
+                        if item then
+                            item.slot = i
+                            global.storage_new[pi][name].config_by_name[item.name] = item
+                        end
+                    end
+                end
             end
         end
 
@@ -435,11 +467,46 @@ local function on_tick(event) --luacheck: ignore
     end
 end
 
+local function on_player_main_inventory_changed(event)
+    log("main inventory changed " .. serpent.block(event))
+end
+
+local function on_player_trash_inventory_changed(event)
+    log("trash inventory changed " .. serpent.block(event))
+end
+
+local function on_player_toggled_map_editor(event)
+    log("toggled map editor " .. serpent.block(event))
+end
+
+local function on_pre_player_removed(event)
+    log("pre player removed " .. serpent.block(event))
+    --clean global stuff
+end
+
+local function on_pre_player_died(event)
+    log("pre player died " .. serpent.block(event))
+    --pause requests/trash
+end
+
+local function on_player_changed_position(event)
+    log("player changed position " .. serpent.block(event))
+    log(serpent.line(game.get_player(event.player_index).position))
+    --check for main network
+end
+
 script.on_init(on_init)
 script.on_load(on_load)
 script.on_configuration_changed(on_configuration_changed)
 script.on_event(defines.events.on_player_created, on_player_created)
 script.on_event(defines.events.on_force_created, on_force_created)
+script.on_event(defines.events.on_player_main_inventory_changed, on_player_main_inventory_changed)
+script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
+
+script.on_event(defines.events.on_player_toggled_map_editor, on_player_toggled_map_editor)
+script.on_event(defines.events.on_pre_player_removed, on_pre_player_removed)
+script.on_event(defines.events.on_pre_player_died, on_pre_player_died)
+script.on_event(defines.events.on_player_changed_position, on_player_changed_position)
 --script.on_event(defines.events.on_tick, on_tick)
 
 local function on_pre_mined_item(event)
@@ -627,23 +694,24 @@ local function select_elem_button(player_index, element)
         GUI.update_sliders(player_index)
     end
     log("Selected " .. serpent.line({i = global.selected[player_index], item = element.elem_value}))
-    GUI.create_buttons(game.get_player(player_index))
+    GUI.create_buttons(game.get_player(player_index),60)
 end
 
 local function clear_elem_button(player_index, index, element)
+    global["config_tmp"][player_index].config[index] = nil
+    global["config_tmp"][player_index].config_by_name[element.elem_value] = nil
     element.elem_value = nil
     element.locked = false
-    global["config_tmp"][player_index].config[index] = nil
     element.children[1].caption = " "
     element.children[2].caption = " "
     unselect_elem_button(player_index, element.parent)
-    GUI.create_buttons(game.get_player(player_index))
+    GUI.create_buttons(game.get_player(player_index),60)
 end
 
 local function on_gui_click(event)
     local status, err = pcall(function()
         local element = event.element
-        if element.type == "checkbox" then
+        if not element.valid or element.type == "checkbox" then
             return
         end
         local player_index = event.player_index
@@ -694,7 +762,7 @@ local function on_gui_click(event)
         elseif element.name == "auto-trash-logistics-pause" then
             toggle_autotrash_pause_requests(player)
         elseif element.name  == "auto-trash-logistics-storage-store" then
-            GUI.store(player)
+            GUI.store(player, element)
         elseif element.name == "auto-trash-set-main-network" then
             if global.mainNetwork[player_index] then
                 global.mainNetwork[player_index] = false
@@ -710,17 +778,17 @@ local function on_gui_click(event)
             end
             element.caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
         else
-            event.element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
+            element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
             local type, index, _ = string.match(element.name, "auto%-trash%-(%a+)%-(%d+)%-*(%d*)")
             if not type then
                 type, index, _ = string.match(element.name, "auto%-trash%-logistics%-(%a+)%-(%d+)%-*(%d*)")
             end
-            --log(serpent.block({t=type, i=tonumber(index)}))
+            --log(serpent.block({t=type, i=tonumber(index), gui_index = element.index}))
             if type and index then
                 if type == "restore" then
-                    GUI.restore(player, tonumber(index))
+                    GUI.restore(player, element.caption)
                 elseif type == "remove" then
-                    GUI.remove(player, tonumber(index))
+                    GUI.remove(player, element, tonumber(index))
                 end
             end
         end
@@ -778,7 +846,6 @@ local function on_gui_elem_changed(event)
         --log(serpent.line({i=index, elem_value = elem_value}))
         if elem_value then
             local i = GUI.set_item(game.get_player(player_index), index, element)
-            log("set_item " .. serpent.line(i))
             if i == true then
                 element.locked = true
                 select_elem_button(event.player_index, element)
@@ -806,7 +873,9 @@ local function update_selected_value(player_index, flow, number)
     if not button or not button.valid then
         return
     end
-    local item_config = global["config_tmp"][player_index].config[i] and global["config_tmp"][player_index].config[i] or {name = false, trash = 0, request = 0}
+    global["config_tmp"][player_index].config[i] = global["config_tmp"][player_index].config[i] or {name = false, trash = 0, request = 0}
+    global["config_tmp"][player_index].config_by_name[button.elem_value] = global["config_tmp"][player_index].config[i]
+    local item_config = global["config_tmp"][player_index].config[i]
     item_config.name = button.elem_value
 
     if flow.name == "at-slider-flow-request" then
@@ -825,7 +894,6 @@ local function update_selected_value(player_index, flow, number)
         --     item_config.request = item_config.trash
         -- end
     end
-    global["config_tmp"][player_index].config[i] = item_config
     GUI.update_sliders(player_index)
 end
 
