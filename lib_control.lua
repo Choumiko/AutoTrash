@@ -39,6 +39,18 @@ local function pause_requests(player)
     end
 end
 
+local function set_trash(player)
+    if player.force.technologies["character-logistic-trash-slots-1"].researched and player.character then
+        local trash_filters = {}
+        for name, item_config in pairs(global.config_new[player.index].config_by_name) do
+            if item_config.trash and item_config.trash > -1 then
+                trash_filters[name] = item_config.trash
+            end
+        end
+        player.auto_trash_filters = trash_filters
+    end
+end
+
 local function format_number(n, append_suffix)
   local amount = tonumber(n)
     if not amount then
@@ -191,6 +203,7 @@ local M = {
     saveVar = saveVar,
     debugDump = debugDump,
     pause_requests = pause_requests,
+    set_trash = set_trash,
     format_number = format_number,
     format_request = format_request,
     format_trash = format_trash,

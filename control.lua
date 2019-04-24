@@ -6,6 +6,7 @@ local saveVar = lib_control.saveVar
 local convert = lib_control.convert
 local debugDump = lib_control.debugDump
 local pause_requests = lib_control.pause_requests
+local set_trash = lib_control.set_trash
 local format_number = lib_control.format_number
 local format_request = lib_control.format_request
 local format_trash = lib_control.format_trash
@@ -18,6 +19,22 @@ local MAX_CONFIG_SIZES = {
     ["character-logistic-trash-slots-1"] = 10,
     ["character-logistic-trash-slots-2"] = 30
 }
+
+local function get_requests(player)
+    local requests = {}
+    -- get requested items
+    if player.character and player.force.character_logistic_slot_count > 0 then
+        local character = player.character
+        -- local t = {name = false, count = 0}
+        for c=1,player.force.character_logistic_slot_count do
+            local t = character.get_request_slot(c)
+            if t then
+                requests[t.name] = t.count
+            end
+        end
+    end
+    return requests
+end
 
 local GUI = require "__AutoTrash__/gui"
 
@@ -289,12 +306,27 @@ local function inMainNetwork(player)
         return true
     end
 
-    local currentNetwork = player.surface.find_logistic_network_by_position(player.position, player.force)
+    local currentNetwork = player.character.logistic_network
+    --local currentNetwork = player.surface.find_logistic_network_by_position(player.position, player.force) TODO make sure it's slower
     local entity = global.mainNetwork[player.index]
     if currentNetwork and entity and entity.valid and currentNetwork == entity.logistic_network then
         return true
     end
     return false
+end
+
+local function pause_trash(player)
+    global.active[player.index] = false
+    --TODO backup current filters?
+    player.character.auto_trash_filters = {}
+    GUI.update(player)
+end
+
+local function unpause_trash(player)
+    global.active[player.index] = true
+    --TODO restore current filters?
+    set_trash(player)
+    GUI.update(player)
 end
 
 local function on_tick(event) --luacheck: ignore
@@ -385,10 +417,8 @@ local function on_tick(event) --luacheck: ignore
                             end
                         end
                     end
-                    local requests_by_name = {}
 
                     for name, r in pairs(requests) do
-                        requests_by_name[name] = true
                         if global.settings[player_index].auto_trash_above_requested then
                             if not already_trashed[name] then
                                 local count = player.get_item_count(name)
@@ -421,40 +451,7 @@ local function on_tick(event) --luacheck: ignore
                             end
                         end
                     end
-                    if global.settings[player_index].auto_trash_unrequested then
-                        if main_inventory and not main_inventory.is_empty() then
-                            local contents = main_inventory.get_contents()
-                            local stack = {name="", count = 0}
-                            for name, count in pairs(contents) do
-                                if not requests_by_name[name] and name ~= "blueprint" and name ~= "blueprint-book" then
-                                    local t_item, t_index = main_inventory.find_item_stack(name)
-                                    local has_grid = game.item_prototypes[name].equipment_grid or (t_item and t_item.grid)
-                                    if not has_grid then
-                                        stack.name = name
-                                        stack.count = count
-                                        local c = trash.insert(stack)
-                                        if c > 0 then
-                                            local removed = main_inventory.remove{name=name, count=c}
-                                            if c > removed then
-                                                trash.remove{name=name, count = c - removed}
-                                            end
-                                        end
-                                    else
-                                        if t_item then
-                                            for ti = #trash, 1, -1 do
-                                                if trash[ti].valid and not trash[ti].valid_for_read then
-                                                    if trash[ti].swap_stack(main_inventory[t_index]) then
-                                                        dirty = true
-                                                        break
-                                                    end
-                                                end
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
+
                     if dirty then
                         trash.sort_and_merge()
                     end
@@ -467,13 +464,48 @@ local function on_tick(event) --luacheck: ignore
     end
 end
 
+local trash_blacklist = {
+    ["blueprint"] = true,
+    ["blueprint-book"] = true,
+    ["deconstruction-item"] = true,
+    ["upgrade-item"] = true,
+    ["copy-paste-tool"] = true,
+    ["selection-tool"] = true,
+}
+
 local function on_player_main_inventory_changed(event)
     log("main inventory changed " .. serpent.block(event))
+    -- if not trash_blacklist then
+    --     trash_blacklist = {}
+    --     for name, proto in pairs(game.item_prototypes) do
+    --         if not proto.stackable then
+    --         log(name .. " " .. proto.type)
+    --         end
+    --     end
+    -- end
+    if global.active[event.player_index] and global.settings[event.player_index].auto_trash_unrequested then
+        local player = game.get_player(event.player_index)
+        if player.character then
+            local trash_filters = player.auto_trash_filters
+            local contents = player.get_main_inventory().get_contents()
+            local requests = get_requests(player)
+            local protos = game.item_prototypes
+            for name, _ in pairs(contents) do
+                --TODO checking for trash_filters[name] would allow hand set exceptions, either set in the vanilla gui or the stored rulesets
+                --possible problem when unchecking "unrequested" what trash filters should be reset to?
+                --the one in global.config or the ones set in vanilla before it was checked (needs saving in global)
+                if not requests[name] and not trash_blacklist[protos[name].type] and not trash_filters[name] then
+                    trash_filters[name] = 0
+                end
+            end
+            player.auto_trash_filters = trash_filters
+        end
+    end
 end
 
-local function on_player_trash_inventory_changed(event)
-    log("trash inventory changed " .. serpent.block(event))
-end
+-- local function on_player_trash_inventory_changed(event)
+--     log("trash inventory changed " .. serpent.block(event))
+-- end
 
 local function on_player_toggled_map_editor(event)
     log("toggled map editor " .. serpent.block(event))
@@ -490,9 +522,18 @@ local function on_pre_player_died(event)
 end
 
 local function on_player_changed_position(event)
-    log("player changed position " .. serpent.block(event))
-    log(serpent.line(game.get_player(event.player_index).position))
-    --check for main network
+    --local player = game.get_player(event.player_index)
+    --log(serpent.block(player.character.get_logistic_point())) <- trash and request info should be available
+    if not global.settings[event.player_index].auto_trash_in_main_network or not global.active[event.player_index] then
+        return
+    end
+    local player = game.get_player(event.player_index)
+    log(serpent.line(inMainNetwork(player)))
+    if not inMainNetwork(player) then
+        pause_trash(player)
+        GUI.display_message(player, "AutoTrash paused")
+    end
+    -- global.active[event.player_index] = inMainNetwork(game.get_player(event.player_index))
 end
 
 script.on_init(on_init)
@@ -501,7 +542,7 @@ script.on_configuration_changed(on_configuration_changed)
 script.on_event(defines.events.on_player_created, on_player_created)
 script.on_event(defines.events.on_force_created, on_force_created)
 script.on_event(defines.events.on_player_main_inventory_changed, on_player_main_inventory_changed)
-script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
+--script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
 
 script.on_event(defines.events.on_player_toggled_map_editor, on_player_toggled_map_editor)
 script.on_event(defines.events.on_pre_player_removed, on_pre_player_removed)
@@ -558,6 +599,7 @@ local function add_order(player)
 end
 
 local function add_to_trash(player, item, count)
+    error("Rewrite that crap")
     local player_index = player.index
 
     for i=#global.temporaryTrash[player_index],1,-1 do
@@ -628,22 +670,12 @@ local function unpause_requests(player)
     end
 end
 
-local function toggle_autotrash_pause(player, element)
-    local mainButton = mod_gui.get_button_flow(player)[GUI.mainButton]
-    if not mainButton then
-        return
-    end
+local function toggle_autotrash_pause(player)
     global.active[player.index] = not global.active[player.index]
     if global.active[player.index] then
-        mainButton.sprite = "autotrash_trash"
-        if element then
-            element.caption = {"auto-trash-config-button-pause"}
-        end
+        unpause_trash(player)
     else
-        mainButton.sprite = "autotrash_trash_paused"
-        if element then
-            element.caption = {"auto-trash-config-button-unpause"}
-        end
+        pause_trash(player)
     end
     GUI.close(player)
 end
@@ -767,7 +799,7 @@ local function on_gui_click(event)
             if global.mainNetwork[player_index] then
                 global.mainNetwork[player_index] = false
             else
-                local network = player.surface.find_logistic_network_by_position(player.position, player.force) or false
+                local network = player.character and player.character.logistic_network or false
                 if network then
                     local cell = network.find_cell_closest_to(player.position)
                     global.mainNetwork[player_index] = cell and cell.owner or false
@@ -809,15 +841,15 @@ local function on_gui_checked_changed_state(event)
         local player = game.get_player(player_index)
 
         if element.name == GUI.trash_in_main_network then
-            global.settings[player_index].auto_trash_in_main_network = not global.settings[player_index].auto_trash_in_main_network
+            global.settings[player_index].auto_trash_in_main_network = element.state
         elseif element.name == GUI.trash_above_requested then
-            global.settings[player_index].auto_trash_above_requested = not global.settings[player_index].auto_trash_above_requested
+            global.settings[player_index].auto_trash_above_requested = element.state
             if global.settings[player_index].auto_trash_unrequested and not global.settings[player_index].auto_trash_above_requested then
                 global.settings[player_index].auto_trash_above_requested = true
                 player.print({"", "'", {"auto-trash-above-requested"}, "' has to be active if '", {"auto-trash-unrequested"}, "' is active"})
             end
         elseif element.name == GUI.trash_unrequested then
-            global.settings[player_index].auto_trash_unrequested = not global.settings[player_index].auto_trash_unrequested
+            global.settings[player_index].auto_trash_unrequested = element.state
             if global.settings[player_index].auto_trash_unrequested then
                 global.settings[player_index].auto_trash_above_requested = true
             end
@@ -949,21 +981,13 @@ local function on_research_finished(event)
 end
 script.on_event(defines.events.on_research_finished, on_research_finished)
 
-local function autotrash_pause(event)
-    local player = game.get_player(event.player_index)
-    if player.force.technologies["character-logistic-trash-slots-1"].researched then
-        toggle_autotrash_pause(player)
-    end
-end
-script.on_event("autotrash_pause", autotrash_pause)
+script.on_event("autotrash_pause", function(e)
+    toggle_autotrash_pause(game.get_player(e.player_index))
+end)
 
-local function autotrash_pause_requests(event)
-    local player = game.get_player(event.player_index)
-    if player.force.technologies["character-logistic-slots-1"].researched then
-        toggle_autotrash_pause_requests(player)
-    end
-end
-script.on_event("autotrash_pause_requests", autotrash_pause_requests)
+script.on_event("autotrash_pause_requests", function(e)
+    toggle_autotrash_pause_requests(game.get_player(e.player_index))
+end)
 
 local function autotrash_trash_cursor(event)
     local player = game.get_player(event.player_index)

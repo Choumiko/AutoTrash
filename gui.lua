@@ -1,22 +1,12 @@
 local lib_control = require '__AutoTrash__.lib_control'
 local saveVar = lib_control.saveVar --luacheck: ignore
 local pause_requests = lib_control.pause_requests
+local set_trash = lib_control.set_trash
 local format_number = lib_control.format_number
 local format_request = lib_control.format_request
 local format_trash = lib_control.format_trash
 local convert_to_slider = lib_control.convert_to_slider
 local mod_gui = require '__core__/lualib/mod-gui'
-
-local function get_requests(player) --luacheck: ignore
-    local requests = {}
-    -- get requested items
-    if player.character and player.force.character_logistic_slot_count > 0 then
-        for c=1,player.force.character_logistic_slot_count do
-            requests[c] = player.character.get_request_slot(c)
-        end
-    end
-    return requests
-end
 
 local function set_requests(player)
     if player.force.technologies["character-logistic-slots-1"].researched and player.character then
@@ -33,18 +23,6 @@ local function set_requests(player)
                 end
             end
         end
-    end
-end
-
-local function set_trash(player)
-    if player.force.technologies["character-logistic-trash-slots-1"].researched and player.character then
-        local trash_filters = {}
-        for name, item_config in pairs(global.config_new[player.index].config_by_name) do
-            if item_config.trash and item_config.trash > -1 then
-                trash_filters[name] = item_config.trash
-            end
-        end
-        player.auto_trash_filters = trash_filters
     end
 end
 
@@ -111,6 +89,18 @@ local function get_settings_group(player)
         table.insert(result, other)
     end
     return result
+end
+
+function GUI.update(player)
+    local mainButton = mod_gui.get_button_flow(player)[GUI.mainButton]
+    if not mainButton then
+        return
+    end
+    if global.active[player.index] then
+        mainButton.sprite = "autotrash_trash"
+    else
+        mainButton.sprite = "autotrash_trash_paused"
+    end
 end
 
 function GUI.update_settings(player)
@@ -534,6 +524,7 @@ function GUI.restore(player, name)
     assert(global.storage_new[player_index][name]) --TODO remove
 
     global.config_tmp[player_index] = util.table.deepcopy(global.storage_new[player_index][name])
+    global.selected[player_index] = false
     GUI.open_logistics_frame(player, true)
 end
 
