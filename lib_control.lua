@@ -59,7 +59,7 @@ local function format_number(n, append_suffix)
 end
 
 local function format_request(item_config)
-    return (item_config.request and item_config.request > -1) and item_config.request or (item_config.trash and 0) or " "
+    return (item_config.request and item_config.request > 0) and item_config.request or (item_config.trash and item_config.trash > 0 and 0) or " "
 end
 
 local function format_trash(item_config)

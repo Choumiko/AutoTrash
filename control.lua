@@ -30,7 +30,7 @@ local function set_requests(player)
             for c=1, slots do
                 req = storage[c]
                 if req then
-                    player.character.set_request_slot({name = req.name, count = req.request or 0}, c)
+                    player.character.set_request_slot({name = req.name, count = req.request > -1 and req.request or 0}, c)
                 else
                     player.character.clear_request_slot(c)
                 end
@@ -163,7 +163,7 @@ local function on_init()
 end
 
 local function on_load()
-
+    assert(1 == GUI.index_from_name(GUI.defines.choose_button .. 1), "Update GUI.index_from_name, you fool!")--TODO remove
 end
 
 local function on_configuration_changed(data)
@@ -273,20 +273,27 @@ local function on_configuration_changed(data)
 
         global.version = newVersion
     end
+
     init_global()
     init_players()
     local items = game.item_prototypes
-    for player_index, p in pairs(global.config) do
-        for i=#p,1,-1 do
-            if not items[p[i].name] then
-                table.remove(global.config[player_index], i)
+    for _, p in pairs(global.config_new) do
+        for i, item_config in pairs(p.config) do
+            if item_config and not items[item_config.name] then
+                    p.config[i] = nil
+                    p.config_by_name[item_config.name] = nil
             end
         end
     end
-    for player_index, p in pairs(global["config_tmp"]) do
-        for i=#p.config,1,-1 do
-            if p.config[i] and not items[p.config[i].name] then
-                table.remove(global["config_tmp"][player_index].config, i)
+    for pi, p in pairs(global["config_tmp"]) do
+        for i, item_config in pairs(p.config) do
+            if item_config and not items[item_config.name] then
+                    p.config[i] = nil
+                    p.config_by_name[item_config.name] = nil
+                    if global.selected[pi] and global.selected[pi] == i then
+                        global.selected[pi] = false
+                    end
+                    GUI.create_buttons(game.get_player(pi))
             end
         end
     end
@@ -700,7 +707,7 @@ local function toggle_autotrash_pause(player)
 end
 
 local function toggle_autotrash_pause_requests(player)
-    local mainButton = mod_gui.get_button_flow(player)[GUI.mainButton]
+    local mainButton = mod_gui.get_button_flow(player)[GUI.defines.mainButton]
     if not mainButton then
         return
     end
@@ -740,7 +747,7 @@ local function select_elem_button(player_index, element)
         if element.locked then
             element.locked = false
             element.style = "logistic_button_selected_slot"
-            global.selected[player_index] = tonumber(string.match(element.name, "auto%-trash%-item%-(%d+)"))
+            global.selected[player_index] = GUI.index_from_name(element.name)
         end
         GUI.update_sliders(player_index)
     end
@@ -767,7 +774,7 @@ local function on_gui_click(event)
         end
         local player_index = event.player_index
         if element.type == "choose-elem-button" then
-            local index = tonumber(string.match(element.name, "auto%-trash%-item%-(%d+)"))
+            local index = GUI.index_from_name(element.name)
             -- log("on click " .. serpent.line(element.name))
             -- log(serpent.line(event))
             --log(serpent.line({elem=element.elem_value, locked = element.locked, selected = global.selected[player_index]}))
@@ -794,7 +801,7 @@ local function on_gui_click(event)
         end
 
         local player = game.get_player(player_index)
-        if element.name == GUI.mainButton then
+        if element.name == GUI.defines.mainButton then
             if player.cursor_stack.valid_for_read then
                 if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
                     add_order(player)
@@ -804,7 +811,7 @@ local function on_gui_click(event)
             else
                 GUI.open_logistics_frame(player)
             end
-        elseif element.name == "auto-trash-apply" or element.name == "auto-trash-logistics-apply" then
+        elseif element.name == GUI.defines.save_button then
             GUI.save_changes(player)
             set_requests(player)
             set_trash(player)
@@ -814,15 +821,15 @@ local function on_gui_click(event)
             if not global["logistics-active"][player_index] then
                 pause_requests(player)
             end
-        elseif element.name == "auto-trash-clear-all" or element.name == "auto-trash-logistics-clear-all" then
+        elseif element.name == GUI.defines.clear_button then
             GUI.clear_all(player)
         elseif element.name == "auto-trash-pause" then
             toggle_autotrash_pause(player)
         elseif element.name == "auto-trash-logistics-pause" then
             toggle_autotrash_pause_requests(player)
-        elseif element.name  == "auto-trash-logistics-storage-store" then
+        elseif element.name  == GUI.defines.store_button then
             GUI.store(player, element)
-        elseif element.name == "auto-trash-set-main-network" then
+        elseif element.name == GUI.defines.set_main_network then
             if global.mainNetwork[player_index] then
                 global.mainNetwork[player_index] = false
             else
@@ -864,7 +871,7 @@ local function on_gui_checked_changed_state(event)
         local player_index = event.player_index
         local player = game.get_player(player_index)
 
-        if element.name == GUI.trash_in_main_network then
+        if element.name == GUI.defines.trash_in_main_network then
             if element.state and not global.mainNetwork[player_index] then
                 player.print("No main network set")
             else
@@ -873,13 +880,13 @@ local function on_gui_checked_changed_state(event)
                     unpause_trash(player)
                 end
             end
-        elseif element.name == GUI.trash_above_requested then
+        elseif element.name == GUI.defines.trash_above_requested then
             global.settings[player_index].auto_trash_above_requested = element.state
             if global.settings[player_index].auto_trash_unrequested and not global.settings[player_index].auto_trash_above_requested then
                 global.settings[player_index].auto_trash_above_requested = true
                 player.print({"", "'", {"auto-trash-above-requested"}, "' has to be active if '", {"auto-trash-unrequested"}, "' is active"})
             end
-        elseif element.name == GUI.trash_unrequested then
+        elseif element.name == GUI.defines.trash_unrequested then
             global.settings[player_index].auto_trash_unrequested = element.state
             if global.settings[player_index].auto_trash_unrequested then
                 global.settings[player_index].auto_trash_above_requested = true
@@ -897,8 +904,7 @@ local function on_gui_elem_changed(event)
         log("elem_changed: " .. event.element.name)
         local element = event.element
         local player_index = event.player_index
-        local index = tonumber(string.match(element.name, "auto%-trash%-item%-(%d+)"))
-        index = tonumber(index)
+        local index = GUI.index_from_name(element.name)
         if not index then
             return
         end
@@ -910,8 +916,7 @@ local function on_gui_elem_changed(event)
                 element.locked = true
                 select_elem_button(event.player_index, element)
             elseif i then
-                local name = "auto-trash-item-" .. i
-                select_elem_button(event.player_index, element.parent[name])
+                select_elem_button(event.player_index, element.parent[GUI.defines.choose_button .. i])
             end
         else
             clear_elem_button(player_index, index, element)
@@ -1080,14 +1085,14 @@ remote.add_interface("at",
         end,
 
         hide = function()
-            local button = mod_gui.get_button_flow(game.player)[GUI.mainButton]
+            local button = mod_gui.get_button_flow(game.player)[GUI.defines.mainButton]
             if button then
                 button.visible = false
             end
         end,
 
         show = function()
-            local button = mod_gui.get_button_flow(game.player)[GUI.mainButton]
+            local button = mod_gui.get_button_flow(game.player)[GUI.defines.mainButton]
             if button then
                 button.visible = true
             end

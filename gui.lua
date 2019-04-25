@@ -20,24 +20,38 @@ local function hide_yarm(index)
 end
 
 local GUI = {
-    mainButton = "auto-trash-config-button",
-    storage_frame = "auto-trash-logistics-storage-frame",
-    config_frame = "at-config-frame",
-    trash_above_requested = "auto-trash-above-requested",
-    trash_unrequested = "auto-trash-unrequested",
-    trash_in_main_network = "auto-trash-in-main-network"
+    defines = {
+        mainButton = "at-config-button",
+        storage_frame = "at-logistics-storage-frame",
+        config_frame = "at-config-frame",
+        trash_above_requested = "at-above-requested",
+        trash_unrequested = "at-unrequested",
+        trash_in_main_network = "at-in-main-network",
+        save_button = "at-logistics-apply",
+        clear_button = "at-logistics-clear-all",
+        store_button = "at-logistics-storage-store",
+        set_main_network = "at-set-main-network",
+        choose_button = "auto_trash_item_"
+    },
+    on_gui_click = {
+
+    }
 }
+
+function GUI.index_from_name(name)
+    return tonumber(string.match(name, GUI.defines.choose_button .. "(%d+)"))
+end
 
 function GUI.init(player)
     local button_flow = mod_gui.get_button_flow(player)
-    if button_flow[GUI.mainButton] then
+    if button_flow[GUI.defines.mainButton] then
         return
     end
     if player.force.technologies["character-logistic-slots-1"].researched
     or player.force.technologies["character-logistic-trash-slots-1"].researched then
         local button = button_flow.add{
             type = "sprite-button",
-            name = GUI.mainButton,
+            name = GUI.defines.mainButton,
             style = "auto-trash-sprite-button"
         }
         button.sprite = "autotrash_trash"
@@ -45,7 +59,7 @@ function GUI.init(player)
 end
 
 function GUI.update(player)
-    local mainButton = mod_gui.get_button_flow(player)[GUI.mainButton]
+    local mainButton = mod_gui.get_button_flow(player)[GUI.defines.mainButton]
     if not mainButton then
         return
     end
@@ -57,25 +71,25 @@ function GUI.update(player)
 end
 
 function GUI.update_settings(player)
-    local frame = mod_gui.get_frame_flow(player)[GUI.config_frame]
+    local frame = mod_gui.get_frame_flow(player)[GUI.defines.config_frame]
     if not frame or not frame.valid then
         return
     end
     local index = player.index
-    frame[GUI.trash_unrequested].state = global.settings[index].auto_trash_unrequested
-    frame[GUI.trash_above_requested].state = global.settings[index].auto_trash_above_requested
-    frame[GUI.trash_in_main_network].state = global.settings[index].auto_trash_in_main_network
+    frame[GUI.defines.trash_unrequested].state = global.settings[index].auto_trash_unrequested
+    frame[GUI.defines.trash_above_requested].state = global.settings[index].auto_trash_above_requested
+    frame[GUI.defines.trash_in_main_network].state = global.settings[index].auto_trash_in_main_network
 end
 
 function GUI.destroy(player)
     local button_flow = mod_gui.get_button_flow(player)
-    if button_flow[GUI.mainButton] then
-        button_flow[GUI.mainButton].destroy()
+    if button_flow[GUI.defines.mainButton] then
+        button_flow[GUI.defines.mainButton].destroy()
     end
 end
 
 function GUI.update_sliders(player_index)
-    local left = mod_gui.get_frame_flow(game.get_player(player_index))[GUI.config_frame]
+    local left = mod_gui.get_frame_flow(game.get_player(player_index))[GUI.defines.config_frame]
     local slider_flow = left and left["at-slider-flow-vertical"]
     if not slider_flow or not slider_flow.valid then
         return
@@ -95,7 +109,7 @@ end
 
 function GUI.create_buttons(player)
     local left = mod_gui.get_frame_flow(player)
-    local frame = (left and left.valid) and left[GUI.config_frame]
+    local frame = (left and left.valid) and left[GUI.defines.config_frame]
     if not frame or not frame.valid then
         return
     end
@@ -126,7 +140,7 @@ function GUI.create_buttons(player)
     for i = 1, slots-1 do
         local req = global["config_tmp"][player_index].config[i]
         local elem_value = req and req.name or nil
-        local button_name = "auto-trash-item-" .. i
+        local button_name = GUI.defines.choose_button .. i
         local choose_button = ruleset_grid.add{
             type = "choose-elem-button",
             name = button_name,
@@ -156,7 +170,7 @@ function GUI.create_buttons(player)
             lbl_top.caption = format_number(format_request(req), true)
             lbl_bottom.caption = format_number(format_trash(req), true)
             --disable popup gui, keeps on_click active
-            choose_button.locked = choose_button.name ~=  "auto-trash-item-" .. tostring(global.selected[player_index])
+            choose_button.locked = choose_button.name ~=  GUI.defines.choose_button .. tostring(global.selected[player_index])
         end
     end
 
@@ -196,9 +210,9 @@ end
 
 function GUI.open_logistics_frame(player, redraw)
     local left = mod_gui.get_frame_flow(player)
-    local frame = left[GUI.config_frame]
+    local frame = left[GUI.defines.config_frame]
     local player_index = player.index
-    local storage_frame = left[GUI.storage_frame]
+    local storage_frame = left[GUI.defines.storage_frame]
 
     if frame then
         frame.destroy()
@@ -218,7 +232,7 @@ function GUI.open_logistics_frame(player, redraw)
     frame = left.add{
         type = "frame",
         caption = {"auto-trash-logistics-config-frame-title"},
-        name = GUI.config_frame,
+        name = GUI.defines.config_frame,
         direction = "vertical"
     }
 
@@ -280,21 +294,21 @@ function GUI.open_logistics_frame(player, redraw)
 
     frame.add{
         type = "checkbox",
-        name = GUI.trash_above_requested,
+        name = GUI.defines.trash_above_requested,
         caption = {"auto-trash-above-requested"},
         state = global.settings[player.index].auto_trash_above_requested
     }
 
     frame.add{
         type = "checkbox",
-        name = GUI.trash_unrequested,
+        name = GUI.defines.trash_unrequested,
         caption = {"auto-trash-unrequested"},
         state = global.settings[player.index].auto_trash_unrequested,
     }
 
     frame.add{
         type = "checkbox",
-        name = GUI.trash_in_main_network,
+        name = GUI.defines.trash_in_main_network,
         caption = {"auto-trash-in-main-network"},
         state = global.settings[player.index].auto_trash_in_main_network,
     }
@@ -302,7 +316,7 @@ function GUI.open_logistics_frame(player, redraw)
     local caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
     frame.add{
         type = "button",
-        name = "auto-trash-set-main-network",
+        name = GUI.defines.set_main_network,
         caption = caption
     }
 
@@ -314,12 +328,12 @@ function GUI.open_logistics_frame(player, redraw)
     }
     button_grid.add{
         type = "button",
-        name = "auto-trash-logistics-apply",
+        name = GUI.defines.save_button,
         caption = {"auto-trash-config-button-apply"}
     }
     button_grid.add{
         type = "button",
-        name = "auto-trash-logistics-clear-all",
+        name = GUI.defines.clear_button,
         caption = {"auto-trash-config-button-clear-all"}
     }
     caption = global["logistics-active"][player_index] and {"auto-trash-config-button-pause"} or {"auto-trash-config-button-unpause"}
@@ -332,7 +346,7 @@ function GUI.open_logistics_frame(player, redraw)
 
     storage_frame = left.add{
         type = "frame",
-        name = GUI.storage_frame,
+        name = GUI.defines.storage_frame,
         caption = {"auto-trash-storage-frame-title"},
         direction = "vertical"
     }
@@ -356,7 +370,7 @@ function GUI.open_logistics_frame(player, redraw)
     storage_frame_buttons.add{
         type = "button",
         caption = {"auto-trash-storage-store"},
-        name = "auto-trash-logistics-storage-store",
+        name = GUI.defines.store_button,
         style = "auto-trash-small-button"
     }
     local storage_scroll = storage_frame.add{
@@ -396,8 +410,8 @@ end
 
 function GUI.close(player)
     local left = mod_gui.get_frame_flow(player)
-    local storage_frame = left[GUI.storage_frame]
-    local frame = left[GUI.config_frame]
+    local storage_frame = left[GUI.defines.storage_frame]
+    local frame = left[GUI.defines.config_frame]
 
     if storage_frame then
         storage_frame.destroy()
