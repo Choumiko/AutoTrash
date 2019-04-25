@@ -123,7 +123,7 @@ function GUI.create_buttons(player)
 
     local player_index = player.index
     local slots = mod_settings["autotrash_slots"].value or player.force.character_logistic_slot_count
-    for i = 1, slots do
+    for i = 1, slots-1 do
         local req = global["config_tmp"][player_index].config[i]
         local elem_value = req and req.name or nil
         local button_name = "auto-trash-item-" .. i
@@ -159,6 +159,39 @@ function GUI.create_buttons(player)
             choose_button.locked = choose_button.name ~=  "auto-trash-item-" .. tostring(global.selected[player_index])
         end
     end
+
+    local extend_button_flow = ruleset_grid.add{
+        type = "flow",
+        name = "autotrash-extend-flow",
+        direction = "vertical",
+        style = "autotrash-extend-flow"
+    }
+    extend_button_flow.style.left_padding = 0
+    extend_button_flow.style.right_padding = 0
+    extend_button_flow.style.top_padding = 0
+    extend_button_flow.style.bottom_padding = 0
+    extend_button_flow.style.vertical_spacing = 0
+
+    local minus = extend_button_flow.add{
+        type = "button",
+        name = "autotrash-extend-less",
+        caption = "-",
+        --sprite = "utility/dropdown",
+        style = "auto-trash-sprite-button"
+    }
+    local plus = extend_button_flow.add{
+        type = "sprite-button",
+        name = "autotrash-extend-more",
+        caption = "+",
+        --sprite = "utility/add",
+        style = "auto-trash-sprite-button"
+    }
+    minus.style.maximal_height = 16
+    minus.style.minimal_width = 16
+    minus.style.font = "default-bold"
+    plus.style.maximal_height = 16
+    plus.style.minimal_width = 16
+    plus.style.font = "default-bold"
 end
 
 function GUI.open_logistics_frame(player, redraw)

@@ -82,6 +82,11 @@ data.raw["gui-style"].default["auto-trash-expand-button"] =
         height = 16,
         padding = 0
     }
+data.raw["gui-style"].default["autotrash-extend-flow"] =
+    {
+        type = "vertical_flow_style",
+        parent = "vertical_flow",
+    }
 
 data:extend({
     {

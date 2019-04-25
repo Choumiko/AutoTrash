@@ -229,7 +229,7 @@ local function on_configuration_changed(data)
             end
         end
 
-        if oldVersion < v'4.0.5' then
+        if oldVersion < v'4.0.6' then
             for i, p in pairs(game.players) do
                 GUI.init(p)
                 global.config_tmp[i].config_by_name = global.config_tmp[i].config_by_name or {}
