@@ -93,27 +93,36 @@ function GUI.update_sliders(player_index)
     end
 end
 
-function GUI.create_buttons(player, slots)
+function GUI.create_buttons(player)
     local left = mod_gui.get_frame_flow(player)
     local frame = (left and left.valid) and left[GUI.config_frame]
-    if not frame or not frame.valid or not frame["at-config-scroll"] then
+    if not frame or not frame.valid then
         return
     end
-    local ruleset_grid = frame["at-config-scroll"]["at-ruleset-grid"]
+
+    local scroll_pane = frame["at-config-scroll"]
+    scroll_pane = scroll_pane or frame.add{
+        type = "scroll-pane",
+        name = "at-config-scroll",
+    }
+    local mod_settings = player.mod_settings
+    local display_rows = mod_settings["autotrash_gui_max_rows"].value
+    scroll_pane.style.maximal_height = 38 * display_rows + 6
+
+    local ruleset_grid = scroll_pane["at-ruleset-grid"]
     if ruleset_grid and ruleset_grid.valid then
         ruleset_grid.destroy()
     end
 
-    local column_count = 6
     ruleset_grid = frame["at-config-scroll"].add{
         type = "table",
-        column_count = column_count,
+        column_count = mod_settings["autotrash_gui_columns"].value,
         name = "at-ruleset-grid",
         style = "slot_table"
     }
 
     local player_index = player.index
-    slots = slots or player.force.character_logistic_slot_count
+    local slots = mod_settings["autotrash_slots"].value or player.force.character_logistic_slot_count
     for i = 1, slots do
         local req = global["config_tmp"][player_index].config[i]
         local elem_value = req and req.name or nil
@@ -180,15 +189,7 @@ function GUI.open_logistics_frame(player, redraw)
         direction = "vertical"
     }
 
-    local scroll_pane = frame.add{
-        type = "scroll-pane",
-        name = "at-config-scroll",
-    }
-
-    local display_rows = 6
-    scroll_pane.style.maximal_height = math.ceil(38*display_rows+6)
-
-    GUI.create_buttons(player,60)
+    GUI.create_buttons(player)
 
     local slider_vertical_flow = frame.add{
         type = "table",

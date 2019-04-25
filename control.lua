@@ -167,10 +167,10 @@ local function on_load()
 end
 
 local function on_configuration_changed(data)
-    if not data or not data.mod_changes then
+    if not data then
         return
     end
-    if data.mod_changes.AutoTrash then
+    if data.mod_changes and data.mod_changes.AutoTrash then
         local newVersion = data.mod_changes.AutoTrash.new_version
         newVersion = v(newVersion)
         local oldVersion = data.mod_changes.AutoTrash.old_version or '0.0.0'
@@ -182,24 +182,6 @@ local function on_configuration_changed(data)
         init_global()
         init_forces()
         init_players()
-
-        if oldVersion < v'0.1.1' then
-            for _, p in pairs(game.players) do
-                GUI.close(p)
-            end
-        end
-
-        if oldVersion < v'0.1.3' then
-            local cell
-            for player_index, network in pairs(global.mainNetwork) do
-                if network and network.valid then
-                    cell = network.cells[1]
-                    if cell and cell.valid then
-                        global.mainNetwork[player_index] = cell.owner
-                    end
-                end
-            end
-        end
 
         if oldVersion < v'4.0.1' then
             init_players(true)
@@ -590,8 +572,9 @@ end
 
 local function on_pre_player_died(event)
     log("pre player died " .. serpent.block(event))
-    if global.settings[event.player_index].pause_on_death then
-        pause_requests(game.get_player(event.player_index))
+    local player = game.get_player(event.player_index)
+    if player.mod_settings["autotrash_pause_on_death"].value then
+        pause_requests(player)
     end
 end
 
@@ -605,11 +588,15 @@ local function on_player_changed_position(event)
         local active = global.active[event.player_index]
         if not in_network and active then
             pause_trash(player)
-            display_message(player, "AutoTrash paused")
+            if player.mod_settings["autotrash_display_messages"].value then
+                display_message(player, "AutoTrash paused")
+            end
             return
         elseif in_network and not active then
             unpause_trash(player)
-            display_message(player, "AutoTrash unpaused")
+            if player.mod_settings["autotrash_display_messages"].value then
+                display_message(player, "AutoTrash unpaused")
+            end
         end
     end
 end
@@ -758,7 +745,7 @@ local function select_elem_button(player_index, element)
         GUI.update_sliders(player_index)
     end
     log("Selected " .. serpent.line({i = global.selected[player_index], item = element.elem_value}))
-    GUI.create_buttons(game.get_player(player_index),60)
+    GUI.create_buttons(game.get_player(player_index))
 end
 
 local function clear_elem_button(player_index, index, element)
@@ -769,7 +756,7 @@ local function clear_elem_button(player_index, index, element)
     element.children[1].caption = " "
     element.children[2].caption = " "
     unselect_elem_button(player_index, element.parent)
-    GUI.create_buttons(game.get_player(player_index),60)
+    GUI.create_buttons(game.get_player(player_index))
 end
 
 local function on_gui_click(event)
@@ -994,11 +981,30 @@ local function on_gui_text_changed(event)
     end
 end
 
+local gui_settings = {
+    ["autotrash_gui_columns"] = true,
+    ["autotrash_gui_max_rows"] = true,
+    ["autotrash_slots"] = true,
+}
+local function on_runtime_mod_setting_changed(event)
+    if gui_settings[event.setting] then
+        if event.player_index then
+            GUI.create_buttons(game.get_player(event.player_index))
+        else
+            --update all guis, value was changed by script
+            for _, player in pairs(game.players) do
+                GUI.create_buttons(player)
+            end
+        end
+    end
+end
+
 script.on_event(defines.events.on_gui_click, on_gui_click)
 script.on_event(defines.events.on_gui_checked_state_changed, on_gui_checked_changed_state)
 script.on_event(defines.events.on_gui_elem_changed, on_gui_elem_changed)
 script.on_event(defines.events.on_gui_value_changed, on_gui_value_changed)
 script.on_event(defines.events.on_gui_text_changed, on_gui_text_changed)
+script.on_event(defines.events.on_runtime_mod_setting_changed, on_runtime_mod_setting_changed)
 
 local function on_research_finished(event)
     init_global()
