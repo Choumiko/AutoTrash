@@ -22,7 +22,7 @@ local MAX_CONFIG_SIZES = {
 }
 
 local function set_requests(player)
-    if player.force.technologies["character-logistic-slots-1"].researched and player.character then
+    if player.character then
         local storage = global.config_new[player.index].config
         local slots = player.force.character_logistic_slot_count
         if slots > 0 then
@@ -55,7 +55,7 @@ local function get_requests(player)
 end
 
 local function set_trash(player)
-    if player.force.technologies["character-logistic-trash-slots-1"].researched and player.character then
+    if player.character then
         local trash_filters = {}
         --TODO ensure trash >= requests
         for name, item_config in pairs(global.config_new[player.index].config_by_name) do
@@ -220,17 +220,22 @@ local function on_configuration_changed(data)
                 end
             end
 
-            for _, c in pairs(global["logistics-config"]) do
-                for i, p in pairs(c) do
-                    if p.name == "" then
-                        p.name = false
+            if global["logistics-config"] then
+                for _, c in pairs(global["logistics-config"]) do
+                    for i, p in pairs(c) do
+                        if p.name == "" then
+                            p.name = false
+                        end
                     end
                 end
             end
-            for _, c in pairs(global["logistics-config-tmp"]) do
-                for i, p in pairs(c) do
-                    if p.name == "" then
-                        p.name = false
+
+            if global["logistics-config-tmp"] then
+                for _, c in pairs(global["logistics-config-tmp"]) do
+                    for i, p in pairs(c) do
+                        if p.name == "" then
+                            p.name = false
+                        end
                     end
                 end
             end
@@ -258,10 +263,12 @@ local function on_configuration_changed(data)
             end
 
             for pi, config in pairs(global.config_new) do
-                for i, item in pairs(config.config) do
-                    if item then
-                        item.slot = i
-                        global.config_new[pi].config_by_name[item.name] = item
+                if config and config.config then
+                    for i, item in pairs(config.config) do
+                        if item then
+                            item.slot = i
+                            global.config_new[pi].config_by_name[item.name] = item
+                        end
                     end
                 end
             end
@@ -934,7 +941,7 @@ local function update_selected_value(player_index, flow, number)
     local i = global.selected[player_index]
 
     local button = frame_new.children[i]
-    if not button or not button.valid then
+    if not button or not button.valid then--TODO or not button.elem_value ?
         return
     end
     global["config_tmp"][player_index].config[i] = global["config_tmp"][player_index].config[i] or {name = false, trash = 0, request = 0}
@@ -997,13 +1004,13 @@ local function on_research_finished(event)
     init_global()
     if event.research.name == "character-logistic-trash-slots-1" then
         for _, player in pairs(event.research.force.players) do
-            GUI.init(player, "trash")
+            GUI.init(player)
         end
         return
     end
     if event.research.name == "character-logistic-slots-1" then
         for _, player in pairs(event.research.force.players) do
-            GUI.init(player, "requests")
+            GUI.init(player)
         end
         return
     end

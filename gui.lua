@@ -28,14 +28,13 @@ local GUI = {
     trash_in_main_network = "auto-trash-in-main-network"
 }
 
-function GUI.init(player, after_research)
+function GUI.init(player)
     local button_flow = mod_gui.get_button_flow(player)
     if button_flow[GUI.mainButton] then
-        button_flow[GUI.mainButton].destroy()
+        return
     end
-    if player.force.technologies["character-logistic-slots-1"].researched or after_research == "requests" or
-        player.force.technologies["character-logistic-trash-slots-1"].researched or after_research == "trash" then
-
+    if player.force.technologies["character-logistic-slots-1"].researched
+    or player.force.technologies["character-logistic-trash-slots-1"].researched then
         local button = button_flow.add{
             type = "sprite-button",
             name = GUI.mainButton,
