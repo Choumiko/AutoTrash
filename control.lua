@@ -244,7 +244,6 @@ local function on_configuration_changed(data)
 
         if oldVersion < v'4.0.5' then
             for i, p in pairs(game.players) do
-                GUI.destroy_frames(p)
                 GUI.init(p)
                 global.config_tmp[i].config_by_name = global.config_tmp[i].config_by_name or {}
                 global.config_new[i].config_by_name = global.config_new[i].config_by_name or {}
@@ -269,7 +268,6 @@ local function on_configuration_changed(data)
             for pi, pstorage in pairs(global.storage_new) do
                 for name, config in pairs(pstorage) do
                     global.storage_new[pi][name].config_by_name = global.storage_new[pi][name].config_by_name or {}
-                    log(serpent.block(config.config))
                     for i, item in pairs(config.config) do
                         if item then
                             item.slot = i
@@ -330,9 +328,7 @@ local function inMainNetwork(player)
     if not global.settings[player.index].auto_trash_in_main_network then
         return true
     end
-
     local currentNetwork = player.character.logistic_network
-    --local currentNetwork = player.surface.find_logistic_network_by_position(player.position, player.force) TODO make sure it's slower
     local entity = global.mainNetwork[player.index]
     if currentNetwork and entity and entity.valid and currentNetwork == entity.logistic_network then
         return true
@@ -593,15 +589,20 @@ local function on_pre_player_died(event)
 end
 
 local function on_player_changed_position(event)
-    if not global.settings[event.player_index].auto_trash_in_main_network or not global.active[event.player_index] then
+    if not global.settings[event.player_index].auto_trash_in_main_network then
         return
     end
     local player = game.get_player(event.player_index)
     if player.character then
-        log(serpent.line(inMainNetwork(player)))
-        if not inMainNetwork(player) then
+        local in_network = inMainNetwork(player)
+        local active = global.active[event.player_index]
+        if not in_network and active then
             pause_trash(player)
             display_message(player, "AutoTrash paused")
+            return
+        elseif in_network and not active then
+            unpause_trash(player)
+            display_message(player, "AutoTrash unpaused")
         end
     end
 end
@@ -870,7 +871,14 @@ local function on_gui_checked_changed_state(event)
         local player = game.get_player(player_index)
 
         if element.name == GUI.trash_in_main_network then
-            global.settings[player_index].auto_trash_in_main_network = element.state
+            if element.state and not global.mainNetwork[player_index] then
+                player.print("No main network set")
+            else
+                global.settings[player_index].auto_trash_in_main_network = element.state
+                if element.state and inMainNetwork(player) then
+                    unpause_trash(player)
+                end
+            end
         elseif element.name == GUI.trash_above_requested then
             global.settings[player_index].auto_trash_above_requested = element.state
             if global.settings[player_index].auto_trash_unrequested and not global.settings[player_index].auto_trash_above_requested then
@@ -947,7 +955,7 @@ local function update_selected_value(player_index, flow, number)
         button.children[2].caption = format_number(format_trash(item_config), true)
 
         -- if item_config.request and item_config.request > n then
-        --     item_config.request = item_config.trash
+        --     item_config.trash = item_config.request
         -- end
     end
     GUI.update_sliders(player_index)

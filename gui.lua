@@ -75,33 +75,6 @@ function GUI.destroy(player)
     end
 end
 
---only for moving to mod_gui frame/buttons
-function GUI.destroy_frames(player)
-    local left = player.gui.left
-    local frame = left["auto-trash-config-frame"]
-    local frame2 = left["auto-trash-logistics-config-frame"]
-    local storage_frame = left["auto-trash-logistics-storage-frame"]
-    if frame2 then
-        frame2.destroy()
-    end
-    if storage_frame then
-        storage_frame.destroy()
-    end
-    if frame then
-        frame.destroy()
-    end
-
-    if player.gui.top["auto-trash-config-button"] then
-        player.gui.top["auto-trash-config-button"].destroy()
-    end
-    if player.gui.top["auto-trash-logistics-button"] then
-        player.gui.top["auto-trash-logistics-button"].destroy()
-    end
-    if player.gui.top["auto-trash-main-flow"] then
-        player.gui.top["auto-trash-main-flow"].destroy()
-    end
-end
-
 function GUI.update_sliders(player_index)
     local left = mod_gui.get_frame_flow(game.get_player(player_index))[GUI.config_frame]
     local slider_flow = left and left["at-slider-flow-vertical"]
