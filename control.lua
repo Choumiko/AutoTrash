@@ -823,12 +823,12 @@ local function on_gui_click(event)
             end
         elseif element.name == GUI.defines.clear_button then
             GUI.clear_all(player)
+        elseif element.name  == GUI.defines.store_button then
+            GUI.store(player, element)
         elseif element.name == "auto-trash-pause" then
             toggle_autotrash_pause(player)
         elseif element.name == "auto-trash-logistics-pause" then
             toggle_autotrash_pause_requests(player)
-        elseif element.name  == GUI.defines.store_button then
-            GUI.store(player, element)
         elseif element.name == GUI.defines.set_main_network then
             if global.mainNetwork[player_index] then
                 global.mainNetwork[player_index] = false
