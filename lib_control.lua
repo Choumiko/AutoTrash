@@ -59,11 +59,11 @@ local function format_number(n, append_suffix)
 end
 
 local function format_request(item_config)
-    return (item_config.request and item_config.request > 0) and item_config.request or (item_config.trash and item_config.trash > 0 and 0) or " "
+    return (item_config.request and item_config.request > 0) and item_config.request or (item_config.trash and 0) or " "
 end
 
 local function format_trash(item_config)
-    return (item_config.trash and item_config.trash > -1) and item_config.trash or "∞"
+    return item_config.trash and item_config.trash or (item_config.request > 0 and "∞") or " "
 end
 
 local function convert_from_slider(n)
@@ -84,6 +84,7 @@ local function convert_from_slider(n)
     end
 end
 
+local huge = math.huge
 local function convert_to_slider(n)
     if n <= 10 then
         return n
@@ -93,8 +94,10 @@ local function convert_to_slider(n)
         return n/100+18
     elseif n <= 10000 then
         return n/1000+27
-    else
+    elseif n < huge then
         return n/10000+36
+    else
+        return 42
     end
 end
 

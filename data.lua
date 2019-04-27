@@ -148,13 +148,15 @@ data:extend({
         type = "custom-input",
         name = "autotrash_pause",
         key_sequence = "SHIFT + P",
-        consuming = "none"
+        consuming = "none",
+        localised_name = {"auto-trash-config-button-pause"}
     },
     {
         type = "custom-input",
         name = "autotrash_pause_requests",
         key_sequence = "SHIFT + O",
-        consuming = "none"
+        consuming = "none",
+        localised_name = {"auto-trash-config-button-pause-requests"}
     },
     {
         type = "custom-input",

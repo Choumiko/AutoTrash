@@ -28,7 +28,8 @@ local GUI = {
         trash_unrequested = "at-unrequested",
         trash_in_main_network = "at-in-main-network",
         save_button = "at-logistics-apply",
-        clear_button = "at-logistics-clear-all",
+        clear_button = "at-clear",
+        clear_option = "at-clear-option",
         store_button = "at-logistics-storage-store",
         set_main_network = "at-set-main-network",
         trash_options = "at-trash-options",
@@ -66,13 +67,14 @@ function GUI.update(player)
     if not mainButton then
         return
     end
+    --TODO come up with a graphic that represents trash AND requests being paused
+    --mainButton.sprite = "autotrash_logistics_paused"
     if global.settings[player.index].pause_trash then
         mainButton.sprite = "autotrash_trash_paused"
     else
         mainButton.sprite = "autotrash_trash"
     end
     GUI.update_settings(player)
-    --TODO come up with a graphic that represents trash AND requests being paused
 end
 
 function GUI.update_settings(player)
@@ -109,10 +111,10 @@ function GUI.update_sliders(player_index)
     end
     if global.selected[player_index] then
         local req = global.config_tmp[player_index].config[global.selected[player_index]]
-        slider_flow["at-slider-flow-request"]["at-config-slider"].slider_value = convert_to_slider(tonumber((req.request) and req.request or (req.trash and 0) or -1) or 50)
-        slider_flow["at-slider-flow-request"]["at-config-slider-text"].text = format_request(req)
-        slider_flow["at-slider-flow-trash"]["at-config-slider"].slider_value = convert_to_slider(tonumber(req.trash and req.trash or -1) or -1)
-        slider_flow["at-slider-flow-trash"]["at-config-slider-text"].text = format_trash(req)
+        slider_flow["at-slider-flow-request"]["at-config-slider"].slider_value = convert_to_slider(req.request)
+        slider_flow["at-slider-flow-request"]["at-config-slider-text"].text = format_request(req) or 0
+        slider_flow["at-slider-flow-trash"]["at-config-slider"].slider_value = req.trash and convert_to_slider(req.trash) or 42
+        slider_flow["at-slider-flow-trash"]["at-config-slider-text"].text = format_trash(req) or "∞"
     end
 end
 
@@ -145,7 +147,7 @@ function GUI.create_buttons(player)
     }
 
     local player_index = player.index
-    local slots = mod_settings["autotrash_slots"].value or player.force.character_logistic_slot_count
+    local slots = mod_settings["autotrash_slots"].value or player.character.request_slot_count
     for i = 1, slots-1 do
         local req = global["config_tmp"][player_index].config[i]
         local elem_value = req and req.name or nil
@@ -267,7 +269,7 @@ function GUI.open_logistics_frame(player, redraw)
     slider_flow_request.add{
         type = "slider",
         name = "at-config-slider",
-        minimum_value = -1,
+        minimum_value = 0,
         maximum_value = 41,
     }
     slider_flow_request.add{
@@ -290,8 +292,8 @@ function GUI.open_logistics_frame(player, redraw)
     slider_flow_trash.add{
         type = "slider",
         name = "at-config-slider",
-        minimum_value = -1,
-        maximum_value = 41,
+        minimum_value = 0,
+        maximum_value = 42,
     }
     slider_flow_trash.add{
         type = "textfield",
@@ -316,21 +318,21 @@ function GUI.open_logistics_frame(player, redraw)
         type = "checkbox",
         name = GUI.defines.trash_above_requested,
         caption = {"auto-trash-above-requested"},
-        state = global.settings[player.index].auto_trash_above_requested
+        state = global.settings[player_index].auto_trash_above_requested
     }
 
     trash_options.add{
         type = "checkbox",
         name = GUI.defines.trash_unrequested,
         caption = {"auto-trash-unrequested"},
-        state = global.settings[player.index].auto_trash_unrequested,
+        state = global.settings[player_index].auto_trash_unrequested,
     }
 
     trash_options.add{
         type = "checkbox",
         name = GUI.defines.trash_in_main_network,
         caption = {"auto-trash-in-main-network"},
-        state = global.settings[player.index].auto_trash_in_main_network,
+        state = global.settings[player_index].auto_trash_in_main_network,
     }
 
     trash_options.add{
@@ -338,7 +340,7 @@ function GUI.open_logistics_frame(player, redraw)
         name = GUI.defines.pause_trash,
         caption = {"auto-trash-config-button-pause"},
         tooltip = {"auto-trash-tooltip-pause"},
-        state = global.settings[player.index].pause_trash
+        state = global.settings[player_index].pause_trash
     }
 
     trash_options.add{
@@ -346,13 +348,13 @@ function GUI.open_logistics_frame(player, redraw)
         name = GUI.defines.pause_requests,
         caption = {"auto-trash-config-button-pause-requests"},
         tooltip = {"auto-trash-tooltip-pause-requests"},
-        state = global.settings[player.index].pause_requests
+        state = global.settings[player_index].pause_requests
     }
 
     trash_options.add{
         type = "button",
         name = GUI.defines.set_main_network,
-        caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+        caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
     }
 
     local button_grid = frame.add{
@@ -363,12 +365,26 @@ function GUI.open_logistics_frame(player, redraw)
     button_grid.add{
         type = "button",
         name = GUI.defines.save_button,
-        caption = {"auto-trash-config-button-apply"}
+        caption = {"gui.save"}
+    }
+    button_grid.add{
+        type = "textfield",
+        name = GUI.defines.save_name,
     }
     button_grid.add{
         type = "button",
         name = GUI.defines.clear_button,
-        caption = {"auto-trash-config-button-clear-all"}
+        caption = {"gui.clear"}
+    }
+    button_grid.add{
+        type = "drop-down",
+        name = GUI.defines.clear_option,
+        items = {
+            [1] = "Both",
+            [2] = "Requests",
+            [3] = "Trash"
+        },
+        selected_index = 1
     }
 
     storage_frame = left.add{
@@ -396,7 +412,7 @@ function GUI.open_logistics_frame(player, redraw)
     }
     storage_frame_buttons.add{
         type = "button",
-        caption = {"auto-trash-storage-store"},
+        caption = {"gui-save-game.save-as"},
         name = GUI.defines.store_button,
         style = "auto-trash-small-button"
     }
@@ -456,11 +472,22 @@ function GUI.save_changes(player)
     GUI.close(player)
 end
 
-function GUI.clear_all(player)
+function GUI.clear_all(player, element)
     local player_index = player.index
-    global.config_tmp[player_index].config = {}
-    global.config_tmp[player_index].config_by_name = {}
-    global.selected[player_index] = false
+    local mode = element.parent[GUI.defines.clear_option].selected_index
+    if mode == 1 then
+        global.config_tmp[player_index].config = {}
+        global.config_tmp[player_index].config_by_name = {}
+        global.selected[player_index] = false
+    elseif mode == 2 then
+        for _, config in pairs(global.config_tmp[player_index].config_by_name) do
+            config.request = 0
+        end
+    elseif mode == 3 then
+        for _, config in pairs(global.config_tmp[player_index].config_by_name) do
+            config.trash = false
+        end
+    end
     GUI.open_logistics_frame(player, true)
 end
 

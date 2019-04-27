@@ -24,31 +24,31 @@ local MAX_CONFIG_SIZES = {
 local function set_requests(player)
     if player.character then
         local storage = global.config_new[player.index].config
-        local slots = player.force.character_logistic_slot_count
-        if slots > 0 then
-            local req
-            for c=1, slots do
-                req = storage[c]
-                if req then
-                    player.character.set_request_slot({name = req.name, count = req.request > -1 and req.request or 0}, c)
-                else
-                    player.character.clear_request_slot(c)
-                end
+        local slots = player.character.request_slot_count
+        local req
+
+        for c=1, slots do
+            req = storage[c]
+            if req then
+                player.character.set_request_slot({name = req.name, count = req.request}, c)
+            else
+                player.character.clear_request_slot(c)
             end
         end
     end
 end
 
 local function get_requests(player)
+    if not player.character then
+        return {}
+    end
     local requests = {}
-    if player.character and player.force.character_logistic_slot_count > 0 then
-        local character = player.character
-        local t
-        for c=1,player.force.character_logistic_slot_count do
-            t = character.get_request_slot(c)
-            if t then
-                requests[t.name] = t.count
-            end
+    local character = player.character
+    local t
+    for c=1, character.request_slot_count do
+        t = character.get_request_slot(c)
+        if t then
+            requests[t.name] = t.count
         end
     end
     return requests
@@ -315,9 +315,10 @@ end
 
 local function requested_items(player)
     local requests = {}
-    if player.character and player.force.character_logistic_slot_count > 0 then
-        for c=1,player.force.character_logistic_slot_count do
-            local request = player.character.get_request_slot(c)
+    if player.character then
+        local character = player.character
+        for c=1, character.request_slot_count do
+            local request = character.get_request_slot(c)
             if request and (not requests[request.name] or (requests[request.name] and request.count > requests[request.name])) then
                 requests[request.name] = request.count
             end
@@ -359,41 +360,26 @@ local function unpause_trash(player)
 end
 
 local function pause_requests(player)
-    error("Needs rewrite!")
-    --mainButton.sprite = "autotrash_logistics_paused"
-    local player_index = player.index
-    if not global.storage[player_index] then
-        global.storage[player_index] = {requests={}}
+    if not player.character then
+        return
     end
-    global.storage[player_index].requests = global.storage[player_index].requests or {}
-
-    local storage = global.storage[player_index].requests
-    if player.character and player.force.character_logistic_slot_count > 0 then
-        for c=1,player.force.character_logistic_slot_count do
-            local request = player.character.get_request_slot(c)
-            if request then
-                storage[c] = {name = request.name, count = request.count}
-                player.character.clear_request_slot(c)
-                --requests[request.name] = request.count
-            end
-        end
+    global.settings[player.index].pause_requests = true
+    --TODO backup current requests?
+    local character = player.character
+    for c=1, character.request_slot_count do
+        character.clear_request_slot(c)
     end
+    GUI.update(player)
 end
 
 local function unpause_requests(player)
-    error("Needs rewrite!")
-    --mainButton.sprite = "autotrash_logistics"
-    local player_index = player.index
-    local storage = global.storage[player_index].requests or {}
-    local slots = player.force.character_logistic_slot_count
-    if player.character and slots > 0 then
-        for c=1, slots do
-            if storage[c] then
-                player.character.set_request_slot(storage[c], c)
-            end
-        end
-        global.storage[player_index].requests = {}
+    if not player.character then
+        return
     end
+    global.settings[player.index].pause_requests = false
+    --TODO restore current requests?
+    set_requests(player)
+    GUI.update(player)
 end
 
 local function on_tick(event) --luacheck: ignore
@@ -823,7 +809,7 @@ local function on_gui_click(event)
                 pause_requests(player)
             end
         elseif element.name == GUI.defines.clear_button then
-            GUI.clear_all(player)
+            GUI.clear_all(player, element)
         elseif element.name  == GUI.defines.store_button then
             GUI.store(player, element)
         elseif element.name == GUI.defines.set_main_network then
@@ -839,7 +825,7 @@ local function on_gui_click(event)
                     display_message(player, {"auto-trash-not-in-network"}, true)
                 end
             end
-            element.caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+            element.caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
         else
             element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
             local type, index, _ = string.match(element.name, "auto%-trash%-(%a+)%-(%d+)%-*(%d*)")
@@ -899,11 +885,9 @@ local function on_gui_checked_changed_state(event)
             end
         elseif element.name == GUI.defines.pause_requests then
             if element.state then
-                log("Pause requests")
-                --pause_requests(player)
+                pause_requests(player)
             else
-                log("Unpause requests")
-                --unpause_requests(player)
+                unpause_requests(player)
             end
         end
     end)
@@ -940,8 +924,11 @@ local function on_gui_elem_changed(event)
     end
 end
 
-local function update_selected_value(player_index, flow, number)
+local max = 2^32-1
+local function update_selected_value(player_index, element, number, check)
     local n = floor(tonumber(number) or 0)
+    n = n <= max and n or max
+    local flow = element.parent
     local frame_new = flow.parent.parent["at-config-scroll"]["at-ruleset-grid"]
     local i = global.selected[player_index]
 
@@ -955,20 +942,26 @@ local function update_selected_value(player_index, flow, number)
     item_config.name = button.elem_value
 
     if flow.name == "at-slider-flow-request" then
+        assert(n >= 0, "request has to be a positive number") --TODO remove
         item_config.request = n
         button.children[1].caption = format_number(format_request(item_config), true)
         --prevent trash being set to a lower value than request to prevent infinite robo loop
-        if item_config.trash and item_config.trash > -1 and item_config.request > item_config.trash then
-            item_config.trash = item_config.request
+        if item_config.trash and n > item_config.trash then
+            item_config.trash = n
             button.children[2].caption = format_number(format_trash(item_config), true)
         end
     elseif flow.name == "at-slider-flow-trash" then
+        if element.type == "slider" and element.slider_value == 42 then
+            n = false
+        end
         item_config.trash = n
         button.children[2].caption = format_number(format_trash(item_config), true)
 
-        -- if item_config.request and item_config.request > n then
-        --     item_config.trash = item_config.request
-        -- end
+        --prevent trash being set to a lower value than request to prevent infinite robo loop
+        if check and n and item_config.request > n then
+            item_config.request = n
+            button.children[2].caption = format_number(format_request(item_config), true)
+        end
     end
     GUI.update_sliders(player_index)
 end
@@ -982,7 +975,7 @@ local function on_gui_value_changed(event)
         return
     end
     if event.element.name == "at-config-slider" then
-        update_selected_value(event.player_index, event.element.parent, convert_from_slider(event.element.slider_value))
+        update_selected_value(event.player_index, event.element, convert_from_slider(event.element.slider_value), true)
     end
 end
 
@@ -995,7 +988,7 @@ local function on_gui_text_changed(event)
         return
     end
     if event.element.name == "at-config-slider-text" then
-        update_selected_value(event.player_index, event.element.parent, event.element.text)
+        update_selected_value(event.player_index, event.element, event.element.text)
     end
 end
 
