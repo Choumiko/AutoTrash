@@ -67,6 +67,14 @@ local function set_trash(player)
     end
 end
 
+local default_settings = {
+    auto_trash_above_requested = false,
+    auto_trash_unrequested = false,
+    auto_trash_in_main_network = false,
+    pause_trash = false,
+    pause_requests = false,
+}
+
 local function init_global()
     global = global or {}
     global["config"] = global["config"] or {}
@@ -76,8 +84,6 @@ local function init_global()
     global["storage"] = global["storage"] or {}
     global["storage_new"] = global["storage_new"] or {}
 
-    global.active = global.active or {}
-    global["logistics-active"] = global["logistics-active"] or {}
     global.mainNetwork = global.mainNetwork or {}
     global.configSize = global.configSize or {}
     global.temporaryTrash = global.temporaryTrash or {}
@@ -102,26 +108,13 @@ local function init_player(player)
     global.config_new[index] = global.config_new[index] or {}
     global["config_tmp"][index] = global["config_tmp"][index] or {config = {}, config_by_name = {}, settings = {}, slot = false}
     global.selected[index] = global.selected[index] or false
-    global["logistics-active"][index] = true
-    global.active[index] = true
+
     global.mainNetwork[index] = false
     global.storage[index] = global.storage[index] or {}
     global.storage_new[index] = global.storage_new[index] or {}
     global.temporaryRequests[index] = global.temporaryRequests[index] or {}
     global.temporaryTrash[index] = global.temporaryTrash[index] or {}
-    global.settings[index] = global.settings[index] or {}
-    if global.settings[index].auto_trash_above_requested == nil then
-        global.settings[index].auto_trash_above_requested = false
-    end
-    if global.settings[index].auto_trash_unrequested == nil then
-        global.settings[index].auto_trash_unrequested = false
-    end
-    if global.settings[index].auto_trash_in_main_network == nil then
-        global.settings[index].auto_trash_in_main_network = false
-    end
-    if global.settings[index].pause_on_death == nil then
-        global.settings[index].pause_on_death = true
-    end
+    global.settings[index] = global.settings[index] or util.table.deepcopy(default_settings)
 
     GUI.init(player)
 end
@@ -178,7 +171,7 @@ local function on_configuration_changed(data)
         if oldVersion < v'0.0.55' then
             global = nil
         end
-
+        log("Updating AutoTrash from " .. tostring(oldVersion) .. " to " .. tostring(newVersion))
         init_global()
         init_forces()
         init_players()
@@ -265,18 +258,31 @@ local function on_configuration_changed(data)
                     end
                 end
             end
+            if global.active then
+                for i, active in pairs(global.active) do
+                    global.settings[i].pause_trash = not active
+                end
+                global.active = nil
+            end
+
+            if global["logistics-active"] then
+                for i, active in pairs(global["logistics-active"]) do
+                    global.settings[i].pause_requests = not active
+                end
+            end
+            global["logistics-active"] = nil
         end
 
-        -- if oldVersion < v'4.1.0' then
+        -- if oldVersion < v'4.0.2' then
         --     convert()
         -- end
-
         global.version = newVersion
     end
 
     init_global()
     init_players()
     local items = game.item_prototypes
+    if not global.config_new then convert() end
     for _, p in pairs(global.config_new) do
         for i, item_config in pairs(p.config) do
             if item_config and not items[item_config.name] then
@@ -336,7 +342,7 @@ local function pause_trash(player)
     if not player.character then
         return
     end
-    global.active[player.index] = false
+    global.settings[player.index].pause_trash = true
     --TODO backup current filters?
     player.character.auto_trash_filters = {}
     GUI.update(player)
@@ -346,13 +352,15 @@ local function unpause_trash(player)
     if not player.character then
         return
     end
-    global.active[player.index] = true
+    global.settings[player.index].pause_trash = false
     --TODO restore current filters?
     set_trash(player)
     GUI.update(player)
 end
 
 local function pause_requests(player)
+    error("Needs rewrite!")
+    --mainButton.sprite = "autotrash_logistics_paused"
     local player_index = player.index
     if not global.storage[player_index] then
         global.storage[player_index] = {requests={}}
@@ -374,6 +382,7 @@ end
 
 local function unpause_requests(player)
     error("Needs rewrite!")
+    --mainButton.sprite = "autotrash_logistics"
     local player_index = player.index
     local storage = global.storage[player_index].requests or {}
     local slots = player.force.character_logistic_slot_count
@@ -392,7 +401,7 @@ local function on_tick(event) --luacheck: ignore
         local status, err = pcall(function()
             for _, player in pairs(game.players) do
                 local player_index = player.index
-                if player.valid and player.character and global.active[player_index]
+                if player.valid and player.character and not global.settings[player_index].pause_trash
                     and inMainNetwork(player) then
                     local godController = player.controller_type == defines.controllers.god
                     local main_inventory = godController and player.get_inventory(defines.inventory.god_main) or player.get_inventory(defines.inventory.player_main)
@@ -541,7 +550,7 @@ local function on_player_main_inventory_changed(event)
     --         end
     --     end
     -- end
-    if global.active[event.player_index] and global.settings[event.player_index].auto_trash_unrequested then
+    if not global.settings[event.player_index].pause_trash and global.settings[event.player_index].auto_trash_unrequested then
         local player = game.get_player(event.player_index)
         if player.character then
             local trash_filters = player.auto_trash_filters
@@ -592,14 +601,14 @@ local function on_player_changed_position(event)
     local player = game.get_player(event.player_index)
     if player.character then
         local in_network = inMainNetwork(player)
-        local active = global.active[event.player_index]
-        if not in_network and active then
+        local paused = global.settings[event.player_index].pause_trash
+        if not in_network and not paused then
             pause_trash(player)
             if player.mod_settings["autotrash_display_messages"].value then
                 display_message(player, "AutoTrash paused")
             end
             return
-        elseif in_network and not active then
+        elseif in_network and paused then
             unpause_trash(player)
             if player.mod_settings["autotrash_display_messages"].value then
                 display_message(player, "AutoTrash unpaused")
@@ -697,8 +706,7 @@ function add_to_requests(player, item, count)--luacheck: ignore
 end
 
 local function toggle_autotrash_pause(player)
-    global.active[player.index] = not global.active[player.index]
-    if global.active[player.index] then
+    if global.settings[player.index].pause_trash then
         unpause_trash(player)
     else
         pause_trash(player)
@@ -707,16 +715,9 @@ local function toggle_autotrash_pause(player)
 end
 
 local function toggle_autotrash_pause_requests(player)
-    local mainButton = mod_gui.get_button_flow(player)[GUI.defines.mainButton]
-    if not mainButton then
-        return
-    end
-    global["logistics-active"][player.index] = not global["logistics-active"][player.index]
-    if global["logistics-active"][player.index] then
-        mainButton.sprite = "autotrash_logistics"
+    if global.settings[player.index].pause_requests then
         unpause_requests(player)
     else
-        mainButton.sprite = "autotrash_logistics_paused"
         pause_requests(player)
     end
     GUI.close(player)
@@ -815,20 +816,16 @@ local function on_gui_click(event)
             GUI.save_changes(player)
             set_requests(player)
             set_trash(player)
-            if not global.active[player_index] then
+            if global.settings[player_index].pause_trash then
                 pause_trash(player)
             end
-            if not global["logistics-active"][player_index] then
+            if global.settings[player_index].pause_requests then
                 pause_requests(player)
             end
         elseif element.name == GUI.defines.clear_button then
             GUI.clear_all(player)
         elseif element.name  == GUI.defines.store_button then
             GUI.store(player, element)
-        elseif element.name == "auto-trash-pause" then
-            toggle_autotrash_pause(player)
-        elseif element.name == "auto-trash-logistics-pause" then
-            toggle_autotrash_pause_requests(player)
         elseif element.name == GUI.defines.set_main_network then
             if global.mainNetwork[player_index] then
                 global.mainNetwork[player_index] = false
@@ -874,6 +871,7 @@ local function on_gui_checked_changed_state(event)
         if element.name == GUI.defines.trash_in_main_network then
             if element.state and not global.mainNetwork[player_index] then
                 player.print("No main network set")
+                element.state = false
             else
                 global.settings[player_index].auto_trash_in_main_network = element.state
                 if element.state and inMainNetwork(player) then
@@ -884,15 +882,30 @@ local function on_gui_checked_changed_state(event)
             global.settings[player_index].auto_trash_above_requested = element.state
             if global.settings[player_index].auto_trash_unrequested and not global.settings[player_index].auto_trash_above_requested then
                 global.settings[player_index].auto_trash_above_requested = true
+                element.state = true
                 player.print({"", "'", {"auto-trash-above-requested"}, "' has to be active if '", {"auto-trash-unrequested"}, "' is active"})
             end
         elseif element.name == GUI.defines.trash_unrequested then
             global.settings[player_index].auto_trash_unrequested = element.state
             if global.settings[player_index].auto_trash_unrequested then
                 global.settings[player_index].auto_trash_above_requested = true
+                element.parent[GUI.defines.trash_above_requested].state = true
+            end
+        elseif element.name == GUI.defines.pause_trash then
+            if element.state then
+                pause_trash(player)
+            else
+                unpause_trash(player)
+            end
+        elseif element.name == GUI.defines.pause_requests then
+            if element.state then
+                log("Pause requests")
+                --pause_requests(player)
+            else
+                log("Unpause requests")
+                --unpause_requests(player)
             end
         end
-        GUI.update_settings(player)
     end)
     if not status then
         debugDump(err, true)

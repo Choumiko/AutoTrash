@@ -31,6 +31,9 @@ local GUI = {
         clear_button = "at-logistics-clear-all",
         store_button = "at-logistics-storage-store",
         set_main_network = "at-set-main-network",
+        trash_options = "at-trash-options",
+        pause_trash = "at-pause-trash",
+        pause_requests = "at-pause-requests",
         choose_button = "auto_trash_item_"
     },
     on_gui_click = {
@@ -63,11 +66,13 @@ function GUI.update(player)
     if not mainButton then
         return
     end
-    if global.active[player.index] then
-        mainButton.sprite = "autotrash_trash"
-    else
+    if global.settings[player.index].pause_trash then
         mainButton.sprite = "autotrash_trash_paused"
+    else
+        mainButton.sprite = "autotrash_trash"
     end
+    GUI.update_settings(player)
+    --TODO come up with a graphic that represents trash AND requests being paused
 end
 
 function GUI.update_settings(player)
@@ -75,10 +80,14 @@ function GUI.update_settings(player)
     if not frame or not frame.valid then
         return
     end
+    frame = frame[GUI.defines.trash_options]
+    if not frame or not frame.valid then return end
     local index = player.index
     frame[GUI.defines.trash_unrequested].state = global.settings[index].auto_trash_unrequested
     frame[GUI.defines.trash_above_requested].state = global.settings[index].auto_trash_above_requested
     frame[GUI.defines.trash_in_main_network].state = global.settings[index].auto_trash_in_main_network
+    frame[GUI.defines.pause_trash].state = global.settings[index].pause_trash
+    frame[GUI.defines.pause_requests].state = global.settings[index].pause_requests
 end
 
 function GUI.destroy(player)
@@ -292,38 +301,63 @@ function GUI.open_logistics_frame(player, redraw)
 
     GUI.update_sliders(player_index)
 
-    frame.add{
+
+    local trash_options = frame.add{
+        type = "frame",
+        name = GUI.defines.trash_options,
+        style = "bordered_frame",
+        direction = "vertical",
+    }
+    trash_options.style.use_header_filler = false
+    trash_options.style.horizontally_stretchable = true
+    trash_options.style.font = "default-bold"
+
+    trash_options.add{
         type = "checkbox",
         name = GUI.defines.trash_above_requested,
         caption = {"auto-trash-above-requested"},
         state = global.settings[player.index].auto_trash_above_requested
     }
 
-    frame.add{
+    trash_options.add{
         type = "checkbox",
         name = GUI.defines.trash_unrequested,
         caption = {"auto-trash-unrequested"},
         state = global.settings[player.index].auto_trash_unrequested,
     }
 
-    frame.add{
+    trash_options.add{
         type = "checkbox",
         name = GUI.defines.trash_in_main_network,
         caption = {"auto-trash-in-main-network"},
         state = global.settings[player.index].auto_trash_in_main_network,
     }
 
-    local caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
-    frame.add{
-        type = "button",
-        name = GUI.defines.set_main_network,
-        caption = caption
+    trash_options.add{
+        type = "checkbox",
+        name = GUI.defines.pause_trash,
+        caption = {"auto-trash-config-button-pause"},
+        tooltip = {"auto-trash-tooltip-pause"},
+        state = global.settings[player.index].pause_trash
     }
 
+    trash_options.add{
+        type = "checkbox",
+        name = GUI.defines.pause_requests,
+        caption = {"auto-trash-config-button-pause-requests"},
+        tooltip = {"auto-trash-tooltip-pause-requests"},
+        state = global.settings[player.index].pause_requests
+    }
+
+    trash_options.add{
+        type = "button",
+        name = GUI.defines.set_main_network,
+        caption = global.mainNetwork[player.index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+    }
 
     local button_grid = frame.add{
         type = "table",
-        column_count = 3,
+        column_count = 2,
         name = "auto-trash-button-grid"
     }
     button_grid.add{
@@ -335,13 +369,6 @@ function GUI.open_logistics_frame(player, redraw)
         type = "button",
         name = GUI.defines.clear_button,
         caption = {"auto-trash-config-button-clear-all"}
-    }
-    caption = global["logistics-active"][player_index] and {"auto-trash-config-button-pause"} or {"auto-trash-config-button-unpause"}
-    button_grid.add{
-        type = "button",
-        name = "auto-trash-logistics-pause",
-        caption = caption,
-        tooltip = {"auto-trash-tooltip-pause-requests"}
     }
 
     storage_frame = left.add{
