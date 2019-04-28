@@ -59,7 +59,7 @@ local function set_trash(player)
         local trash_filters = {}
         --TODO ensure trash >= requests
         for name, item_config in pairs(global.config_new[player.index].config_by_name) do
-            if item_config.trash and item_config.trash > -1 then
+            if item_config.trash then
                 trash_filters[name] = item_config.trash
             end
         end
@@ -271,6 +271,7 @@ local function on_configuration_changed(data)
                 end
             end
             global["logistics-active"] = nil
+            global.guiData = nil
         end
 
         -- if oldVersion < v'4.0.2' then
@@ -827,18 +828,16 @@ local function on_gui_click(event)
             end
             element.caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
         else
-            element.name:match("(%w+)__([%w%s%-%#%!%$]*)_*([%w%s%-%#%!%$]*)_*(%w*)")
-            local type, index, _ = string.match(element.name, "auto%-trash%-(%a+)%-(%d+)%-*(%d*)")
-            if not type then
-                type, index, _ = string.match(element.name, "auto%-trash%-logistics%-(%a+)%-(%d+)%-*(%d*)")
-            end
-            --log(serpent.block({t=type, i=tonumber(index), gui_index = element.index}))
+            local type, index, _ = string.match(element.name, "autotrash_preset_(%a+)_(%d*)")
+            log(serpent.block({t=type, i=index}))
             if type and index then
-                if type == "restore" then
+                if type == "load" then
                     GUI.restore(player, element.caption)
-                elseif type == "remove" then
+                elseif type == "delete" then
                     GUI.remove(player, element, tonumber(index))
                 end
+            else
+                log(serpent.block{type, index, element.name})
             end
         end
     end)
@@ -929,19 +928,20 @@ local function update_selected_value(player_index, element, number, check)
     local n = floor(tonumber(number) or 0)
     n = n <= max and n or max
     local flow = element.parent
-    local frame_new = flow.parent.parent["at-config-scroll"]["at-ruleset-grid"]
+    local frame_new = flow.parent.parent["at_config_scroll"]["at_ruleset_grid"]
     local i = global.selected[player_index]
 
     local button = frame_new.children[i]
-    if not button or not button.valid then--TODO or not button.elem_value ?
+    if not button or not button.valid then
         return
     end
+    assert(button.elem_value)--TODO remove
     global["config_tmp"][player_index].config[i] = global["config_tmp"][player_index].config[i] or {name = false, trash = 0, request = 0}
     global["config_tmp"][player_index].config_by_name[button.elem_value] = global["config_tmp"][player_index].config[i]
     local item_config = global["config_tmp"][player_index].config[i]
     item_config.name = button.elem_value
 
-    if flow.name == "at-slider-flow-request" then
+    if flow.name == GUI.defines.config_request then
         assert(n >= 0, "request has to be a positive number") --TODO remove
         item_config.request = n
         button.children[1].caption = format_number(format_request(item_config), true)
@@ -950,7 +950,7 @@ local function update_selected_value(player_index, element, number, check)
             item_config.trash = n
             button.children[2].caption = format_number(format_trash(item_config), true)
         end
-    elseif flow.name == "at-slider-flow-trash" then
+    elseif flow.name == GUI.defines.config_trash then
         if element.type == "slider" and element.slider_value == 42 then
             n = false
         end
@@ -967,27 +967,27 @@ local function update_selected_value(player_index, element, number, check)
 end
 
 local function on_gui_value_changed(event)
-    if event.element.name ~= "at-config-slider" then
+    if event.element.name ~= GUI.defines.config_slider then
         return
     end
     if not global.selected[event.player_index] then
         GUI.update_sliders(event.player_index)
         return
     end
-    if event.element.name == "at-config-slider" then
+    if event.element.name == GUI.defines.config_slider then
         update_selected_value(event.player_index, event.element, convert_from_slider(event.element.slider_value), true)
     end
 end
 
 local function on_gui_text_changed(event)
-    if event.element.name ~= "at-config-slider-text" then
+    if event.element.name ~= GUI.defines.config_slider_text then
         return
     end
     if not global.selected[event.player_index] then
         GUI.update_sliders(event.player_index)
         return
     end
-    if event.element.name == "at-config-slider-text" then
+    if event.element.name == GUI.defines.config_slider_text then
         update_selected_value(event.player_index, event.element, event.element.text)
     end
 end

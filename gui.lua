@@ -21,21 +21,31 @@ end
 
 local GUI = {
     defines = {
+        --DONT RENAME, ELSE GUI WONT CLOSE
         mainButton = "at-config-button",
         storage_frame = "at-logistics-storage-frame",
         config_frame = "at-config-frame",
-        trash_above_requested = "at-above-requested",
-        trash_unrequested = "at-unrequested",
-        trash_in_main_network = "at-in-main-network",
-        save_button = "at-logistics-apply",
-        clear_button = "at-clear",
-        clear_option = "at-clear-option",
-        store_button = "at-logistics-storage-store",
-        set_main_network = "at-set-main-network",
-        trash_options = "at-trash-options",
-        pause_trash = "at-pause-trash",
-        pause_requests = "at-pause-requests",
-        choose_button = "auto_trash_item_"
+
+
+        trash_above_requested = "autotrash_above_requested",
+        trash_unrequested = "autotrash_unrequested",
+        trash_in_main_network = "autotrash_in_main_network",
+        save_button = "autotrash_logistics_apply",
+        clear_button = "autotrash_clear",
+        clear_option = "autotrash_clear_option",
+        set_main_network = "autotrash_set_main_network",
+        trash_options = "autotrash_trash_options",
+        pause_trash = "autotrash_pause_trash",
+        pause_requests = "autotrash_pause_requests",
+        store_button = "autotrash_preset_save",
+        config_request = "at_config_request",
+        config_trash = "at_config_trash",
+        config_slider = "at_config_slider",
+        config_slider_text = "at_config_slider_text",
+
+        choose_button = "autotrash_item_",
+        load_preset = "autotrash_preset_load_",
+        delete_preset = "autotrash_preset_delete_"
     },
     on_gui_click = {
 
@@ -101,7 +111,7 @@ end
 
 function GUI.update_sliders(player_index)
     local left = mod_gui.get_frame_flow(game.get_player(player_index))[GUI.defines.config_frame]
-    local slider_flow = left and left["at-slider-flow-vertical"]
+    local slider_flow = left and left.valid and left["at_slider_flow_vertical"]
     if not slider_flow or not slider_flow.valid then
         return
     end
@@ -111,10 +121,10 @@ function GUI.update_sliders(player_index)
     end
     if global.selected[player_index] then
         local req = global.config_tmp[player_index].config[global.selected[player_index]]
-        slider_flow["at-slider-flow-request"]["at-config-slider"].slider_value = convert_to_slider(req.request)
-        slider_flow["at-slider-flow-request"]["at-config-slider-text"].text = format_request(req) or 0
-        slider_flow["at-slider-flow-trash"]["at-config-slider"].slider_value = req.trash and convert_to_slider(req.trash) or 42
-        slider_flow["at-slider-flow-trash"]["at-config-slider-text"].text = format_trash(req) or "∞"
+        slider_flow[GUI.defines.config_request][GUI.defines.config_slider].slider_value = convert_to_slider(req.request)
+        slider_flow[GUI.defines.config_request][GUI.defines.config_slider_text].text = format_request(req) or 0
+        slider_flow[GUI.defines.config_trash][GUI.defines.config_slider].slider_value = req.trash and convert_to_slider(req.trash) or 42
+        slider_flow[GUI.defines.config_trash][GUI.defines.config_slider_text].text = format_trash(req) or "∞"
     end
 end
 
@@ -125,24 +135,24 @@ function GUI.create_buttons(player)
         return
     end
 
-    local scroll_pane = frame["at-config-scroll"]
+    local scroll_pane = frame["at_config_scroll"]
     scroll_pane = scroll_pane or frame.add{
         type = "scroll-pane",
-        name = "at-config-scroll",
+        name = "at_config_scroll",
     }
     local mod_settings = player.mod_settings
     local display_rows = mod_settings["autotrash_gui_max_rows"].value
     scroll_pane.style.maximal_height = 38 * display_rows + 6
 
-    local ruleset_grid = scroll_pane["at-ruleset-grid"]
+    local ruleset_grid = scroll_pane["at_ruleset_grid"]
     if ruleset_grid and ruleset_grid.valid then
         ruleset_grid.destroy()
     end
 
-    ruleset_grid = frame["at-config-scroll"].add{
+    ruleset_grid = frame["at_config_scroll"].add{
         type = "table",
         column_count = mod_settings["autotrash_gui_columns"].value,
-        name = "at-ruleset-grid",
+        name = "at_ruleset_grid",
         style = "slot_table"
     }
 
@@ -242,7 +252,7 @@ function GUI.open_logistics_frame(player, redraw)
     log("Selected: " .. serpent.line(global.selected[player_index]))
     frame = left.add{
         type = "frame",
-        caption = {"auto-trash-logistics-config-frame-title"},
+        caption = {"gui-logistic.title"},
         name = GUI.defines.config_frame,
         direction = "vertical"
     }
@@ -251,58 +261,62 @@ function GUI.open_logistics_frame(player, redraw)
 
     local slider_vertical_flow = frame.add{
         type = "table",
-        name = "at-slider-flow-vertical",
+        name = "at_slider_flow_vertical",
         column_count = 2
     }
     slider_vertical_flow.style.minimal_height = 60
     slider_vertical_flow.add{
         type = "label",
-        caption = "Request"
+        caption = {"gui-logistic.title-request-short"}
     }
     local slider_flow_request = slider_vertical_flow.add{
         type = "flow",
-        name = "at-slider-flow-request",
+        name = GUI.defines.config_request,
         direction = "horizontal",
+        caption = "TEST"
     }
     slider_flow_request.style.vertical_align = "center"
 
     slider_flow_request.add{
         type = "slider",
-        name = "at-config-slider",
+        name = GUI.defines.config_slider,
         minimum_value = 0,
         maximum_value = 41,
     }
     slider_flow_request.add{
         type = "textfield",
-        name = "at-config-slider-text",
+        name = GUI.defines.config_slider_text,
         style = "slider_value_textfield",
     }
 
     slider_vertical_flow.add{
         type = "label",
-        caption = "Trash"
+        caption = {"auto-trash-trash"}
     }
     local slider_flow_trash = slider_vertical_flow.add{
         type = "flow",
-        name = "at-slider-flow-trash",
+        name = GUI.defines.config_trash,
         direction = "horizontal",
     }
     slider_flow_trash.style.vertical_align = "center"
 
     slider_flow_trash.add{
         type = "slider",
-        name = "at-config-slider",
+        name = GUI.defines.config_slider,
         minimum_value = 0,
         maximum_value = 42,
     }
     slider_flow_trash.add{
         type = "textfield",
-        name = "at-config-slider-text",
+        name = GUI.defines.config_slider_text,
         style = "slider_value_textfield",
     }
 
     GUI.update_sliders(player_index)
 
+    --TODO add a dropdown for quick actions, that apply to each item e.g.
+    --Set trash to requested amount
+    --
 
     local trash_options = frame.add{
         type = "frame",
@@ -397,13 +411,8 @@ function GUI.open_logistics_frame(player, redraw)
 
     local storage_frame_buttons = storage_frame.add{
         type = "table",
-        column_count = 3,
+        column_count = 2,
         name = "auto-trash-logistics-storage-buttons"
-    }
-    storage_frame_buttons.add{
-        type = "label",
-        caption = {"auto-trash-storage-name-label"},
-        name = "auto-trash-logistics-storage-name-label"
     }
     storage_frame_buttons.add{
         type = "textfield",
@@ -418,14 +427,12 @@ function GUI.open_logistics_frame(player, redraw)
     }
     local storage_scroll = storage_frame.add{
         type = "scroll-pane",
-        name = "at-storage-scroll",
     }
 
     storage_scroll.style.maximal_height = math.ceil(38*10+4)
     local storage_grid = storage_scroll.add{
         type = "table",
         column_count = 2,
-        name = "auto-trash-logistics-storage-grid"
     }
 
     if global.storage_new[player_index] then
@@ -434,11 +441,11 @@ function GUI.open_logistics_frame(player, redraw)
             storage_grid.add{
                 type = "button",
                 caption = key,
-                name = "auto-trash-logistics-restore-" .. i,
+                name = GUI.defines.load_preset .. i,
             }
             local remove = storage_grid.add{
                 type = "sprite-button",
-                name = "auto-trash-logistics-remove-" .. i,
+                name = GUI.defines.delete_preset .. i,
                 style = "red_icon_button",
                 sprite = "utility/remove"
             }
@@ -532,8 +539,7 @@ end
 
 function GUI.restore(player, name)
     local player_index = player.index
-    assert(global.storage_new[player_index]) --TODO remove
-    assert(global.storage_new[player_index][name]) --TODO remove
+    assert(global.storage_new[player_index] and global.storage_new[player_index][name]) --TODO remove
 
     global.config_tmp[player_index] = util.table.deepcopy(global.storage_new[player_index][name])
     global.selected[player_index] = false
@@ -543,13 +549,13 @@ end
 function GUI.remove(player, element, index)
     local storage_grid = element.parent
     assert(storage_grid and storage_grid.valid) --TODO remove
-    local btn1 = storage_grid["auto-trash-logistics-restore-" .. index]
-    local btn2 = storage_grid["auto-trash-logistics-remove-" .. index]
+    local btn1 = storage_grid[GUI.defines.load_preset .. index]
+    local btn2 = storage_grid[GUI.defines.delete_preset .. index]
 
     if not btn1 or not btn2 then return end
-    assert(global.storage_new[player.index]) --TODO remove
-    assert(global.storage_new[player.index][btn1.caption]) --TODO remove
+    assert(global.storage_new[player.index] and global.storage_new[player.index][btn1.caption]) --TODO remove
     global["storage_new"][player.index][btn1.caption] = nil
+    saveVar(global, "delete")
     btn1.destroy()
     btn2.destroy()
 end
