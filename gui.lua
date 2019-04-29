@@ -316,7 +316,9 @@ function GUI.open_logistics_frame(player, redraw)
 
     --TODO add a dropdown for quick actions, that apply to each item e.g.
     --Set trash to requested amount
-    --
+    --Set trash to stack size
+    --Set requests to stack size
+    --in/decrease by 1 stack size
 
     local trash_options = frame.add{
         type = "frame",

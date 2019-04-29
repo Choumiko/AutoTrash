@@ -5,12 +5,16 @@ for _, player in pairs(game.players) do
     if button_flow["auto-trash-config-button"] and button_flow["auto-trash-config-button"].valid then
         button_flow["auto-trash-config-button"].destroy()
     end
-    local storage_frame = mod_gui.get_frame_flow(player)["auto-trash-logistics-storage-frame"]
-    if storage_frame and storage_frame.valid then
-        local config_frame = storage_frame.parent and storage_frame.parent["at-config-frame"]
-        if config_frame and config_frame.valid then
-            config_frame.destroy()
-        end
-        storage_frame.destroy()
+    local frame = mod_gui.get_frame_flow(player)["auto-trash-logistics-storage-frame"]
+    if frame and frame.valid then
+        frame.destroy()
+    end
+    frame = mod_gui.get_frame_flow(player)["auto-trash-config-frame"]
+    if frame and frame.valid then
+        frame.destroy()
+    end
+    frame = mod_gui.get_frame_flow(player)["auto-trash-logistics-config-frame"]
+    if frame and frame.valid then
+        frame.destroy()
     end
 end

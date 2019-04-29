@@ -3,7 +3,6 @@ require "__core__/lualib/util"
 local v = require '__AutoTrash__/semver'
 local lib_control = require '__AutoTrash__.lib_control'
 local saveVar = lib_control.saveVar
-local convert = lib_control.convert
 local debugDump = lib_control.debugDump
 local display_message = lib_control.display_message
 local format_number = lib_control.format_number
@@ -16,10 +15,112 @@ local GUI = require "__AutoTrash__/gui"
 
 local floor = math.floor
 
-local MAX_CONFIG_SIZES = {
-    ["character-logistic-trash-slots-1"] = 10,
-    ["character-logistic-trash-slots-2"] = 30
-}
+local function cleanup_table(tbl, tbl_name)
+    if tbl then
+        log("Cleaning " .. tostring(tbl_name) or "table")
+        for pi, stored in pairs(tbl) do
+            log("Processing: " .. pi)
+            local r = 0
+            for i, p in pairs(stored) do
+                if p and not p.name or (p.name and p.name == "") then
+                    stored[i] = nil
+                    r = r + 1
+                end
+            end
+            if r > 0 then
+                log("Removed " .. r .. " invalied entries")
+            end
+        end
+    end
+end
+
+local function convert_logistics()
+    log("Merging Request and Trash slots")
+    local tmp, config, no_slot
+    local max_slot = 0
+    for player_index, stored in pairs(global["logistics-config"]) do
+        local player = game.get_player(player_index)
+        if player then
+            log("Processing requests for: " .. tostring(player.name) .. " (" .. player_index .. ")")
+            tmp = {config = {}, config_by_name = {}, settings = {}}
+            for i, p in pairs(stored) do
+                tmp.config[i] = {
+                    name = p.name,
+                    request = p.count and p.count or 0,
+                    trash = false,
+                    slot = i
+                }
+                tmp.config_by_name[p.name] = tmp.config[i]
+                max_slot = max_slot < i and i or max_slot
+                log(serpent.line(tmp.config[i]))
+            end
+            no_slot = {}
+            log("Merging trash for: " .. tostring(player.name) .. " (" .. player_index .. ")")
+            for i, trash in pairs(global.config[player_index]) do
+                config = tmp.config_by_name[trash.name]
+                if config then
+                    if config.request > trash.count then
+                        log("Adjusting trash amount for " .. trash.name .. " from " .. trash.count .. " to " .. config.request)
+                    end
+                    config.trash = (config.request > trash.count) and config.request or trash.count
+                    log(serpent.line(config))
+                else
+                    tmp.config_by_name[trash.name] = {
+                        name = trash.name,
+                        request = 0,
+                        trash = trash.count,
+                        slot = false
+                    }
+                    log("Adding " .. serpent.line(tmp.config_by_name[trash.name]))
+                    no_slot[#no_slot+1] = tmp.config_by_name[trash.name]
+                end
+            end
+            saveVar(global, "premerge")
+            local start = 1
+            for _, s in pairs(no_slot) do
+                for i = start, max_slot + #no_slot do
+                    if not tmp.config[i] then
+                        s.slot = i
+                        tmp.config[i] = s
+                        start = i + 1
+                        log("Assigning slot " .. serpent.line(s))
+                        break
+                    end
+                end
+            end
+            global.config_tmp[player_index] = tmp
+        end
+    end
+end
+
+local function convert_storage(storage)
+    if not storage or not storage.store then return end
+
+    if storage.requests and table_size(storage.requests) > 0 then
+        for i, p in pairs(storage.requests) do
+            if p and (p.name == false or p.name == "") then
+                storage.requests[i] = nil
+            end
+        end
+        storage.store["paused_requests"] = storage.requests
+    end
+    local tmp = {}
+    for name, stored in pairs(storage.store) do
+        log("Converting: " .. name)
+        tmp[name] = {config = {}, config_by_name = {}, settings = {}}
+        for i, p in pairs(stored) do
+            tmp[name].config[i] = {
+                name = p.name,
+                request = p.count and p.count or 0,
+                trash = false,
+                slot = i
+            }
+            tmp[name].config_by_name[p.name] = tmp[name].config[i]
+            log(serpent.line(tmp[name].config[i]))
+        end
+    end
+    return tmp
+end
 
 local function set_requests(player)
     if player.character then
@@ -44,14 +145,73 @@ local function get_requests(player)
     end
     local requests = {}
     local character = player.character
-    local t
-    for c=1, character.request_slot_count do
+    local t, max
+    for c=character.request_slot_count, 1, -1 do
         t = character.get_request_slot(c)
         if t then
-            requests[t.name] = t.count
+            max = not max and c or max
+            requests[t.name] = {name = t.name, request = t.count, slot = c}
         end
     end
-    return requests
+    return requests, max
+end
+
+local function get_requests_by_index(player)--luacheck: ignore
+    if not player.character then
+        return {}
+    end
+    local requests = {}
+    local character = player.character
+    local t, max
+    for c=character.request_slot_count, 1, -1 do
+        t = character.get_request_slot(c)
+        if t then
+            max = not max and c or max
+            requests[c] = {name = t.name, request = t.count, slot = c}
+        end
+    end
+    return requests, max
+end
+
+local function combine_from_vanilla(player)
+    if not player.character then return end
+    local tmp = {config = {}, config_by_name = {}}
+    local requests, max_slot = get_requests(player)
+    local trash = player.auto_trash_filters
+    log(serpent.block(trash))
+--    local no_slot = {}
+    for name, config in pairs(requests) do
+        config.trash = false
+        tmp.config[config.slot] = config
+        tmp.config_by_name[name] = config
+        if trash[name] then
+            config.trash = trash[name] > config.request and trash[name] or config.request
+            trash[name] = nil
+        end
+    end
+    local no_slot = {}
+    for name, count in pairs(trash) do
+        tmp.config_by_name[name] = {
+            name = name,
+            request = 0,
+            trash = count,
+            slot = false
+        }
+        no_slot[#no_slot+1] = tmp.config_by_name[name]
+    end
+    local start = 1
+    for _, s in pairs(no_slot) do
+        for i = start, max_slot + #no_slot do
+            if not tmp.config[i] then
+                s.slot = i
+                tmp.config[i] = s
+                start = i + 1
+                break
+            end
+        end
+    end
+    saveVar(tmp, "_combined")
+    log(serpent.block(tmp))
 end
 
 local function set_trash(player)
@@ -85,10 +245,11 @@ local function init_global()
     global["storage_new"] = global["storage_new"] or {}
 
     global.mainNetwork = global.mainNetwork or {}
-    global.configSize = global.configSize or {}
     global.temporaryTrash = global.temporaryTrash or {}
     global.temporaryRequests = global.temporaryRequests or {}
     global.settings = global.settings or {}
+
+    global.needs_update = global.needs_update or {}
 end
 
 --[[
@@ -105,8 +266,8 @@ if min == 0 and max == 0: unset req, set trash to 0
 local function init_player(player)
     local index = player.index
     global.config[index] = global.config[index] or {}
-    global.config_new[index] = global.config_new[index] or {}
-    global["config_tmp"][index] = global["config_tmp"][index] or {config = {}, config_by_name = {}, settings = {}, slot = false}
+    global.config_new[index] = global.config_new[index] or {config = {}, config_by_name = {}, settings = {}}
+    global["config_tmp"][index] = global["config_tmp"][index] or {config = {}, config_by_name = {}, settings = {}}
     global.selected[index] = global.selected[index] or false
 
     global.mainNetwork[index] = false
@@ -120,9 +281,6 @@ local function init_player(player)
 end
 
 local function init_players(resetGui)
-    if not global.mainNetwork then
-        init_global()
-    end
     for _, player in pairs(game.players) do
         if resetGui then
             GUI.destroy(player)
@@ -131,32 +289,22 @@ local function init_players(resetGui)
     end
 end
 
-local function init_force(force)
-    if not global.configSize then
-        init_global()
-    end
-    if not global.configSize[force.name] then
-        if force.technologies["character-logistic-trash-slots-2"].researched then
-            global.configSize[force.name] = MAX_CONFIG_SIZES["character-logistic-trash-slots-2"]
-        else
-            global.configSize[force.name] = MAX_CONFIG_SIZES["character-logistic-trash-slots-1"]
-        end
-    end
-end
-
-local function init_forces()
-    for _, force in pairs(game.forces) do
-        init_force(force)
-    end
-end
-
 local function on_init()
     init_global()
-    init_forces()
 end
 
 local function on_load()
     assert(1 == GUI.index_from_name(GUI.defines.choose_button .. 1), "Update GUI.index_from_name, you fool!")--TODO remove
+end
+
+local function on_pre_player_removed(event)
+    log("Removing invalid player index " .. event.player_index)
+    for name, _ in pairs(global) do
+        log("    Removing " .. name)
+        if name ~= "version" then
+            global[name][event.player_index] = nil
+        end
+    end
 end
 
 local function on_configuration_changed(data)
@@ -173,15 +321,16 @@ local function on_configuration_changed(data)
         end
         log("Updating AutoTrash from " .. tostring(oldVersion) .. " to " .. tostring(newVersion))
         init_global()
-        init_forces()
         init_players()
 
         if oldVersion < v'4.0.1' then
             init_players(true)
-            for _, c in pairs(global.config) do
-                for i, p in pairs(c) do
-                    if p.name == "" then
-                        p.name = false
+            if global.config then
+                for _, c in pairs(global.config) do
+                    for i, p in pairs(c) do
+                        if p.name == "" then
+                            p.name = false
+                        end
                     end
                 end
             end
@@ -216,74 +365,62 @@ local function on_configuration_changed(data)
             end
 
             for i, s in pairs(global.settings) do
-                if s.options_extended ~= nil then
-                    s.options_extended = nil
-                end
+                s.options_extended = nil
             end
         end
 
         if oldVersion < v'4.0.6' then
-            for i, p in pairs(game.players) do
-                GUI.init(p)
-                global.config_tmp[i].config_by_name = global.config_tmp[i].config_by_name or {}
-                global.config_new[i].config_by_name = global.config_new[i].config_by_name or {}
+            saveVar(global, "storage_pre_cleanup")
+            global.config[10] = {}
+            for pi, _ in pairs(global.config) do
+                if not game.get_player(pi) then
+                    on_pre_player_removed{player_index = pi}
+                end
             end
-            for pi, config in pairs(global.config_tmp) do
-                for i, item in pairs(config.config) do
-                    if item then
-                        item.slot = i
-                        global.config_tmp[pi].config_by_name[item.name] = item
-                    end
+            cleanup_table(global.config,'global.config')
+            cleanup_table(global["logistics-config"],'global["logistics-config"]')
+
+            saveVar(global, "storage_pre")
+            convert_logistics()
+
+            if global.storage then
+                for _, storage in pairs(global.storage) do
+                    cleanup_table(storage.store, 'global.storage' .. '[' .. _ .. '].store')
                 end
             end
 
-            for pi, config in pairs(global.config_new) do
-                if config and config.config then
-                    for i, item in pairs(config.config) do
-                        if item then
-                            item.slot = i
-                            global.config_new[pi].config_by_name[item.name] = item
-                        end
-                    end
-                end
+            for player_index, player in pairs(game.players) do
+                log("Converting storage for " .. player.name .. " (" .. player_index .. ")")
+                global.storage_new[player_index] = convert_storage(global.storage[player_index])
             end
-            for pi, pstorage in pairs(global.storage_new) do
-                for name, config in pairs(pstorage) do
-                    global.storage_new[pi][name].config_by_name = global.storage_new[pi][name].config_by_name or {}
-                    for i, item in pairs(config.config) do
-                        if item then
-                            item.slot = i
-                            global.storage_new[pi][name].config_by_name[item.name] = item
-                        end
-                    end
-                end
-            end
+
             if global.active then
                 for i, active in pairs(global.active) do
                     global.settings[i].pause_trash = not active
                 end
-                global.active = nil
             end
-
             if global["logistics-active"] then
                 for i, active in pairs(global["logistics-active"]) do
                     global.settings[i].pause_requests = not active
                 end
             end
-            global["logistics-active"] = nil
             global.guiData = nil
+            global["logistics-active"] = nil
+            global.active = nil
+            global["config-tmp"] = nil
+            global["logistics-config-tmp"] = nil
+
+            saveVar(global, "storage_post")
+            --error()
         end
 
-        -- if oldVersion < v'4.0.2' then
-        --     convert()
-        -- end
         global.version = newVersion
     end
 
     init_global()
     init_players()
     local items = game.item_prototypes
-    if not global.config_new then convert() end
+
     for _, p in pairs(global.config_new) do
         for i, item_config in pairs(p.config) do
             if item_config and not items[item_config.name] then
@@ -308,10 +445,6 @@ end
 
 local function on_player_created(event)
     init_player(game.get_player(event.player_index))
-end
-
-local function on_force_created(event)
-    init_force(event.force)
 end
 
 local function requested_items(player)
@@ -435,10 +568,10 @@ local function on_tick(event) --luacheck: ignore
                             end
                         end
                     end
-                    local configSize = global.configSize[player.force.name]
+                    local config_size = 30
                     local already_trashed = {}
                     for i, item in pairs(global.config[player_index]) do
-                        if item and item.name and item.name ~= "blueprint" and item.name ~= "blueprint-book" and i <= configSize then
+                        if item and item.name and item.name ~= "blueprint" and item.name ~= "blueprint-book" and i <= config_size then
                             already_trashed[item.name] = true
                             local count = player.get_item_count(item.name)
                             local requested = requests[item.name] and requests[item.name] or 0
@@ -565,14 +698,6 @@ local function on_player_toggled_map_editor(event)
     log("toggled map editor " .. serpent.block(event))
 end
 
-local function on_pre_player_removed(event)
-    for k, name in pairs(global) do
-        if name ~= "configSize" then
-            global[name][event.player_index] = nil
-        end
-    end
-end
-
 local function on_pre_player_died(event)
     log("pre player died " .. serpent.block(event))
     local player = game.get_player(event.player_index)
@@ -608,7 +733,6 @@ script.on_init(on_init)
 script.on_load(on_load)
 script.on_configuration_changed(on_configuration_changed)
 script.on_event(defines.events.on_player_created, on_player_created)
-script.on_event(defines.events.on_force_created, on_force_created)
 script.on_event(defines.events.on_player_main_inventory_changed, on_player_main_inventory_changed)
 --script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
 
@@ -1018,21 +1142,12 @@ script.on_event(defines.events.on_gui_text_changed, on_gui_text_changed)
 script.on_event(defines.events.on_runtime_mod_setting_changed, on_runtime_mod_setting_changed)
 
 local function on_research_finished(event)
-    init_global()
-    if event.research.name == "character-logistic-trash-slots-1" then
+    if event.research.name == "character-logistic-trash-slots-1" or
+        event.research.name == "character-logistic-slots-1" then
         for _, player in pairs(event.research.force.players) do
             GUI.init(player)
         end
         return
-    end
-    if event.research.name == "character-logistic-slots-1" then
-        for _, player in pairs(event.research.force.players) do
-            GUI.init(player)
-        end
-        return
-    end
-    if event.research.name == "character-logistic-trash-slots-2" then
-        global.configSize[event.research.force.name] = MAX_CONFIG_SIZES["character-logistic-trash-slots-2"]
     end
 end
 script.on_event(defines.events.on_research_finished, on_research_finished)
@@ -1065,27 +1180,6 @@ remote.add_interface("at",
             saveVar(global, name)
         end,
 
-        convert = function()
-            convert()
-            init_global()
-            init_players()
-        end,
-
-        init = function()
-            init_global()
-            init_forces()
-            init_players()
-        end,
-
-        reset = function(confirm)
-            if confirm then
-                global = nil
-                init_global()
-                init_forces()
-                init_players()
-            end
-        end,
-
         init_gui = function()
             GUI.init(game.player)
         end,
@@ -1103,4 +1197,8 @@ remote.add_interface("at",
                 button.visible = true
             end
         end,
+
+        test = function()
+            combine_from_vanilla(game.player)
+        end
     })
