@@ -19,18 +19,23 @@ local function hide_yarm(index)
     end
 end
 
-local GUI = {
+local GUI = {--luacheck: allow defined top
     defines = {
         --DONT RENAME, ELSE GUI WONT CLOSE
         mainButton = "at-config-button",
         storage_frame = "at-logistics-storage-frame",
         config_frame = "at-config-frame",
-
+        config_flow_v = "at_config_flow_v",
+        config_flow_h = "at_config_flow_h",
 
         trash_above_requested = "autotrash_above_requested",
         trash_unrequested = "autotrash_unrequested",
         trash_in_main_network = "autotrash_in_main_network",
+
+        button_flow = "autotrash_button_flow",
         save_button = "autotrash_logistics_apply",
+        reset_button = "auotrash_logistics_reset",
+
         clear_button = "autotrash_clear",
         clear_option = "autotrash_clear_option",
         set_main_network = "autotrash_set_main_network",
@@ -47,10 +52,25 @@ local GUI = {
         load_preset = "autotrash_preset_load_",
         delete_preset = "autotrash_preset_delete_"
     },
-    on_gui_click = {
-
-    }
 }
+
+local def = GUI.defines
+
+function GUI.get_ruleset_grid(player)
+    local frame = mod_gui.get_frame_flow(player)[GUI.defines.config_frame]
+    if not frame or not frame.valid then
+        return
+    end
+    return frame[def.config_flow_h] and frame[def.config_flow_h]["at_config_scroll"] and frame[def.config_flow_h]["at_config_scroll"]["at_ruleset_grid"]
+end
+
+function GUI.get_button_flow(player)
+    local frame = mod_gui.get_frame_flow(player)[GUI.defines.config_frame]
+    if not frame or not frame.valid then
+        return
+    end
+    return frame[def.config_flow_h] and frame[def.config_flow_h][def.button_flow]
+end
 
 function GUI.index_from_name(name)
     return tonumber(string.match(name, GUI.defines.choose_button .. "(%d+)"))
@@ -109,31 +129,39 @@ function GUI.destroy(player)
     end
 end
 
-function GUI.update_sliders(player_index)
-    local left = mod_gui.get_frame_flow(game.get_player(player_index))[GUI.defines.config_frame]
+function GUI.update_sliders(player)
+    local left = mod_gui.get_frame_flow(player)[GUI.defines.config_frame]
     local slider_flow = left and left.valid and left["at_slider_flow_vertical"]
     if not slider_flow or not slider_flow.valid then
         return
     end
+    local player_index = player.index
     local visible = global.selected[player_index] or false
     for _, child in pairs(slider_flow.children) do
         child.visible = visible
     end
-    if global.selected[player_index] then
-        local req = global.config_tmp[player_index].config[global.selected[player_index]]
-        slider_flow[GUI.defines.config_request][GUI.defines.config_slider].slider_value = convert_to_slider(req.request)
-        slider_flow[GUI.defines.config_request][GUI.defines.config_slider_text].text = format_request(req) or 0
-        slider_flow[GUI.defines.config_trash][GUI.defines.config_slider].slider_value = req.trash and convert_to_slider(req.trash) or 42
-        slider_flow[GUI.defines.config_trash][GUI.defines.config_slider_text].text = format_trash(req) or "∞"
+    if visible then
+        local req = global.config_tmp[player_index].config[visible]
+        slider_flow[def.config_request][def.config_slider].slider_value = convert_to_slider(req.request)
+        slider_flow[def.config_request][def.config_slider_text].text = format_request(req) or 0
+        slider_flow[def.config_trash][def.config_slider].slider_value = req.trash and convert_to_slider(req.trash) or 42
+        slider_flow[def.config_trash][def.config_slider_text].text = format_trash(req) or "∞"
     end
+    local buttons = left[def.config_flow_h] and left[def.config_flow_h][def.button_flow]
+    if not buttons or not buttons.valid then
+        return
+    end
+    buttons[def.reset_button].enabled = global.dirty[player_index]
 end
 
+--creates/updates the choose-elem-buttons (update because i do something wierd with locked = true)
 function GUI.create_buttons(player)
     local left = mod_gui.get_frame_flow(player)
     local frame = (left and left.valid) and left[GUI.defines.config_frame]
     if not frame or not frame.valid then
         return
     end
+    frame = frame[GUI.defines.config_flow_h]
 
     local scroll_pane = frame["at_config_scroll"]
     scroll_pane = scroll_pane or frame.add{
@@ -149,7 +177,7 @@ function GUI.create_buttons(player)
         ruleset_grid.destroy()
     end
 
-    ruleset_grid = frame["at_config_scroll"].add{
+    ruleset_grid = scroll_pane.add{
         type = "table",
         column_count = mod_settings["autotrash_gui_columns"].value,
         name = "at_ruleset_grid",
@@ -229,35 +257,66 @@ function GUI.create_buttons(player)
     plus.style.font = "default-bold"
 end
 
-function GUI.open_logistics_frame(player, redraw)
-    local left = mod_gui.get_frame_flow(player)
-    local frame = left[GUI.defines.config_frame]
+function GUI.open_logistics_frame(player)
     local player_index = player.index
-    local storage_frame = left[GUI.defines.storage_frame]
-
-    if frame then
-        frame.destroy()
-        if storage_frame then
-            storage_frame.destroy()
-        end
-        if not redraw then
-            global.selected[player_index] = false
-            show_yarm(player_index)
-            return
-        end
-    end
-
-    hide_yarm(player_index)
-
+    assert(not global.selected[player.index], "selected should be false")
     log("Selected: " .. serpent.line(global.selected[player_index]))
-    frame = left.add{
+    hide_yarm(player_index)
+    local left = mod_gui.get_frame_flow(player)
+    local frame = left.add{
         type = "frame",
         caption = {"gui-logistic.title"},
         name = GUI.defines.config_frame,
         direction = "vertical"
     }
 
+    --global.config_tmp[player_index] = util.table.deepcopy(global.config_new[player_index])
+
+    -- local config_flow_h = frame.add{
+    --     type = "flow",
+    --     name = GUI.defines.config_flow_h,
+    --     direction = "horizontal"
+    -- }
+    --config_flow_h.style.horizontally_stretchable = true
+
+    local config_flow_h = frame.add{
+        type = "flow",
+        name = GUI.defines.config_flow_h,
+        direction = "horizontal"
+    }
+    --config_flow_v.style.horizontally_stretchable = true
     GUI.create_buttons(player)
+
+    local button_flow = config_flow_h.add{
+        type = "flow",
+        name = def.button_flow,
+        direction = "vertical",
+        style = "shortcut_bar_column"
+    }
+    local checkmark = button_flow.add{
+        type = "sprite-button",
+        name = GUI.defines.save_button,
+        style = "shortcut_bar_button_green",
+        sprite = "utility/check_mark_white"
+    }
+    checkmark.style.top_padding = 4
+    checkmark.style.right_padding = 4
+    checkmark.style.bottom_padding = 4
+    checkmark.style.left_padding = 4
+
+    local reset_button = button_flow.add{
+        type = "sprite-button",
+        name = GUI.defines.reset_button,
+        style = "shortcut_bar_button_red",
+        sprite = "utility/reset_white"
+    }
+    reset_button.enabled = global.dirty[player_index]
+
+    button_flow.add{
+        type = "sprite-button",
+        style = "shortcut_bar_button_blue",
+        sprite = "utility/remove"
+    }
 
     local slider_vertical_flow = frame.add{
         type = "table",
@@ -273,7 +332,6 @@ function GUI.open_logistics_frame(player, redraw)
         type = "flow",
         name = GUI.defines.config_request,
         direction = "horizontal",
-        caption = "TEST"
     }
     slider_flow_request.style.vertical_align = "center"
 
@@ -312,7 +370,7 @@ function GUI.open_logistics_frame(player, redraw)
         style = "slider_value_textfield",
     }
 
-    GUI.update_sliders(player_index)
+    GUI.update_sliders(player)
 
     --TODO add a dropdown for quick actions, that apply to each item e.g.
     --Set trash to requested amount
@@ -378,15 +436,7 @@ function GUI.open_logistics_frame(player, redraw)
         column_count = 2,
         name = "auto-trash-button-grid"
     }
-    button_grid.add{
-        type = "button",
-        name = GUI.defines.save_button,
-        caption = {"gui.save"}
-    }
-    button_grid.add{
-        type = "textfield",
-        name = GUI.defines.save_name,
-    }
+
     button_grid.add{
         type = "button",
         name = GUI.defines.clear_button,
@@ -403,7 +453,7 @@ function GUI.open_logistics_frame(player, redraw)
         selected_index = 1
     }
 
-    storage_frame = left.add{
+    local storage_frame = left.add{
         type = "frame",
         name = GUI.defines.storage_frame,
         caption = {"auto-trash-storage-frame-title"},
@@ -460,44 +510,57 @@ function GUI.open_logistics_frame(player, redraw)
     end
 end
 
-function GUI.close(player)
-    local left = mod_gui.get_frame_flow(player)
+function GUI.close(player, frame_flow)
+    local left = frame_flow or mod_gui.get_frame_flow(player)
     local storage_frame = left[GUI.defines.storage_frame]
     local frame = left[GUI.defines.config_frame]
-
-    if storage_frame then
+    if storage_frame and storage_frame.valid then
         storage_frame.destroy()
     end
-    if frame then
+    if frame and frame.valid then
         frame.destroy()
     end
+    global.selected[player.index] = false
+    show_yarm(player.index)
 end
 
 function GUI.save_changes(player)
     local player_index = player.index
     global.config_new[player_index] = util.table.deepcopy(global.config_tmp[player_index])
-
-    show_yarm(player_index)
+    global.dirty[player_index] = false
     GUI.close(player)
+end
+
+function GUI.reset_changes(player, element)
+    if global.dirty[player.index] then
+        global.config_tmp[player.index] = util.table.deepcopy(global.config_new[player.index])
+        element.enabled = false
+        global.selected[player.index] = false
+        global.dirty[player.index] = false
+        GUI.create_buttons(player)
+        GUI.update_sliders(player)
+    end
 end
 
 function GUI.clear_all(player, element)
     local player_index = player.index
     local mode = element.parent[GUI.defines.clear_option].selected_index
+    local config_tmp = global.config_tmp[player_index]
     if mode == 1 then
-        global.config_tmp[player_index].config = {}
-        global.config_tmp[player_index].config_by_name = {}
+        config_tmp.config = {}
+        config_tmp.config_by_name = {}
         global.selected[player_index] = false
     elseif mode == 2 then
-        for _, config in pairs(global.config_tmp[player_index].config_by_name) do
+        for _, config in pairs(config_tmp.config_by_name) do
             config.request = 0
         end
     elseif mode == 3 then
-        for _, config in pairs(global.config_tmp[player_index].config_by_name) do
+        for _, config in pairs(config_tmp.config_by_name) do
             config.trash = false
         end
     end
-    GUI.open_logistics_frame(player, true)
+    --TODO save selected_index somewhere
+    GUI.create_buttons(player)
 end
 
 function GUI.set_item(player, index, element)
@@ -508,13 +571,14 @@ function GUI.set_item(player, index, element)
 
     local elem_value = element.elem_value
     if elem_value then
-        if global.config_tmp[player_index].config_by_name[elem_value] then
+        local config_tmp = global.config_tmp[player_index]
+        if config_tmp.config_by_name[elem_value] then
             display_message(player, {"", {"cant-set-duplicate-request", game.item_prototypes[elem_value].localised_name}}, true)
             element.elem_value = nil
-            return global.config_tmp[player_index].config_by_name[elem_value].slot
+            return config_tmp.config_by_name[elem_value].slot
         end
-        global.config_tmp[player_index].config[index] = {name = elem_value, request = game.item_prototypes[elem_value].default_request_amount, trash = false, slot = index}
-        global.config_tmp[player_index].config_by_name[elem_value] = global.config_tmp[player_index].config[index]
+        config_tmp.config[index] = {name = elem_value, request = game.item_prototypes[elem_value].default_request_amount, trash = false, slot = index}
+        config_tmp.config_by_name[elem_value] = config_tmp.config[index]
     end
     return true
 end
@@ -536,7 +600,9 @@ function GUI.store(player, element)
     end
 
     global.storage_new[player_index][name] = util.table.deepcopy(global.config_tmp[player_index])
-    GUI.open_logistics_frame(player,true)
+    --TODO only update storage frame
+    GUI.close(player)
+    GUI.open_logistics_frame(player)
 end
 
 function GUI.restore(player, name)
@@ -545,7 +611,9 @@ function GUI.restore(player, name)
 
     global.config_tmp[player_index] = util.table.deepcopy(global.storage_new[player_index][name])
     global.selected[player_index] = false
-    GUI.open_logistics_frame(player, true)
+    global.dirty[player_index] = false
+    GUI.create_buttons(player)
+    GUI.update_sliders(player)
 end
 
 function GUI.remove(player, element, index)
