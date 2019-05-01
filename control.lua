@@ -28,6 +28,8 @@ local function init_global()
     global.temporaryRequests = global.temporaryRequests or {}
     global.settings = global.settings or {}
     global.guiData = global.guiData or {}
+
+    global.defines_player_trash = game.active_mods["base"] < "0.17.35" and defines.inventory.player_trash or defines.inventory.character_corpse
 end
 
 local function init_player(player)
@@ -104,11 +106,11 @@ end
 
 -- run once
 local function on_configuration_changed(data)
-    if not data or not data.mod_changes then
+    if not data then
         return
     end
     --Autotrash changed, got added
-    if data.mod_changes.AutoTrash then
+    if data.mod_changes and data.mod_changes.AutoTrash then
         local newVersion = data.mod_changes.AutoTrash.new_version
         newVersion = v(newVersion)
         local oldVersion = data.mod_changes.AutoTrash.old_version or '0.0.0'
@@ -188,7 +190,7 @@ local function on_configuration_changed(data)
 
         global.version = newVersion
     end
-
+    init_global()
     local items = game.item_prototypes
     for player_index, p in pairs(global.config) do
         for i=#p,1,-1 do
@@ -248,9 +250,8 @@ local function on_tick(event)
                 local player_index = player.index
                 if player.valid and player.connected and global.config[player_index] and global.active[player_index]
                     and inMainNetwork(player) then
-                    local godController = player.controller_type == defines.controllers.god
-                    local main_inventory = godController and player.get_inventory(defines.inventory.god_main) or player.get_inventory(defines.inventory.player_main)
-                    local trash = player.get_inventory(defines.inventory.player_trash)
+                    local main_inventory = player.get_main_inventory()
+                    local trash = player.get_inventory(global.defines_player_trash)
                     local dirty = false
                     if not global.temporaryTrash[player_index] then global.temporaryTrash[player_index] = {} end
                     local requests = requested_items(player)
