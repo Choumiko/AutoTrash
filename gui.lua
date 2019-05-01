@@ -23,10 +23,13 @@ local GUI = {--luacheck: allow defined top
     defines = {
         --DONT RENAME, ELSE GUI WONT CLOSE
         mainButton = "at-config-button",
-        storage_frame = "at-logistics-storage-frame",
         config_frame = "at-config-frame",
         config_flow_v = "at_config_flow_v",
         config_flow_h = "at_config_flow_h",
+
+        storage_frame = "at-logistics-storage-frame",
+        storage_scroll = "at_storage_scroll",
+        storage_grid = "at_storage_grid",
 
         trash_above_requested = "autotrash_above_requested",
         trash_unrequested = "autotrash_unrequested",
@@ -70,6 +73,14 @@ function GUI.get_button_flow(player)
         return
     end
     return frame[def.config_flow_h] and frame[def.config_flow_h][def.button_flow]
+end
+
+function GUI.get_storage_grid(player)
+local frame = mod_gui.get_frame_flow(player)[GUI.defines.storage_frame]
+    if not frame or not frame.valid then
+        return
+    end
+    return frame[def.storage_scroll] and frame[def.storage_scroll][GUI.defines.storage_grid]
 end
 
 function GUI.index_from_name(name)
@@ -197,6 +208,7 @@ function GUI.create_buttons(player)
             elem_type = "item"
         }
         choose_button.elem_value = elem_value
+
         if global.selected[player_index] == i then
             choose_button.style = "logistic_button_selected_slot"
         end
@@ -479,34 +491,20 @@ function GUI.open_logistics_frame(player)
     }
     local storage_scroll = storage_frame.add{
         type = "scroll-pane",
+        name = GUI.defines.storage_scroll
     }
 
     storage_scroll.style.maximal_height = math.ceil(38*10+4)
     local storage_grid = storage_scroll.add{
         type = "table",
+        name = GUI.defines.storage_grid,
         column_count = 2,
     }
 
-    if global.storage_new[player_index] then
-        local i = 1
-        for key, _ in pairs(global.storage_new[player_index]) do
-            storage_grid.add{
-                type = "button",
-                caption = key,
-                name = GUI.defines.load_preset .. i,
-            }
-            local remove = storage_grid.add{
-                type = "sprite-button",
-                name = GUI.defines.delete_preset .. i,
-                style = "red_icon_button",
-                sprite = "utility/remove"
-            }
-            remove.style.left_padding = 0
-            remove.style.right_padding = 0
-            remove.style.top_padding = 0
-            remove.style.bottom_padding = 0
-            i = i + 1
-        end
+    local i = 1
+    for key, _ in pairs(global.storage_new[player_index]) do
+        GUI.add_preset(player, key, i, storage_grid)
+        i = i + 1
     end
 end
 
@@ -520,15 +518,22 @@ function GUI.close(player, frame_flow)
     if frame and frame.valid then
         frame.destroy()
     end
+    if player.mod_settings["autotrash_reset_on_close"].value then
+        global.config_tmp[player.index] = util.table.deepcopy(global.config_new[player.index])
+        global.dirty[player.index] = false
+    end
     global.selected[player.index] = false
     show_yarm(player.index)
 end
 
-function GUI.save_changes(player)
+function GUI.apply_changes(player, element)
     local player_index = player.index
     global.config_new[player_index] = util.table.deepcopy(global.config_tmp[player_index])
     global.dirty[player_index] = false
-    GUI.close(player)
+    element.parent[def.reset_button].enabled = false
+    if player.mod_settings["autotrash_close_on_apply"].value then
+        GUI.close(player)
+    end
 end
 
 function GUI.reset_changes(player, element)
@@ -583,6 +588,27 @@ function GUI.set_item(player, index, element)
     return true
 end
 
+function GUI.add_preset(player, preset_name, index, storage_grid)
+    storage_grid = storage_grid or GUI.get_storage_grid(player)
+    assert(not storage_grid.children[index*2-1] and not storage_grid.children[index*2])--TODO remove
+
+    storage_grid.add{
+        type = "button",
+        caption = preset_name,
+        name = GUI.defines.load_preset .. index,
+    }
+    local remove = storage_grid.add{
+        type = "sprite-button",
+        name = GUI.defines.delete_preset .. index,
+        style = "red_icon_button",
+        sprite = "utility/remove"
+    }
+    remove.style.left_padding = 0
+    remove.style.right_padding = 0
+    remove.style.top_padding = 0
+    remove.style.bottom_padding = 0
+end
+
 function GUI.store(player, element)
     local player_index = player.index
 
@@ -600,9 +626,8 @@ function GUI.store(player, element)
     end
 
     global.storage_new[player_index][name] = util.table.deepcopy(global.config_tmp[player_index])
-    --TODO only update storage frame
-    GUI.close(player)
-    GUI.open_logistics_frame(player)
+    GUI.add_preset(player, name, table_size(global.storage_new[player_index]))
+    textfield.text = ""
 end
 
 function GUI.restore(player, name)
@@ -618,14 +643,10 @@ end
 
 function GUI.remove(player, element, index)
     local storage_grid = element.parent
-    assert(storage_grid and storage_grid.valid) --TODO remove
     local btn1 = storage_grid[GUI.defines.load_preset .. index]
     local btn2 = storage_grid[GUI.defines.delete_preset .. index]
-
-    if not btn1 or not btn2 then return end
     assert(global.storage_new[player.index] and global.storage_new[player.index][btn1.caption]) --TODO remove
     global["storage_new"][player.index][btn1.caption] = nil
-    saveVar(global, "delete")
     btn1.destroy()
     btn2.destroy()
 end

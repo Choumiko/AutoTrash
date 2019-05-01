@@ -45,6 +45,20 @@ data:extend({
         setting_type = "runtime-per-user",
         default_value = true,
         order = "g"
+    },
+    {
+        type = "bool-setting",
+        name = prefix .. "reset_on_close",
+        setting_type = "runtime-per-user",
+        default_value = true,
+        order = "h"
+    },
+        {
+        type = "bool-setting",
+        name = prefix .. "close_on_apply",
+        setting_type = "runtime-per-user",
+        default_value = true,
+        order = "i"
     }
     -- {
     --     type = "bool-setting",

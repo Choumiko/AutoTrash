@@ -238,6 +238,7 @@ local default_settings = {
 }
 
 local function init_global()
+    log("init_global")
     global = global or {}
     global["config"] = global["config"] or {}
     global["config_new"] = global["config_new"] or {}
@@ -265,6 +266,7 @@ if min == 0 and max == 0: unset req, set trash to 0
 ]]
 
 local function init_player(player)
+    log("init_player " .. player.name)
     local index = player.index
     global.config[index] = global.config[index] or {}
     global.config_new[index] = global.config_new[index] or {config = {}, config_by_name = {}, settings = {}}
@@ -292,10 +294,12 @@ local function init_players(resetGui)
 end
 
 local function on_init()
+    log("on_init")
     init_global()
 end
 
 local function on_load()
+    log("on_load")
     assert(1 == GUI.index_from_name(gui_def.choose_button .. 1), "Update GUI.index_from_name, you fool!")--TODO remove
 end
 
@@ -310,119 +314,122 @@ local function on_pre_player_removed(event)
 end
 
 local function on_configuration_changed(data)
+    log(serpent.block(data))
     if not data then
         return
     end
     if data.mod_changes and data.mod_changes.AutoTrash then
         local newVersion = data.mod_changes.AutoTrash.new_version
         newVersion = v(newVersion)
-        local oldVersion = data.mod_changes.AutoTrash.old_version or '0.0.0'
-        oldVersion = v(oldVersion)
-        if oldVersion < v'0.0.55' then
-            global = nil
-        end
+        local oldVersion = data.mod_changes.AutoTrash.old_version
+        oldVersion = oldVersion and v(oldVersion)
         log("Updating AutoTrash from " .. tostring(oldVersion) .. " to " .. tostring(newVersion))
-        init_global()
-        init_players()
+        if oldVersion then
+            if oldVersion < v'0.0.55' then
+                global = nil
+            end
+            init_global()
+            init_players()
 
-        if oldVersion < v'4.0.1' then
-            init_players(true)
-            if global.config then
-                for _, c in pairs(global.config) do
-                    for i, p in pairs(c) do
-                        if p.name == "" then
-                            p.name = false
+            if oldVersion < v'4.0.1' then
+                init_players(true)
+                if global.config then
+                    for _, c in pairs(global.config) do
+                        for i, p in pairs(c) do
+                            if p.name == "" then
+                                p.name = false
+                            end
                         end
                     end
                 end
-            end
-            if global["config-tmp"] then
-                for _, c in pairs(global["config-tmp"]) do
-                    for i, p in pairs(c) do
-                        if p.name == "" then
-                            p.name = false
+                if global["config-tmp"] then
+                    for _, c in pairs(global["config-tmp"]) do
+                        for i, p in pairs(c) do
+                            if p.name == "" then
+                                p.name = false
+                            end
                         end
                     end
                 end
-            end
 
-            if global["logistics-config"] then
-                for _, c in pairs(global["logistics-config"]) do
-                    for i, p in pairs(c) do
-                        if p.name == "" then
-                            p.name = false
+                if global["logistics-config"] then
+                    for _, c in pairs(global["logistics-config"]) do
+                        for i, p in pairs(c) do
+                            if p.name == "" then
+                                p.name = false
+                            end
                         end
                     end
                 end
-            end
 
-            if global["logistics-config-tmp"] then
-                for _, c in pairs(global["logistics-config-tmp"]) do
-                    for i, p in pairs(c) do
-                        if p.name == "" then
-                            p.name = false
+                if global["logistics-config-tmp"] then
+                    for _, c in pairs(global["logistics-config-tmp"]) do
+                        for i, p in pairs(c) do
+                            if p.name == "" then
+                                p.name = false
+                            end
                         end
                     end
                 end
-            end
 
-            for i, s in pairs(global.settings) do
-                s.options_extended = nil
-            end
-        end
-
-        if oldVersion < v'4.0.6' then
-            saveVar(global, "storage_pre_cleanup")
-            global.needs_import = {}
-            global.config[10] = {}
-            for pi, _ in pairs(global.config) do
-                if not game.get_player(pi) then
-                    on_pre_player_removed{player_index = pi}
+                for i, s in pairs(global.settings) do
+                    s.options_extended = nil
                 end
             end
 
-            for i, p in pairs(game.players) do
-                GUI.close(p)
-                global.needs_import[i] = true
-            end
-            --script.on_nth_tick()
-
-            if global.active then
-                for i, active in pairs(global.active) do
-                    global.settings[i].pause_trash = not active
+            if oldVersion < v'4.0.6' then
+                saveVar(global, "storage_pre_cleanup")
+                global.needs_import = {}
+                global.config[10] = {}
+                for pi, _ in pairs(global.config) do
+                    if not game.get_player(pi) then
+                        on_pre_player_removed{player_index = pi}
+                    end
                 end
-            end
-            if global["logistics-active"] then
-                for i, active in pairs(global["logistics-active"]) do
-                    global.settings[i].pause_requests = not active
+
+                for i, p in pairs(game.players) do
+                    GUI.close(p)
+                    global.needs_import[i] = true
                 end
-            end
+                --script.on_nth_tick()
 
-            cleanup_table(global.config,'global.config')
-            cleanup_table(global["logistics-config"],'global["logistics-config"]')
-
-            saveVar(global, "storage_pre")
-            convert_logistics()
-
-            if global.storage then
-                for _, storage in pairs(global.storage) do
-                    cleanup_table(storage.store, 'global.storage' .. '[' .. _ .. '].store')
+                if global.active then
+                    for i, active in pairs(global.active) do
+                        global.settings[i].pause_trash = not active
+                    end
                 end
+                if global["logistics-active"] then
+                    for i, active in pairs(global["logistics-active"]) do
+                        global.settings[i].pause_requests = not active
+                    end
+                end
+
+                cleanup_table(global.config,'global.config')
+                cleanup_table(global["logistics-config"],'global["logistics-config"]')
+
+                saveVar(global, "storage_pre")
+                convert_logistics()
+
+                if global.storage then
+                    for _, storage in pairs(global.storage) do
+                        cleanup_table(storage.store, 'global.storage' .. '[' .. _ .. '].store')
+                    end
+                end
+
+                for player_index, player in pairs(game.players) do
+                    log("Converting storage for " .. player.name .. " (" .. player_index .. ")")
+                    global.storage_new[player_index] = convert_storage(global.storage[player_index])
+                end
+
+                global.guiData = nil
+                global["logistics-active"] = nil
+                global.active = nil
+                global["config-tmp"] = nil
+                global["logistics-config-tmp"] = nil
+
+                saveVar(global, "storage_post")
+                --error()
             end
-
-            for player_index, player in pairs(game.players) do
-                log("Converting storage for " .. player.name .. " (" .. player_index .. ")")
-                global.storage_new[player_index] = convert_storage(global.storage[player_index])
-            end
-
-            global.guiData = nil
-            global["logistics-active"] = nil
-            global.active = nil
-            global["config-tmp"] = nil
-            global["logistics-config-tmp"] = nil
-
-            saveVar(global, "storage_post")
-            --error()
         end
 
         global.version = newVersion
@@ -799,7 +806,10 @@ end
 local function add_to_trash(player, item, count)
     error("Rewrite that crap")
     local player_index = player.index
-
+    if trash_blacklist[item] then
+        display_message(player, {"", game.item_prototypes[item].localised_name, " is on the blacklist for trashing"}, true)
+        return
+    end
     for i=#global.temporaryTrash[player_index],1,-1 do
         local t_item = global.temporaryTrash[player_index][i]
         if t_item and t_item.name == "" then
@@ -896,10 +906,42 @@ local function on_gui_click(event)
             return
         end
         local player_index = event.player_index
+        local player = game.get_player(player_index)
+        local left = mod_gui.get_frame_flow(player)
+        local config_frame = left[gui_def.config_frame]
+        local storage_frame = left[gui_def.storage_frame]
+        if config_frame and not config_frame.valid then
+            log("Invalid config frame")
+            GUI.close(player)
+            return
+        end
+        if storage_frame and not storage_frame.valid then
+            log("Invalid storage frame")
+            GUI.close(player)
+            return
+        end
+        -- log("on click " .. serpent.line(element.name))
+        -- log(serpent.line(event))
+
+        if element.name == gui_def.mainButton then
+            if player.cursor_stack.valid_for_read then
+                if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
+                    add_order(player)
+                elseif player.cursor_stack.name ~= "blueprint" then
+                    add_to_trash(player, player.cursor_stack.name, 0)
+                end
+            else
+                if left[gui_def.config_frame] then
+                    GUI.close(player, left)
+                else
+                    GUI.open_logistics_frame(player)
+                end
+            end
+            return
+        end
+
         if element.type == "choose-elem-button" then
             local index = GUI.index_from_name(element.name)
-            -- log("on click " .. serpent.line(element.name))
-            -- log(serpent.line(event))
             --log(serpent.line({elem=element.elem_value, locked = element.locked, selected = global.selected[player_index]}))
             if not index then
                 return
@@ -923,31 +965,18 @@ local function on_gui_click(event)
             return
         end
 
-        local player = game.get_player(player_index)
-        if element.name == gui_def.mainButton then
-            if player.cursor_stack.valid_for_read then
-                if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
-                    add_order(player)
-                elseif player.cursor_stack.name ~= "blueprint" then
-                    add_to_trash(player, player.cursor_stack.name, 0)
-                end
-            else
-                local left = mod_gui.get_frame_flow(player)
-                if left[gui_def.config_frame] and left[gui_def.config_frame].valid then
-                    GUI.close(player, left)
-                else
-                    GUI.open_logistics_frame(player)
-                end
+        --No gui, nothing to do anymore
+        if not config_frame then
+            return
+        end
+
+        if element.name == gui_def.save_button then
+            GUI.apply_changes(player, element)
+            if not global.settings[player_index].pause_trash then
+                set_trash(player)
             end
-        elseif element.name == gui_def.save_button then
-            GUI.save_changes(player)
-            set_requests(player)
-            set_trash(player)
-            if global.settings[player_index].pause_trash then
-                pause_trash(player)
-            end
-            if global.settings[player_index].pause_requests then
-                pause_requests(player)
+            if not global.settings[player_index].pause_requests then
+                set_requests(player)
             end
         elseif element.name == gui_def.reset_button then
             GUI.reset_changes(player, element)
@@ -971,15 +1000,15 @@ local function on_gui_click(event)
             element.caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
         else
             local type, index, _ = string.match(element.name, "autotrash_preset_(%a+)_(%d*)")
-            log(serpent.block({t=type, i=index}))
+            log(serpent.line({t=type, i=index}))
             if type and index then
                 if type == "load" then
                     GUI.restore(player, element.caption)
                 elseif type == "delete" then
                     GUI.remove(player, element, tonumber(index))
+                else
+                    error("Unexpected type/index from " .. element.name)--TODO remove
                 end
-            else
-                log(serpent.block{type, index, element.name})
             end
         end
     end)
