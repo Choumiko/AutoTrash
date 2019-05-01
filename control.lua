@@ -125,16 +125,18 @@ end
 
 local function set_requests(player)
     if player.character then
+        local character = player.character
         local storage = global.config_new[player.index].config
-        local slots = player.character.request_slot_count
+        local set_request_slot = character.set_request_slot
+        local clear_request_slot = character.clear_request_slot
         local req
 
-        for c=1, slots do
+        for c=1, character.request_slot_count do
             req = storage[c]
             if req then
-                player.character.set_request_slot({name = req.name, count = req.request}, c)
+                set_request_slot({name = req.name, count = req.request}, c)
             else
-                player.character.clear_request_slot(c)
+                clear_request_slot(c)
             end
         end
     end
@@ -145,16 +147,16 @@ local function get_requests(player)
         return {}
     end
     local requests = {}
-    local character = player.character
-    local t, max
-    for c=character.request_slot_count, 1, -1 do
-        t = character.get_request_slot(c)
+    local get_request_slot = player.character.get_request_slot
+    local t, max_slot
+    for c = player.character.request_slot_count, 1, -1 do
+        t = get_request_slot(c)
         if t then
-            max = not max and c or max
+            max_slot = not max_slot and c or max_slot
             requests[t.name] = {name = t.name, request = t.count, slot = c}
         end
     end
-    return requests, max
+    return requests, max_slot
 end
 
 local function get_requests_by_index(player)--luacheck: ignore
@@ -162,16 +164,33 @@ local function get_requests_by_index(player)--luacheck: ignore
         return {}
     end
     local requests = {}
-    local character = player.character
-    local t, max
-    for c=character.request_slot_count, 1, -1 do
-        t = character.get_request_slot(c)
+    local get_request_slot = player.character.get_request_slot
+    local t, max_slot
+    for c = player.character.request_slot_count, 1, -1 do
+        t = get_request_slot(c)
         if t then
-            max = not max and c or max
+            max_slot = not max_slot and c or max_slot
             requests[c] = {name = t.name, request = t.count, slot = c}
         end
     end
-    return requests, max
+    return requests, max_slot
+end
+
+local function requested_items(player)
+    if not player.character then
+        return {}
+    end
+    local requests = {}
+    local get_request_slot = player.character.get_request_slot
+    local t, max_slot
+    for c = player.character.request_slot_count, 1, -1 do
+        t = get_request_slot(c)
+        if t then
+            max_slot = not max_slot and c or max_slot
+            requests[t.name] = t.count
+        end
+    end
+    return requests
 end
 
 local function combine_from_vanilla(player)
@@ -465,20 +484,6 @@ local function on_player_created(event)
     init_player(game.get_player(event.player_index))
 end
 
-local function requested_items(player)
-    local requests = {}
-    if player.character then
-        local character = player.character
-        for c=1, character.request_slot_count do
-            local request = character.get_request_slot(c)
-            if request and (not requests[request.name] or (requests[request.name] and request.count > requests[request.name])) then
-                requests[request.name] = request.count
-            end
-        end
-    end
-    return requests
-end
-
 local function inMainNetwork(player)
     if not global.settings[player.index].auto_trash_in_main_network then
         return true
@@ -534,141 +539,6 @@ local function unpause_requests(player)
     GUI.update(player)
 end
 
-local function on_tick(event) --luacheck: ignore
-    if event.tick % 120 == 0 then
-        local status, err = pcall(function()
-            for _, player in pairs(game.players) do
-                local player_index = player.index
-                if player.valid and player.character and not global.settings[player_index].pause_trash
-                    and inMainNetwork(player) then
-                    local godController = player.controller_type == defines.controllers.god
-                    local main_inventory = godController and player.get_inventory(defines.inventory.god_main) or player.get_inventory(defines.inventory.player_main)
-                    local trash = player.get_inventory(defines.inventory.player_trash)
-                    local dirty = false
-
-                    local requests = requested_items(player)
-                    for i=#global.temporaryTrash[player_index],1,-1 do
-                        local item = global.temporaryTrash[player_index][i]
-                        if item and item.name ~= "" and item.name ~= "blueprint" and item.name ~= "blueprint-book" then
-                            local count = player.get_item_count(item.name)
-                            local requested = requests[item.name] and requests[item.name] or 0
-                            local desired = math.max(requested, item.count)
-                            local diff = count - desired
-                            local t_item, t_index = main_inventory.find_item_stack(item.name)
-                            local has_grid = game.item_prototypes[item.name].equipment_grid or (t_item and t_item.grid)
-                            if not has_grid then
-                                local stack = {name=item.name, count=diff}
-                                if diff > 0 then
-                                    local c = trash.insert(stack)
-                                    if c > 0 then
-                                        local removed = player.remove_item{name=item.name, count=c}
-                                        diff = diff - removed
-                                        if c > removed then
-                                            trash.remove{name=item.name, count = c - removed}
-                                        end
-                                    end
-                                end
-                                if diff <= 0 then
-                                    player.print({"", "removed ", game.item_prototypes[item.name].localised_name, " from temporary trash"})
-                                    global.temporaryTrash[player_index][i] = nil
-                                end
-                            else
-                                if diff > 0 and t_item then
-                                    for ti = #trash, 1, -1 do
-                                        if trash[ti].valid and not trash[ti].valid_for_read then
-                                            if trash[ti].swap_stack(main_inventory[t_index]) then
-                                                dirty = true
-                                                break
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                    local config_size = 30
-                    local already_trashed = {}
-                    for i, item in pairs(global.config[player_index]) do
-                        if item and item.name and item.name ~= "blueprint" and item.name ~= "blueprint-book" and i <= config_size then
-                            already_trashed[item.name] = true
-                            local count = player.get_item_count(item.name)
-                            local requested = requests[item.name] and requests[item.name] or 0
-                            local desired = math.max(requested, item.count)
-                            local diff = count - desired
-                            local t_item, t_index = main_inventory.find_item_stack(item.name)
-                            local has_grid = game.item_prototypes[item.name].equipment_grid or (t_item and t_item.grid)
-                            if not has_grid then
-                                local stack = {name=item.name, count=diff}
-                                if diff > 0 then
-                                    local c = trash.insert(stack)
-                                    if c > 0 then
-                                        local removed = main_inventory.remove{name=item.name, count=c}
-                                        if c > removed then
-                                            trash.remove{name=item.name, count = c - removed}
-                                        end
-                                    end
-                                end
-                            else
-                                if diff > 0 and t_item then
-                                    for ti = #trash, 1, -1 do
-                                        if trash[ti].valid and not trash[ti].valid_for_read then
-                                            if trash[ti].swap_stack(main_inventory[t_index]) then
-                                                dirty = true
-                                                break
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-
-                    for name, r in pairs(requests) do
-                        if global.settings[player_index].auto_trash_above_requested then
-                            if not already_trashed[name] then
-                                local count = player.get_item_count(name)
-                                local diff = count - r
-                                if diff > 0 then
-                                    local t_item, t_index = main_inventory.find_item_stack(name)
-                                    local has_grid = game.item_prototypes[name].equipment_grid or (t_item and t_item.grid)
-                                    if not has_grid then
-                                        local stack = {name=name, count=diff}
-                                        local c = trash.insert(stack)
-                                        if c > 0 then
-                                            local removed = main_inventory.remove{name=name, count=c}
-                                            if c > removed then
-                                                trash.remove{name=name, count = c - removed}
-                                            end
-                                        end
-                                    else
-                                        if t_item then
-                                            for ti = #trash, 1, -1 do
-                                                if trash[ti].valid and not trash[ti].valid_for_read then
-                                                    if trash[ti].swap_stack(main_inventory[t_index]) then
-                                                        dirty = true
-                                                        break
-                                                    end
-                                                end
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-
-                    if dirty then
-                        trash.sort_and_merge()
-                    end
-                end
-            end
-        end)
-        if not status then
-            debugDump(err, true)
-        end
-    end
-end
-
 local trash_blacklist = {
     ["blueprint"] = true,
     ["blueprint-book"] = true,
@@ -679,7 +549,7 @@ local trash_blacklist = {
 }
 
 local function on_player_main_inventory_changed(event)
-    log("main inventory changed " .. serpent.block(event))
+    --log("main inventory changed " .. serpent.block(event))
     -- if not trash_blacklist then
     --     trash_blacklist = {}
     --     for name, proto in pairs(game.item_prototypes) do
@@ -699,7 +569,7 @@ local function on_player_main_inventory_changed(event)
                 --TODO checking for trash_filters[name] would allow hand set exceptions, either set in the vanilla gui or the stored rulesets
                 --possible problem when unchecking "unrequested" what trash filters should be reset to?
                 --the one in global.config or the ones set in vanilla before it was checked (needs saving in global)
-                if not requests[name] and not trash_blacklist[protos[name].type] and not trash_filters[name] then
+                if not requests[name] and not trash_filters[name]  and not trash_blacklist[protos[name].type] then
                     trash_filters[name] = 0
                 end
             end
@@ -708,9 +578,46 @@ local function on_player_main_inventory_changed(event)
     end
 end
 
--- local function on_player_trash_inventory_changed(event)
---     log("trash inventory changed " .. serpent.block(event))
--- end
+local function on_player_trash_inventory_changed(event)
+    local player = game.get_player(event.player_index)
+    local inventory = player.get_main_inventory()
+    local trash_filters = player.auto_trash_filters
+    local requests = requested_items(player)
+    local desired, changed
+    for name, saved_count in pairs(global.temporaryTrash[player.index]) do
+        if trash_filters[name] then
+             desired = requests[name] and requests[name] or 0
+            if inventory.get_item_count(name) <= desired then
+                player.print({"", "removed ", game.item_prototypes[name].localised_name, " from temporary trash"})
+                log("Removed ".. name .. " " .. serpent.block(event))
+                trash_filters[name] = tonumber(saved_count)
+                global.temporaryTrash[player.index][name] = nil
+                changed = true
+            end
+        end
+    end
+    if changed then
+        player.auto_trash_filters = trash_filters
+    end
+end
+
+local function add_to_trash(player, item)
+    log("add to trash " .. game.tick)
+    local player_index = player.index
+    if trash_blacklist[item] then
+        display_message(player, {"", game.item_prototypes[item].localised_name, " is on the blacklist for trashing"}, true)
+        return
+    end
+    global.temporaryTrash[player_index][item] = player.auto_trash_filters[item] or true --true: wasn't set, remove when cleaning temporaryTrash
+    local trash_filters = player.auto_trash_filters
+    local requests = requested_items(player)
+    if not trash_filters[item] then
+        trash_filters[item] = requests[item] or 0
+        log(serpent.block(trash_filters))
+        player.auto_trash_filters = trash_filters
+    end
+    player.print({"", "Added ", game.item_prototypes[item].localised_name, " to temporary trash"})
+end
 
 local function on_player_toggled_map_editor(event)
     log("toggled map editor " .. serpent.block(event))
@@ -752,13 +659,12 @@ script.on_load(on_load)
 script.on_configuration_changed(on_configuration_changed)
 script.on_event(defines.events.on_player_created, on_player_created)
 script.on_event(defines.events.on_player_main_inventory_changed, on_player_main_inventory_changed)
---script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
+script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
 
 script.on_event(defines.events.on_player_toggled_map_editor, on_player_toggled_map_editor)
 script.on_event(defines.events.on_pre_player_removed, on_pre_player_removed)
 script.on_event(defines.events.on_pre_player_died, on_pre_player_died)
 script.on_event(defines.events.on_player_changed_position, on_player_changed_position)
---script.on_event(defines.events.on_tick, on_tick)
 
 local function on_pre_mined_item(event)
     local status, err = pcall(function()
@@ -801,36 +707,6 @@ local function add_order(player)
         end
         orders[ent.name] = orders[ent.name] + 1
     end
-end
-
-local function add_to_trash(player, item, count)
-    error("Rewrite that crap")
-    local player_index = player.index
-    if trash_blacklist[item] then
-        display_message(player, {"", game.item_prototypes[item].localised_name, " is on the blacklist for trashing"}, true)
-        return
-    end
-    for i=#global.temporaryTrash[player_index],1,-1 do
-        local t_item = global.temporaryTrash[player_index][i]
-        if t_item and t_item.name == "" then
-            break
-        end
-        local requests = requested_items(player)
-        local pcount = player.get_item_count(t_item.name)
-        local desired = requests[t_item.name] and requests[t_item.name] + t_item.count or t_item.count
-        local diff = pcount - desired
-        if diff < 1 then
-            player.print({"", "removed ", game.item_prototypes[t_item.name].localised_name, " from temporary trash"})
-            global.temporaryTrash[player_index][i] = nil
-        end
-    end
-
-    if #global.temporaryTrash[player_index] >= 5 then
-        player.print({"", "Couldn't add ", game.item_prototypes[item].localised_name, " to temporary trash."})
-        return
-    end
-    table.insert(global.temporaryTrash[player_index], {name = item, count = count})
-    player.print({"", "added ", game.item_prototypes[item].localised_name, " to temporary trash"})
 end
 
 function add_to_requests(player, item, count)--luacheck: ignore
@@ -928,7 +804,7 @@ local function on_gui_click(event)
                 if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
                     add_order(player)
                 elseif player.cursor_stack.name ~= "blueprint" then
-                    add_to_trash(player, player.cursor_stack.name, 0)
+                    add_to_trash(player, player.cursor_stack.name)
                 end
             else
                 if left[gui_def.config_frame] then
@@ -1215,7 +1091,7 @@ local function autotrash_trash_cursor(event)
     if player.force.technologies["character-logistic-trash-slots-1"].researched then
         local cursorStack = player.cursor_stack
         if cursorStack.valid_for_read then
-            add_to_trash(player, cursorStack.name, 0)
+            add_to_trash(player, cursorStack.name)
         else
             toggle_autotrash_pause(player)
         end
