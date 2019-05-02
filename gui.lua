@@ -97,7 +97,7 @@ function GUI.init(player)
         local button = button_flow.add{
             type = "sprite-button",
             name = GUI.defines.mainButton,
-            style = "auto-trash-sprite-button"
+            style = "at_sprite_button"
         }
         button.sprite = "autotrash_trash"
     end
@@ -204,25 +204,21 @@ function GUI.create_buttons(player)
         local choose_button = ruleset_grid.add{
             type = "choose-elem-button",
             name = button_name,
-            style = "logistic_button_slot",
             elem_type = "item"
         }
         choose_button.elem_value = elem_value
-
-        if global.selected[player_index] == i then
-            choose_button.style = "logistic_button_selected_slot"
-        end
+        choose_button.style = global.selected[player_index] == i and "at_button_slot_selected" or "at_button_slot"
 
         local lbl_top = choose_button.add{
             type = "label",
-            style = "auto-trash-request-label-top",
+            style = "at_request_label_top",
             ignored_by_interaction = true,
             caption = " "
         }
 
         local lbl_bottom = choose_button.add{
             type = "label",
-            style = "auto-trash-request-label-bottom",
+            style = "at_request_label_bottom",
             ignored_by_interaction = true,
             caption = " "
         }
@@ -239,27 +235,20 @@ function GUI.create_buttons(player)
         type = "flow",
         name = "autotrash-extend-flow",
         direction = "vertical",
-        style = "autotrash-extend-flow"
+        style = "at_extend_flow"
     }
-    extend_button_flow.style.left_padding = 0
-    extend_button_flow.style.right_padding = 0
-    extend_button_flow.style.top_padding = 0
-    extend_button_flow.style.bottom_padding = 0
-    extend_button_flow.style.vertical_spacing = 0
 
     local minus = extend_button_flow.add{
         type = "button",
         name = "autotrash-extend-less",
         caption = "-",
-        --sprite = "utility/dropdown",
-        style = "auto-trash-sprite-button"
+        style = "at_sprite_button"
     }
     local plus = extend_button_flow.add{
         type = "sprite-button",
         name = "autotrash-extend-more",
         caption = "+",
-        --sprite = "utility/add",
-        style = "auto-trash-sprite-button"
+        style = "at_sprite_button"
     }
     minus.style.maximal_height = 16
     minus.style.minimal_width = 16
@@ -487,7 +476,7 @@ function GUI.open_logistics_frame(player)
         type = "button",
         caption = {"gui-save-game.save-as"},
         name = GUI.defines.store_button,
-        style = "auto-trash-small-button"
+        style = "at_small_button"
     }
     local storage_scroll = storage_frame.add{
         type = "scroll-pane",
@@ -630,8 +619,10 @@ function GUI.store(player, element)
     textfield.text = ""
 end
 
-function GUI.restore(player, name)
+function GUI.restore(player, element)
     local player_index = player.index
+    local name = element.caption
+    element.style = "at_preset_button_selected"
     assert(global.storage_new[player_index] and global.storage_new[player_index][name]) --TODO remove
 
     global.config_tmp[player_index] = util.table.deepcopy(global.storage_new[player_index][name])

@@ -2,7 +2,7 @@ local floor = math.floor
 local function saveVar(var, name)
     var = var or global
     local n = name or ""
-    game.write_file("autotrash"..n..".lua", serpent.block(var, {name="global", comment=false}))
+    game.write_file("autotrash"..n..".lua", serpent.block(var, {name = "global", comment = false}))
 end
 
 local function debugDump(var, force)
@@ -12,7 +12,7 @@ local function debugDump(var, force)
             if type(var) == "string" then
                 msg = var
             else
-                msg = serpent.dump(var, {name="var", comment=false, sparse=false, sortkeys=true})
+                msg = serpent.dump(var, {name = "var", comment = false, sparse = false, sortkeys = true})
             end
             player.print(msg)
         end
@@ -20,7 +20,7 @@ local function debugDump(var, force)
 end
 
 local function display_message(player, message, sound)
-    player.create_local_flying_text{position=player.position, text=message}
+    player.create_local_flying_text{position = player.position, text = message}
     if sound then
         player.play_sound{path = "utility/cannot_build", position = player.position}
     end
@@ -33,13 +33,12 @@ local function format_number(n, append_suffix)
   end
   local suffix = ""
   if append_suffix then
-    local suffix_list =
-      {
+    local suffix_list = {
         ["T"] = 1000000000000,
         ["B"] = 1000000000,
         ["M"] = 1000000,
         ["k"] = 1000
-      }
+    }
     for letter, limit in pairs (suffix_list) do
       if math.abs(amount) >= limit then
         amount = floor(amount/(limit/10))/10
@@ -51,7 +50,7 @@ local function format_number(n, append_suffix)
   local formatted, k = amount
   while true do
     formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
-    if (k==0) then
+    if (k == 0) then
       break
     end
   end

@@ -131,7 +131,7 @@ local function set_requests(player)
         local clear_request_slot = character.clear_request_slot
         local req
 
-        for c=1, character.request_slot_count do
+        for c = 1, character.request_slot_count do
             req = storage[c]
             if req then
                 set_request_slot({name = req.name, count = req.request}, c)
@@ -274,7 +274,7 @@ local function init_global()
 end
 
 --[[
-config[player_index][slot] = {name = "item", min=0, max=100}
+config[player_index][slot] = {name = "item", min = 0, max = 100}
 min: if > 0 set as request
 max: if == 0 and trash unrequested
 if min == max : set req = trash
@@ -523,7 +523,7 @@ local function pause_requests(player)
     global.settings[player.index].pause_requests = true
     --TODO backup current requests?
     local character = player.character
-    for c=1, character.request_slot_count do
+    for c = 1, character.request_slot_count do
         character.clear_request_slot(c)
     end
     GUI.update(player)
@@ -736,7 +736,7 @@ local function unselect_elem_button(player_index, parent)
     local element = selected and parent.children[selected]
     if selected and element then
         element.style = "logistic_button_slot"
-        log("Unselect: " .. serpent.line({i=selected, item = element.elem_value}))
+        log("Unselect: " .. serpent.line({i = selected, item = element.elem_value}))
         element.locked = element.elem_value or false
     end
     global.selected[player_index] = false
@@ -818,7 +818,7 @@ local function on_gui_click(event)
 
         if element.type == "choose-elem-button" then
             local index = GUI.index_from_name(element.name)
-            --log(serpent.line({elem=element.elem_value, locked = element.locked, selected = global.selected[player_index]}))
+            --log(serpent.line({elem = element.elem_value, locked = element.locked, selected = global.selected[player_index]}))
             if not index then
                 return
             end
@@ -876,7 +876,7 @@ local function on_gui_click(event)
             element.caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
         else
             local type, index, _ = string.match(element.name, "autotrash_preset_(%a+)_(%d*)")
-            log(serpent.line({t=type, i=index}))
+            log(serpent.line({t = type, i = index}))
             if type and index then
                 if type == "load" then
                     GUI.restore(player, element.caption)

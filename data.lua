@@ -1,4 +1,5 @@
-data.raw["gui-style"].default["auto-trash-request-label-bottom"] = {
+local styles = data.raw["gui-style"].default
+styles["at_request_label_bottom"] = {
     type = "label_style",
     parent = "count_label",
     height = 36,
@@ -8,142 +9,118 @@ data.raw["gui-style"].default["auto-trash-request-label-bottom"] = {
     right_padding = 2
 }
 
-data.raw["gui-style"].default["auto-trash-request-label-top"] = {
+styles["at_request_label_top"] = {
     type = "label_style",
-    parent = "auto-trash-request-label-bottom",
+    parent = "at_request_label_bottom",
     vertical_align = "top",
 }
 
-data.raw["gui-style"].default["auto-trash-slot-button"] = {
+styles["at_button_slot"] = {
     type = "button_style",
     parent = "logistic_button_slot",
 }
 
-data.raw["gui-style"].default["auto-trash-slot-button-selected"] = {
+styles["at_button_slot_selected"] = {
     type = "button_style",
     parent = "logistic_button_selected_slot",
 }
 
-data.raw["gui-style"].default["auto-trash-small-button"] = {
+styles["at_small_button"] = {
     type = "button_style",
     parent = "button",
 }
 
-data.raw["gui-style"].default["auto-trash-textfield-small"] =
-    {
-        type = "textbox_style",
-        width = 40,
-    }
+styles["at_sprite_button"] = {
+    type = "button_style",
+    parent = "button",
+    width = 36,
+    height = 36,
+    padding = 0
+}
 
-data.raw["gui-style"].default["auto-trash-table"] =
-    {
-        type = "table_style",
-        parent = "table",
-    }
+styles["at_preset_button"] = {
+    type = "button_style",
+    parent = "button",
+}
 
-data.raw["gui-style"].default["auto-trash-sprite-button"] =
-    {
-        type = "button_style",
-        parent = "button",
-        width = 36,
-        height = 36,
-        padding = 0
-    }
+local button = styles.button
 
-data.raw["gui-style"].default["auto-trash-button"] =
-    {
-        type = "button_style",
-        parent = "auto-trash-sprite-button",
-    }
+styles["at_preset_button_selected"] = {--luacheck: ignore
+    type = "button_style",
+    parent = "at_preset_button",
+    default_font_color = button.selected_font_color,
+    default_graphical_set = button.selected_graphical_set,
 
-data.raw["gui-style"].default["auto-trash-button-paused"] =
-    {
-        type = "button_style",
-        parent = "auto-trash-sprite-button",
-    }
+    hovered_font_color = button.selected_hovered_font_color,
+    hovered_graphical_set = button.selected_hovered_graphical_set,
 
-data.raw["gui-style"].default["auto-trash-logistics-button"] =
-    {
-        type = "button_style",
-        parent = "auto-trash-sprite-button",
-    }
+    clicked_font_color = button.selected_clicked_font_color,
+    clicked_vertical_offset = 1, -- text/icon goes down on click
+    clicked_graphical_set = button.selected_clicked_graphical_set,
 
-data.raw["gui-style"].default["auto-trash-logistics-button-paused"] =
-    {
-        type = "button_style",
-        parent = "auto-trash-sprite-button",
-    }
+    -- selected_font_color = button_hovered_font_color,
+    -- selected_graphical_set =
 
-data.raw["gui-style"].default["auto-trash-expand-button"] =
-    {
-        type = "button_style",
-        parent = "button",
-        width = 16,
-        height = 16,
-        padding = 0
-    }
-data.raw["gui-style"].default["autotrash-extend-flow"] =
-    {
-        type = "vertical_flow_style",
-        parent = "vertical_flow",
-    }
+    -- selected_hovered_font_color = button_hovered_font_color,
+    -- selected_hovered_graphical_set =
 
-data:extend({
-    {
-      type="sprite",
-      name="autotrash_trash",
-      filename = "__AutoTrash__/graphics/gui2.png",
-      width = 128,
-      height = 128,
-      x = 0,
-      y = 0
-}})
+    -- selected_clicked_font_color = button_hovered_font_color,
+    -- selected_clicked_graphical_set =
 
-data:extend({
-    {
-      type="sprite",
-      name="autotrash_trash_paused",
-      filename = "__AutoTrash__/graphics/gui2.png",
-      width = 128,
-      height = 128,
-      x = 128,
-      y = 0
-}})
+}
 
-data:extend({
-    {
-      type="sprite",
-      name="autotrash_logistics",
-      filename = "__AutoTrash__/graphics/gui2.png",
-      width = 128,
-      height = 128,
-      x = 0,
-      y = 128
-}})
 
-data:extend({
-    {
-      type="sprite",
-      name="autotrash_logistics_paused",
-      filename = "__AutoTrash__/graphics/gui2.png",
-      width = 128,
-      height = 128,
-      x = 128,
-      y = 128
-}})
+styles["at_extend_flow"] = {
+    type = "vertical_flow_style",
+    parent = "vertical_flow",
+    left_padding = 0,
+    right_padding = 0,
+    top_padding = 0,
+    bottom_padding = 0,
+    vertical_spacing = 0
+}
 
-data:extend({
-    {
-      type="sprite",
-      name="autotrash_expand",
-      filename = "__core__/graphics/side-menu-icons.png",
-      width = 64,
-      height = 64,
-      x = 0,
-      y = 384
-}})
+data:extend{{
+    type = "sprite",
+    name = "autotrash_trash",
+    filename = "__AutoTrash__/graphics/gui2.png",
+    width = 128,
+    height = 128,
+    x = 0,
+    y = 0
+}}
 
-data:extend({
+data:extend{{
+    type = "sprite",
+    name = "autotrash_trash_paused",
+    filename = "__AutoTrash__/graphics/gui2.png",
+    width = 128,
+    height = 128,
+    x = 128,
+    y = 0
+}}
+
+data:extend{{
+    type = "sprite",
+    name = "autotrash_logistics",
+    filename = "__AutoTrash__/graphics/gui2.png",
+    width = 128,
+    height = 128,
+    x = 0,
+    y = 128
+}}
+
+data:extend{{
+    type = "sprite",
+    name = "autotrash_logistics_paused",
+    filename = "__AutoTrash__/graphics/gui2.png",
+    width = 128,
+    height = 128,
+    x = 128,
+    y = 128
+}}
+
+data:extend{
     {
         type = "custom-input",
         name = "autotrash_pause",
@@ -164,4 +141,4 @@ data:extend({
         key_sequence = "SHIFT + T",
         consuming = "none"
     },
-})
+}
