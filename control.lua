@@ -4,6 +4,7 @@ local mod_gui = require '__core__/lualib/mod-gui'
 local v = require '__AutoTrash__/semver'
 local lib_control = require '__AutoTrash__.lib_control'
 local GUI = require "__AutoTrash__/gui"
+local presets = require "__AutoTrash__/presets"
 
 local saveVar = lib_control.saveVar
 local debugDump = lib_control.debugDump
@@ -765,8 +766,9 @@ local function select_elem_button(player_index, element)
 end
 
 local function clear_elem_button(player_index, index, element)
+    local name = element.elem_value or global["config_tmp"][player_index].config[index].name
+    global["config_tmp"][player_index].config_by_name[name] = nil
     global["config_tmp"][player_index].config[index] = nil
-    global["config_tmp"][player_index].config_by_name[element.elem_value] = nil
     element.elem_value = nil
     element.locked = false
     element.children[1].caption = " "
@@ -796,8 +798,8 @@ local function on_gui_click(event)
             GUI.close(player)
             return
         end
-        -- log("on click " .. serpent.line(element.name))
-        -- log(serpent.line(event))
+        log("on click " .. serpent.line(element.name))
+        log(serpent.line(event))
 
         if element.name == gui_def.mainButton then
             if player.cursor_stack.valid_for_read then
@@ -876,10 +878,17 @@ local function on_gui_click(event)
             element.caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
         else
             local type, index, _ = string.match(element.name, "autotrash_preset_(%a+)_(%d*)")
-            log(serpent.line({t = type, i = index}))
             if type and index then
+                log(serpent.line({t = type, i = index}))
                 if type == "load" then
-                    GUI.restore(player, element.caption)
+                    if not event.shift and not event.control then
+                        GUI.restore(player, element)
+                    else
+                        log("merging preset")
+                        global.config_tmp[player_index] = presets.merge(global.config_tmp[player_index], global.storage_new[player_index][element.caption])
+                        GUI.create_buttons(player)
+                        GUI.update_sliders(player)
+                    end
                 elseif type == "delete" then
                     GUI.remove(player, element, tonumber(index))
                 else
