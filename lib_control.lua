@@ -22,7 +22,11 @@ end
 local function display_message(player, message, sound)
     player.create_local_flying_text{position = player.position, text = message}
     if sound then
-        player.play_sound{path = "utility/cannot_build", position = player.position}
+        if sound == "success" then
+            player.play_sound{path = "utility/console_message", position = player.position}
+        else
+            player.play_sound{path = "utility/cannot_build", position = player.position}
+        end
     end
 end
 

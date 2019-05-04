@@ -24,6 +24,7 @@ local GUI = {--luacheck: allow defined top
         --DONT RENAME, ELSE GUI WONT CLOSE
         main_button = "at-config-button",
         main_button_flow = "at_main_button_flow",
+        quick_presets = "at_quick_presets",
 
         config_frame = "at-config-frame",
         config_flow_v = "at_config_flow_v",
@@ -103,12 +104,17 @@ end
 
 function GUI.init(player)
     local button_flow = mod_gui.get_button_flow(player)
-    if button_flow[GUI.defines.main_button] then
+    if button_flow[GUI.defines.main_button_flow] then
         return
     end
     if player.force.technologies["character-logistic-slots-1"].researched
     or player.force.technologies["character-logistic-trash-slots-1"].researched then
-        local button = button_flow.add{
+        local flow = button_flow.add{
+            type = "flow",
+            name = GUI.defines.main_button_flow,
+            direction = "horizontal"
+        }
+        local button = flow.add{
             type = "sprite-button",
             name = GUI.defines.main_button,
             style = "at_sprite_button"
@@ -118,7 +124,8 @@ function GUI.init(player)
 end
 
 function GUI.update(player)
-    local mainButton = mod_gui.get_button_flow(player)[GUI.defines.main_button]
+    local mainButton = mod_gui.get_button_flow(player)[GUI.defines.main_button_flow]
+    mainButton = mainButton and mainButton[GUI.defines.main_button]
     if not mainButton then
         return
     end
@@ -148,9 +155,9 @@ function GUI.update_settings(player)
 end
 
 function GUI.destroy(player)
-    local button_flow = mod_gui.get_button_flow(player)
-    if button_flow[GUI.defines.main_button] then
-        button_flow[GUI.defines.main_button].destroy()
+    local button_flow = mod_gui.get_button_flow(player)[GUI.defines.main_button_flow]
+    if button_flow and button_flow.valid then
+        button_flow.destroy()
     end
 end
 
@@ -270,6 +277,41 @@ function GUI.create_buttons(player)
     plus.style.maximal_height = 16
     plus.style.minimal_width = 16
     plus.style.font = "default-bold"
+end
+
+function GUI.open_quick_presets(player, main_flow)
+    local button_flow = main_flow or mod_gui.get_button_flow(player)[GUI.defines.main_button_flow]
+    if not button_flow or not button_flow.valid then
+        return
+    end
+    if button_flow[GUI.defines.quick_presets] and button_flow[GUI.defines.quick_presets].valid then
+        button_flow[GUI.defines.quick_presets].destroy()
+        return
+    end
+
+    local quick_presets = button_flow.add{
+        type = "list-box",
+        name = GUI.defines.quick_presets
+    }
+
+    local i = 1
+    local tmp = {}
+    for key, _ in pairs(global.storage_new[player.index]) do
+        tmp[i] = key
+        i = i + 1
+    end
+    quick_presets.items = tmp
+end
+
+function GUI.close_quick_presets(player, main_flow)
+    local button_flow = main_flow or mod_gui.get_button_flow(player)[GUI.defines.main_button_flow]
+    if not button_flow or not button_flow.valid then
+        return
+    end
+    if button_flow[GUI.defines.quick_presets] and button_flow[GUI.defines.quick_presets].valid then
+        button_flow[GUI.defines.quick_presets].destroy()
+        return
+    end
 end
 
 function GUI.open_logistics_frame(player)

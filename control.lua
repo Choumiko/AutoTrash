@@ -803,17 +803,22 @@ local function on_gui_click(event)
         log(serpent.line(event))
 
         if element.name == gui_def.main_button then
-            if player.cursor_stack.valid_for_read then
-                if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
-                    add_order(player)
-                elseif player.cursor_stack.name ~= "blueprint" then
-                    add_to_trash(player, player.cursor_stack.name)
-                end
+            if event.button == defines.mouse_button_type.right then
+                GUI.open_quick_presets(player, element.parent)
             else
-                if left[gui_def.config_frame] then
-                    GUI.close(player, left)
+                GUI.close_quick_presets(player, element.parent)
+                if player.cursor_stack.valid_for_read then
+                    if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
+                        add_order(player)
+                    elseif player.cursor_stack.name ~= "blueprint" then
+                        add_to_trash(player, player.cursor_stack.name)
+                    end
                 else
-                    GUI.open_logistics_frame(player)
+                    if left[gui_def.config_frame] then
+                        GUI.close(player, left)
+                    else
+                        GUI.open_logistics_frame(player)
+                    end
                 end
             end
             return
@@ -968,6 +973,37 @@ local function on_gui_checked_changed_state(event)
     end
 end
 
+local function on_gui_selection_state_changed(event)
+    local status, err = pcall(function()
+        log(serpent.block(event))
+        local player_index = event.player_index
+        local player = game.get_player(player_index)
+        local name = event.element.get_item(event.element.selected_index)
+        if global.storage_new[event.player_index][name] then
+            global.selected_presets[player_index] = {[name] = true}
+            global.config_new[player_index] = util.table.deepcopy(global.storage_new[player_index][name])
+            global.selected[player_index] = false
+            global.dirty[player_index] = false
+            if not global.settings[player_index].pause_trash then
+                set_trash(player)
+            end
+            if not global.settings[player_index].pause_requests then
+                set_requests(player)
+            end
+            display_message(player, "Preset '" .. tostring(name) .. "' loaded", "success")
+        else
+            display_message(player, "Unknown preset: " .. tostring(name), true)
+        end
+        event.element.destroy()
+    end)
+    if not status then
+        if event.element and event.element.valid then
+            event.element.destroy()
+        end
+        debugDump(err, true)
+    end
+end
+
 local function on_gui_elem_changed(event)
     local status, err = pcall(function()
         log("elem_changed: " .. event.element.name)
@@ -1091,6 +1127,7 @@ script.on_event(defines.events.on_gui_checked_state_changed, on_gui_checked_chan
 script.on_event(defines.events.on_gui_elem_changed, on_gui_elem_changed)
 script.on_event(defines.events.on_gui_value_changed, on_gui_value_changed)
 script.on_event(defines.events.on_gui_text_changed, on_gui_text_changed)
+script.on_event(defines.events.on_gui_selection_state_changed, on_gui_selection_state_changed)
 script.on_event(defines.events.on_runtime_mod_setting_changed, on_runtime_mod_setting_changed)
 
 local function on_research_finished(event)
@@ -1125,12 +1162,22 @@ local function autotrash_trash_cursor(event)
 end
 script.on_event("autotrash_trash_cursor", autotrash_trash_cursor)
 
-commands.add_command("reload_mods", "", function()
+local at_commands = {
+    reload = function()
     game.reload_mods()
+
+    local button_flow = mod_gui.get_button_flow(game.player)[GUI.defines.main_button]
+    if button_flow and button_flow.valid then
+        button_flow.destroy()
+    end
+
     init_global()
     init_players()
     game.player.print("Mods reloaded")
-end)
+end
+}
+
+commands.add_command("reload_mods", "", at_commands.reload)
 
 --/c remote.call("at","saveVar")
 remote.add_interface("at",
