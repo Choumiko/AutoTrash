@@ -21,9 +21,8 @@ end
 
 local GUI = {--luacheck: allow defined top
     defines = {
-        --DONT RENAME, ELSE GUI WONT CLOSE
         main_button = "at-config-button",
-        main_button_flow = "at_main_button_flow",
+        main_button_flow = "auto-trash-main-flow", --Don't rename, preserves top button order in existing saves
         quick_presets = "at_quick_presets",
 
         config_frame = "at-config-frame",
@@ -112,6 +111,7 @@ function GUI.init(player)
         local flow = button_flow.add{
             type = "flow",
             name = GUI.defines.main_button_flow,
+            style = "at_main_flow",
             direction = "horizontal"
         }
         local button = flow.add{

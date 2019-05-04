@@ -25,6 +25,13 @@ styles["at_button_slot_selected"] = {
     parent = "logistic_button_selected_slot",
 }
 
+styles["at_main_flow"] = {
+    type = "horizontal_flow_style",
+    parent = "horizontal_flow",
+    padding = 0
+
+}
+
 styles["at_small_button"] = {
     type = "button_style",
     parent = "button",
@@ -32,10 +39,7 @@ styles["at_small_button"] = {
 
 styles["at_sprite_button"] = {
     type = "button_style",
-    parent = "button",
-    width = 36,
-    height = 36,
-    padding = 0
+    parent = "mod_gui_button",
 }
 
 styles["at_preset_button"] = {
