@@ -2,7 +2,7 @@ require "__core__/lualib/util"
 local mod_gui = require '__core__/lualib/mod-gui'
 
 local v = require '__AutoTrash__/semver'
-local lib_control = require '__AutoTrash__.lib_control'
+local lib_control = require '__AutoTrash__/lib_control'
 local GUI = require "__AutoTrash__/gui"
 local presets = require "__AutoTrash__/presets"
 
@@ -20,79 +20,77 @@ local floor = math.floor
 local function cleanup_table(tbl, tbl_name)
     if tbl then
         log("Cleaning " .. tostring(tbl_name) or "table")
-        for pi, stored in pairs(tbl) do
-            log("Processing: " .. pi)
-            local r = 0
-            for i, p in pairs(stored) do
-                if p and not p.name or (p.name and p.name == "") then
-                    stored[i] = nil
-                    r = r + 1
-                end
+        local r = 0
+        for i, p in pairs(tbl) do
+            if p and not p.name or (p.name and p.name == "") then
+                tbl[i] = nil
+                r = r + 1
             end
-            if r > 0 then
-                log("Removed " .. r .. " invalied entries")
-            end
+        end
+        if r > 0 then
+            log("Removed " .. r .. " invalied entries")
         end
     end
 end
 
-local function convert_logistics()
-    log("Merging Request and Trash slots")
-    local tmp, config, no_slot
+local function update_item_config(stored)
+    local tmp = {config = {}, config_by_name = {}}
     local max_slot = 0
-    for player_index, stored in pairs(global["logistics-config"]) do
-        local player = game.get_player(player_index)
-        if player then
-            log("Processing requests for: " .. tostring(player.name) .. " (" .. player_index .. ")")
-            tmp = {config = {}, config_by_name = {}, settings = {}}
-            for i, p in pairs(stored) do
-                tmp.config[i] = {
-                    name = p.name,
-                    request = p.count and p.count or 0,
-                    trash = false,
-                    slot = i
-                }
-                tmp.config_by_name[p.name] = tmp.config[i]
-                max_slot = max_slot < i and i or max_slot
-                log(serpent.line(tmp.config[i]))
+    for i, p in pairs(stored) do
+        tmp.config[i] = {
+            name = p.name,
+            request = p.count and p.count or 0,
+            trash = false,
+            slot = i
+        }
+        tmp.config_by_name[p.name] = tmp.config[i]
+        max_slot = max_slot < i and i or max_slot
+        --log(serpent.line(tmp[name].config[i]))
+    end
+    return tmp, max_slot
+end
+
+local function convert_logistics(stored, stored_trash)
+    log("Merging Request and Trash slots")
+    local config, no_slot
+
+    log("Processing requests")
+    local tmp, max_slot = update_item_config(stored)
+
+    no_slot = {}
+    log("Merging trash")
+    for i, trash in pairs(stored_trash) do
+        config = tmp.config_by_name[trash.name]
+        if config then
+            if config.request > trash.count then
+                log("Adjusting trash amount for " .. trash.name .. " from " .. trash.count .. " to " .. config.request)
             end
-            no_slot = {}
-            log("Merging trash for: " .. tostring(player.name) .. " (" .. player_index .. ")")
-            for i, trash in pairs(global.config[player_index]) do
-                config = tmp.config_by_name[trash.name]
-                if config then
-                    if config.request > trash.count then
-                        log("Adjusting trash amount for " .. trash.name .. " from " .. trash.count .. " to " .. config.request)
-                    end
-                    config.trash = (config.request > trash.count) and config.request or trash.count
-                    log(serpent.line(config))
-                else
-                    tmp.config_by_name[trash.name] = {
-                        name = trash.name,
-                        request = 0,
-                        trash = trash.count,
-                        slot = false
-                    }
-                    log("Adding " .. serpent.line(tmp.config_by_name[trash.name]))
-                    no_slot[#no_slot+1] = tmp.config_by_name[trash.name]
-                end
-            end
-            saveVar(global, "premerge")
-            local start = 1
-            for _, s in pairs(no_slot) do
-                for i = start, max_slot + #no_slot do
-                    if not tmp.config[i] then
-                        s.slot = i
-                        tmp.config[i] = s
-                        start = i + 1
-                        log("Assigning slot " .. serpent.line(s))
-                        break
-                    end
-                end
-            end
-            global.config_tmp[player_index] = tmp
+            config.trash = (config.request > trash.count) and config.request or trash.count
+            --log(serpent.line(config))
+        else
+            tmp.config_by_name[trash.name] = {
+                name = trash.name,
+                request = 0,
+                trash = trash.count,
+                slot = false
+            }
+            --log("Adding " .. serpent.line(tmp.config_by_name[trash.name]))
+            no_slot[#no_slot+1] = tmp.config_by_name[trash.name]
         end
     end
+    local start = 1
+    for _, s in pairs(no_slot) do
+        for i = start, max_slot + #no_slot do
+            if not tmp.config[i] then
+                s.slot = i
+                tmp.config[i] = s
+                start = i + 1
+                log("Assigning slot " .. serpent.line(s))
+                break
+            end
+        end
+    end
+    return tmp
 end
 
 local function convert_storage(storage)
@@ -105,21 +103,12 @@ local function convert_storage(storage)
             end
         end
         storage.store["paused_requests"] = storage.requests
+        storage.requests = nil
     end
     local tmp = {}
     for name, stored in pairs(storage.store) do
         log("Converting: " .. name)
-        tmp[name] = {config = {}, config_by_name = {}, settings = {}}
-        for i, p in pairs(stored) do
-            tmp[name].config[i] = {
-                name = p.name,
-                request = p.count and p.count or 0,
-                trash = false,
-                slot = i
-            }
-            tmp[name].config_by_name[p.name] = tmp[name].config[i]
-            log(serpent.line(tmp[name].config[i]))
-        end
+        tmp[name] = update_item_config(stored)
     end
     return tmp
 end
@@ -231,7 +220,7 @@ local function combine_from_vanilla(player)
             end
         end
     end
-    saveVar(tmp, "_combined")
+    saveVar(tmp, "combined")
     log(serpent.block(tmp))
     return tmp
 end
@@ -258,7 +247,6 @@ local default_settings = {
 }
 
 local function init_global()
-    log("init_global")
     global = global or {}
     global["config"] = global["config"] or {}
     global["config_new"] = global["config_new"] or {}
@@ -287,11 +275,10 @@ if min == 0 and max == 0: unset req, set trash to 0
 ]]
 
 local function init_player(player)
-    log("init_player " .. player.name)
     local index = player.index
     global.config[index] = global.config[index] or {}
-    global.config_new[index] = global.config_new[index] or {config = {}, config_by_name = {}, settings = {}}
-    global["config_tmp"][index] = global["config_tmp"][index] or {config = {}, config_by_name = {}, settings = {}}
+    global.config_new[index] = global.config_new[index] or {config = {}, config_by_name = {}}
+    global["config_tmp"][index] = global["config_tmp"][index] or {config = {}, config_by_name = {}}
     global.selected[index] = global.selected[index] or false
 
     global.mainNetwork[index] = false
@@ -327,7 +314,6 @@ end
 local function on_pre_player_removed(event)
     log("Removing invalid player index " .. event.player_index)
     for name, _ in pairs(global) do
-        log("    Removing " .. name)
         if name ~= "version" then
             global[name][event.player_index] = nil
         end
@@ -335,7 +321,7 @@ local function on_pre_player_removed(event)
 end
 
 local function on_configuration_changed(data)
-    log(serpent.block(data))
+    --log(serpent.block(data))
     if not data then
         return
     end
@@ -352,104 +338,60 @@ local function on_configuration_changed(data)
             init_global()
             init_players()
 
-            if oldVersion < v'4.0.1' then
-                init_players(true)
-                if global.config then
-                    for _, c in pairs(global.config) do
-                        for i, p in pairs(c) do
-                            if p.name == "" then
-                                p.name = false
-                            end
-                        end
-                    end
-                end
-                if global["config-tmp"] then
-                    for _, c in pairs(global["config-tmp"]) do
-                        for i, p in pairs(c) do
-                            if p.name == "" then
-                                p.name = false
-                            end
-                        end
-                    end
-                end
-
-                if global["logistics-config"] then
-                    for _, c in pairs(global["logistics-config"]) do
-                        for i, p in pairs(c) do
-                            if p.name == "" then
-                                p.name = false
-                            end
-                        end
-                    end
-                end
-
-                if global["logistics-config-tmp"] then
-                    for _, c in pairs(global["logistics-config-tmp"]) do
-                        for i, p in pairs(c) do
-                            if p.name == "" then
-                                p.name = false
-                            end
-                        end
-                    end
-                end
-
-                for i, s in pairs(global.settings) do
-                    s.options_extended = nil
-                end
-            end
-
             if oldVersion < v'4.0.6' then
-                saveVar(global, "storage_pre_cleanup")
-                global.needs_import = {}
-                global.config[10] = {}
+                -- just in case someone removed offline players
                 for pi, _ in pairs(global.config) do
                     if not game.get_player(pi) then
                         on_pre_player_removed{player_index = pi}
                     end
                 end
-
-                for i, p in pairs(game.players) do
-                    GUI.close(p)
-                    global.needs_import[i] = true
-                end
-                --script.on_nth_tick()
-
-                if global.active then
-                    for i, active in pairs(global.active) do
-                        global.settings[i].pause_trash = not active
-                    end
-                end
-                if global["logistics-active"] then
-                    for i, active in pairs(global["logistics-active"]) do
-                        global.settings[i].pause_requests = not active
-                    end
-                end
-
-                cleanup_table(global.config,'global.config')
-                cleanup_table(global["logistics-config"],'global["logistics-config"]')
-
                 saveVar(global, "storage_pre")
-                convert_logistics()
-
-                if global.storage then
-                    for _, storage in pairs(global.storage) do
-                        cleanup_table(storage.store, 'global.storage' .. '[' .. _ .. '].store')
+                global.needs_import = {}
+                local settings
+                for pi, player in pairs(game.players) do
+                    log("Updating data for player " .. player.name .. ", index: " .. pi)
+                    GUI.close(player)
+                    global.needs_import[pi] = true
+                    settings = global.settings[pi]
+                    settings.pause_trash = not global.active[pi]
+                    settings.pause_requests = not global["logistics-active"][pi]
+                    if remote.interfaces.YARM then
+                        -- global.settings[player_index].YARM_active_filter = remote.call("YARM", "set_filter", player_index, "none")
+                        -- remote.call("YARM", "set_filter", player_index, global.settings[player_index].YARM_active_filter)
+                        -- global.settings[player_index].YARM_active_filter = remote.call("YARM", "get_filter", player_index)
+                        settings.YARM_active_filter = 'warnings'
                     end
+                    settings.YARM_old_expando = nil
+                    settings.options_extended = nil
+
+                    log("Cleaning tables")
+                    cleanup_table(global.config[pi], "trash table")
+                    cleanup_table(global["logistics-config"][pi], "requests table")
+                    log("Cleaning storage")
+                    if global.storage[pi].store then
+                        for _, stored in pairs(global.storage[pi].store) do
+                            cleanup_table(stored, _)
+                        end
+                    end
+                    global.config_new[pi] = convert_logistics(global["logistics-config"][pi], global.config[pi])
+                    log("Converting storage")
+                    global.storage_new[pi] = convert_storage(global.storage[pi])
+
+                    GUI.open_logistics_frame(player)
                 end
 
-                for player_index, player in pairs(game.players) do
-                    log("Converting storage for " .. player.name .. " (" .. player_index .. ")")
-                    global.storage_new[player_index] = convert_storage(global.storage[player_index])
-                end
+                global.config = nil
+                global["logistics-config"] = nil
+                global["storage"] = nil
 
                 global.guiData = nil
-                global["logistics-active"] = nil
                 global.active = nil
+                global.configSize = nil
+                global["logistics-active"] = nil
                 global["config-tmp"] = nil
                 global["logistics-config-tmp"] = nil
-
                 saveVar(global, "storage_post")
-                --error()
+                --error("You did good")
             end
         end
 
@@ -468,7 +410,7 @@ local function on_configuration_changed(data)
             end
         end
     end
-    for pi, p in pairs(global["config_tmp"]) do
+    for pi, p in pairs(global.config_tmp) do
         for i, item_config in pairs(p.config) do
             if item_config and not items[item_config.name] then
                     p.config[i] = nil
@@ -902,7 +844,7 @@ local function on_gui_click(event)
                             log("unmerging preset")
                             selected_presets[element.caption] = nil
                         end
-                        global.config_tmp[player_index] = {config = {}, config_by_name = {}, settings = {}}
+                        global.config_tmp[player_index] = {config = {}, config_by_name = {}}
                         for name, _ in pairs(selected_presets) do
                             global.config_tmp[player_index] = presets.merge(global.config_tmp[player_index], global.storage_new[player_index][name])
                         end

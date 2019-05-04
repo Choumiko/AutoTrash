@@ -1,8 +1,8 @@
 local floor = math.floor
 local function saveVar(var, name)
     var = var or global
-    local n = name or ""
-    game.write_file("autotrash"..n..".lua", serpent.block(var, {name = "global", comment = false}))
+    local n = name and "autotrash_" .. name or "autotrash"
+    game.write_file(n..".lua", serpent.block(var, {name = "global", comment = false}))
 end
 
 local function debugDump(var, force)

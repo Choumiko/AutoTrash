@@ -8,14 +8,14 @@ local convert_to_slider = lib_control.convert_to_slider
 local mod_gui = require '__core__/lualib/mod-gui'
 
 local function show_yarm(index)
-    if remote.interfaces.YARM and global.settings[index].YARM_old_expando then
-        remote.call("YARM", "show_expando", index)
+    if remote.interfaces.YARM then
+        remote.call("YARM", "set_filter", index, global.settings[index].YARM_active_filter)
     end
 end
 
 local function hide_yarm(index)
     if remote.interfaces.YARM then
-        global.settings[index].YARM_old_expando = remote.call("YARM", "hide_expando", index)
+        global.settings[index].YARM_active_filter = remote.call("YARM", "set_filter", index, "none")
     end
 end
 
