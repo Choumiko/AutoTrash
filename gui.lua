@@ -22,14 +22,19 @@ end
 local GUI = {--luacheck: allow defined top
     defines = {
         --DONT RENAME, ELSE GUI WONT CLOSE
-        mainButton = "at-config-button",
+        main_button = "at-config-button",
+        main_button_flow = "at_main_button_flow",
+
         config_frame = "at-config-frame",
         config_flow_v = "at_config_flow_v",
         config_flow_h = "at_config_flow_h",
+        config_scroll = "at_config_scroll",
+        config_grid = "at_ruleset_grid",
 
         storage_frame = "at-logistics-storage-frame",
         storage_scroll = "at_storage_scroll",
         storage_grid = "at_storage_grid",
+        storage_textfield = "at_storage_textfield",
 
         trash_above_requested = "autotrash_above_requested",
         trash_unrequested = "autotrash_unrequested",
@@ -37,7 +42,8 @@ local GUI = {--luacheck: allow defined top
 
         button_flow = "autotrash_button_flow",
         save_button = "autotrash_logistics_apply",
-        reset_button = "auotrash_logistics_reset",
+        reset_button = "autotrash_logistics_reset",
+        import_vanilla = "autotrash_import_vanilla",
 
         clear_button = "autotrash_clear",
         clear_option = "autotrash_clear_option",
@@ -64,7 +70,7 @@ function GUI.get_ruleset_grid(player)
     if not frame or not frame.valid then
         return
     end
-    return frame[def.config_flow_h] and frame[def.config_flow_h]["at_config_scroll"] and frame[def.config_flow_h]["at_config_scroll"]["at_ruleset_grid"]
+    return frame[def.config_flow_h] and frame[def.config_flow_h][def.config_scroll] and frame[def.config_flow_h][def.config_scroll][def.config_grid]
 end
 
 function GUI.get_button_flow(player)
@@ -83,20 +89,28 @@ local frame = mod_gui.get_frame_flow(player)[GUI.defines.storage_frame]
     return frame[def.storage_scroll] and frame[def.storage_scroll][GUI.defines.storage_grid]
 end
 
+function GUI.get_storage_textfield(player, storage_grid)
+    storage_grid = storage_grid or GUI.get_storage_grid(player)
+    if not storage_grid or not storage_grid.valid then
+        return
+    end
+    return storage_grid.parent.parent["auto-trash-logistics-storage-buttons"][GUI.defines.storage_textfield]
+end
+
 function GUI.index_from_name(name)
     return tonumber(string.match(name, GUI.defines.choose_button .. "(%d+)"))
 end
 
 function GUI.init(player)
     local button_flow = mod_gui.get_button_flow(player)
-    if button_flow[GUI.defines.mainButton] then
+    if button_flow[GUI.defines.main_button] then
         return
     end
     if player.force.technologies["character-logistic-slots-1"].researched
     or player.force.technologies["character-logistic-trash-slots-1"].researched then
         local button = button_flow.add{
             type = "sprite-button",
-            name = GUI.defines.mainButton,
+            name = GUI.defines.main_button,
             style = "at_sprite_button"
         }
         button.sprite = "autotrash_trash"
@@ -104,7 +118,7 @@ function GUI.init(player)
 end
 
 function GUI.update(player)
-    local mainButton = mod_gui.get_button_flow(player)[GUI.defines.mainButton]
+    local mainButton = mod_gui.get_button_flow(player)[GUI.defines.main_button]
     if not mainButton then
         return
     end
@@ -135,8 +149,8 @@ end
 
 function GUI.destroy(player)
     local button_flow = mod_gui.get_button_flow(player)
-    if button_flow[GUI.defines.mainButton] then
-        button_flow[GUI.defines.mainButton].destroy()
+    if button_flow[GUI.defines.main_button] then
+        button_flow[GUI.defines.main_button].destroy()
     end
 end
 
@@ -174,16 +188,16 @@ function GUI.create_buttons(player)
     end
     frame = frame[GUI.defines.config_flow_h]
 
-    local scroll_pane = frame["at_config_scroll"]
+    local scroll_pane = frame[def.config_scroll]
     scroll_pane = scroll_pane or frame.add{
         type = "scroll-pane",
-        name = "at_config_scroll",
+        name = def.config_scroll,
     }
     local mod_settings = player.mod_settings
     local display_rows = mod_settings["autotrash_gui_max_rows"].value
     scroll_pane.style.maximal_height = 38 * display_rows + 6
 
-    local ruleset_grid = scroll_pane["at_ruleset_grid"]
+    local ruleset_grid = scroll_pane[def.config_grid]
     if ruleset_grid and ruleset_grid.valid then
         ruleset_grid.destroy()
     end
@@ -191,7 +205,7 @@ function GUI.create_buttons(player)
     ruleset_grid = scroll_pane.add{
         type = "table",
         column_count = mod_settings["autotrash_gui_columns"].value,
-        name = "at_ruleset_grid",
+        name = def.config_grid,
         style = "slot_table"
     }
 
@@ -315,9 +329,32 @@ function GUI.open_logistics_frame(player)
 
     button_flow.add{
         type = "sprite-button",
-        style = "shortcut_bar_button_blue",
-        sprite = "utility/remove"
+        name = GUI.defines.import_vanilla,
+        style = "shortcut_bar_button",
+        sprite = "utility/downloading",
+        tooltip = "Import from vanilla gui"
     }
+    --TODO: Import/export presets
+    -- button_flow.add{
+    --     type = "sprite-button",
+    --     --name = GUI.defines.import_vanilla,
+    --     style = "shortcut_bar_button_blue",
+    --     sprite = "utility/import_slot",
+    --     --tooltip = "Import from vanilla gui"
+    -- }
+
+    -- checkmark = button_flow.add{
+    --     type = "sprite-button",
+    --     --name = GUI.defines.import_vanilla,
+    --     style = "shortcut_bar_button_blue",
+    --     sprite = "utility/export_slot",
+    --     --tooltip = "Import from vanilla gui"
+    -- }
+
+    -- checkmark.style.top_padding = 6
+    -- checkmark.style.right_padding = 6
+    -- checkmark.style.bottom_padding = 6
+    -- checkmark.style.left_padding = 6
 
     local slider_vertical_flow = frame.add{
         type = "table",
@@ -470,7 +507,7 @@ function GUI.open_logistics_frame(player)
     storage_frame_buttons.add{
         type = "textfield",
         text = "",
-        name = "auto-trash-logistics-storage-name"
+        name = GUI.defines.storage_textfield
     }
     storage_frame_buttons.add{
         type = "button",
@@ -577,6 +614,24 @@ function GUI.set_item(player, index, element)
     return true
 end
 
+function GUI.update_presets(player, storage_grid)
+    storage_grid = storage_grid or GUI.get_storage_grid(player)
+    local children = storage_grid.children
+    local presets = global.selected_presets[player.index]
+    for i=1, #children, 2 do
+        if presets[children[i].caption] then
+            children[i].style = "at_preset_button_selected"
+        else
+            children[i].style = "at_preset_button"
+        end
+    end
+    if table_size(presets) == 1 then
+        GUI.get_storage_textfield(player, storage_grid).text = next(presets)
+    else
+        GUI.get_storage_textfield(player, storage_grid).text = ""
+    end
+end
+
 function GUI.add_preset(player, preset_name, index, storage_grid)
     storage_grid = storage_grid or GUI.get_storage_grid(player)
     assert(not storage_grid.children[index*2-1] and not storage_grid.children[index*2])--TODO remove
@@ -601,7 +656,7 @@ end
 function GUI.store(player, element)
     local player_index = player.index
 
-    local textfield = element.parent["auto-trash-logistics-storage-name"]
+    local textfield = element.parent[def.storage_textfield]
     local name = textfield.text
     name = string.match(name, "^%s*(.-)%s*$")
 
@@ -616,18 +671,23 @@ function GUI.store(player, element)
 
     global.storage_new[player_index][name] = util.table.deepcopy(global.config_tmp[player_index])
     GUI.add_preset(player, name, table_size(global.storage_new[player_index]))
+    global.selected_presets[player_index] = {[name] = true}
+    GUI.update_presets(player)
     textfield.text = ""
 end
 
 function GUI.restore(player, element)
     local player_index = player.index
     local name = element.caption
-    element.style = "at_preset_button_selected"
     assert(global.storage_new[player_index] and global.storage_new[player_index][name]) --TODO remove
 
+    global.selected_presets[player_index] = {[name] = true}
     global.config_tmp[player_index] = util.table.deepcopy(global.storage_new[player_index][name])
     global.selected[player_index] = false
     global.dirty[player_index] = false
+
+    GUI.get_storage_textfield(player, element.parent).text = name
+    GUI.update_presets(player, element.parent)
     GUI.create_buttons(player)
     GUI.update_sliders(player)
 end
@@ -637,9 +697,11 @@ function GUI.remove(player, element, index)
     local btn1 = storage_grid[GUI.defines.load_preset .. index]
     local btn2 = storage_grid[GUI.defines.delete_preset .. index]
     assert(global.storage_new[player.index] and global.storage_new[player.index][btn1.caption]) --TODO remove
+    global.selected_presets[player.index][btn1.caption] = nil
     global["storage_new"][player.index][btn1.caption] = nil
     btn1.destroy()
     btn2.destroy()
+    GUI.update_presets(player)
 end
 
 return GUI

@@ -272,6 +272,7 @@ local function init_global()
     global.temporaryRequests = global.temporaryRequests or {}
     global.settings = global.settings or {}
     global.dirty = global.dirty or {}
+    global.selected_presets = global.selected_presets or {}
 end
 
 --[[
@@ -300,7 +301,7 @@ local function init_player(player)
     global.temporaryTrash[index] = global.temporaryTrash[index] or {}
     global.settings[index] = global.settings[index] or util.table.deepcopy(default_settings)
     global.dirty[index] = global.dirty[index] or false
-
+    global.selected_presets[index] = global.selected_presets[index] or {}
     GUI.init(player)
 end
 
@@ -801,7 +802,7 @@ local function on_gui_click(event)
         log("on click " .. serpent.line(element.name))
         log(serpent.line(event))
 
-        if element.name == gui_def.mainButton then
+        if element.name == gui_def.main_button then
             if player.cursor_stack.valid_for_read then
                 if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
                     add_order(player)
@@ -876,6 +877,10 @@ local function on_gui_click(event)
                 end
             end
             element.caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+        elseif element.name == gui_def.import_vanilla then
+            global.config_tmp[player_index] = combine_from_vanilla(player)
+            GUI.create_buttons(player)
+            GUI.update_sliders(player)
         else
             local type, index, _ = string.match(element.name, "autotrash_preset_(%a+)_(%d*)")
             if type and index then
@@ -884,8 +889,19 @@ local function on_gui_click(event)
                     if not event.shift and not event.control then
                         GUI.restore(player, element)
                     else
-                        log("merging preset")
-                        global.config_tmp[player_index] = presets.merge(global.config_tmp[player_index], global.storage_new[player_index][element.caption])
+                        local selected_presets = global.selected_presets[player_index]
+                        if not selected_presets[element.caption] then
+                            log("merging preset")
+                            selected_presets[element.caption] = index
+                        else
+                            log("unmerging preset")
+                            selected_presets[element.caption] = nil
+                        end
+                        global.config_tmp[player_index] = {config = {}, config_by_name = {}, settings = {}}
+                        for name, _ in pairs(selected_presets) do
+                            global.config_tmp[player_index] = presets.merge(global.config_tmp[player_index], global.storage_new[player_index][name])
+                        end
+                        GUI.update_presets(player)
                         GUI.create_buttons(player)
                         GUI.update_sliders(player)
                     end
@@ -894,6 +910,7 @@ local function on_gui_click(event)
                 else
                     error("Unexpected type/index from " .. element.name)--TODO remove
                 end
+                log(serpent.block(global.selected_presets[player_index]))
             end
         end
     end)
@@ -1108,6 +1125,13 @@ local function autotrash_trash_cursor(event)
 end
 script.on_event("autotrash_trash_cursor", autotrash_trash_cursor)
 
+commands.add_command("reload_mods", "", function()
+    game.reload_mods()
+    init_global()
+    init_players()
+    game.player.print("Mods reloaded")
+end)
+
 --/c remote.call("at","saveVar")
 remote.add_interface("at",
     {
@@ -1120,20 +1144,16 @@ remote.add_interface("at",
         end,
 
         hide = function()
-            local button = mod_gui.get_button_flow(game.player)[gui_def.mainButton]
+            local button = mod_gui.get_button_flow(game.player)[gui_def.main_button]
             if button then
                 button.visible = false
             end
         end,
 
         show = function()
-            local button = mod_gui.get_button_flow(game.player)[gui_def.mainButton]
+            local button = mod_gui.get_button_flow(game.player)[gui_def.main_button]
             if button then
                 button.visible = true
             end
-        end,
-
-        test = function()
-            combine_from_vanilla(game.player)
         end
     })
