@@ -11,27 +11,29 @@ function presets.merge(current, preset)
     local tmp
     local max_slot = 0
 
-    for name, config in pairs(b.config_by_name) do
-        tmp = result.config_by_name[name]
-        if tmp then
-            tmp.request = (config.request > tmp.request) and config.request or tmp.request
-            tmp.trash = (config.trash and tmp.trash and config.trash > tmp.trash) and config.trash or tmp.trash
-            tmp.trash = (tmp.trash and tmp.trash < tmp.request) and tmp.request or tmp.trash
-            b.config_by_name[name] = nil
-            max_slot = max_slot > tmp.slot and max_slot or tmp.slot
-        else
-            if not result.config[config.slot] then
-                result.config[config.slot] = config
-                result.config_by_name[name] = config
-                b.config[config.slot] = nil
-            else
-                --config.slot = false
-                result.config_by_name[name] = config
-                no_slot[#no_slot + 1] = config
+    for j, result_config in pairs(result.config) do
+        tmp = result_config
+        for i, config in pairs(b.config) do
+            if config.name == result_config.name then
+                tmp.request = (config.request > tmp.request) and config.request or tmp.request
+                tmp.trash = (config.trash and tmp.trash and config.trash > tmp.trash) and config.trash or tmp.trash
+                tmp.trash = (tmp.trash and tmp.trash < tmp.request) and tmp.request or tmp.trash
+                b.config[i] = nil
+                max_slot = max_slot > tmp.slot and max_slot or tmp.slot
+                break
             end
-            max_slot = max_slot > config.slot and max_slot or config.slot
         end
     end
+    for i, config in pairs(b.config) do
+        assert(i==config.slot)
+        if not result.config[config.slot] then
+            result.config[config.slot] = config
+        else
+            no_slot[#no_slot + 1] = config
+        end
+        max_slot = max_slot > config.slot and max_slot or config.slot
+    end
+
     local start = 1
     --log(max_slot .. " " .. #no_slot)
     for _, s in pairs(no_slot) do

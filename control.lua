@@ -34,7 +34,8 @@ local function cleanup_table(tbl, tbl_name)
 end
 
 local function update_item_config(stored)
-    local tmp = {config = {}, config_by_name = {}}
+    local tmp = {config = {}}
+    local by_name = {}
     local max_slot = 0
     for i, p in pairs(stored) do
         tmp.config[i] = {
@@ -43,11 +44,11 @@ local function update_item_config(stored)
             trash = false,
             slot = i
         }
-        tmp.config_by_name[p.name] = tmp.config[i]
+        by_name[p.name] = tmp.config[i]
         max_slot = max_slot < i and i or max_slot
         --log(serpent.line(tmp[name].config[i]))
     end
-    return tmp, max_slot
+    return tmp, max_slot, by_name
 end
 
 local function convert_logistics(stored, stored_trash)
@@ -55,27 +56,26 @@ local function convert_logistics(stored, stored_trash)
     local config, no_slot
 
     log("Processing requests")
-    local tmp, max_slot = update_item_config(stored)
+    local tmp, max_slot, by_name = update_item_config(stored)
 
     no_slot = {}
     log("Merging trash")
     for i, trash in pairs(stored_trash) do
-        config = tmp.config_by_name[trash.name]
+        config = by_name[trash.name]
         if config then
             if config.request > trash.count then
                 log("Adjusting trash amount for " .. trash.name .. " from " .. trash.count .. " to " .. config.request)
             end
             config.trash = (config.request > trash.count) and config.request or trash.count
+            tmp.config[config.slot] = config
             --log(serpent.line(config))
         else
-            tmp.config_by_name[trash.name] = {
+            no_slot[#no_slot+1] = {
                 name = trash.name,
                 request = 0,
                 trash = trash.count,
                 slot = false
             }
-            --log("Adding " .. serpent.line(tmp.config_by_name[trash.name]))
-            no_slot[#no_slot+1] = tmp.config_by_name[trash.name]
         end
     end
     local start = 1
@@ -90,21 +90,15 @@ local function convert_logistics(stored, stored_trash)
             end
         end
     end
+    saveVar(tmp, "new_merge")
     return tmp
 end
 
 local function convert_storage(storage)
-    if not storage or not storage.store then return end
-
-    if storage.requests and table_size(storage.requests) > 0 then
-        for i, p in pairs(storage.requests) do
-            if p and (p.name == false or p.name == "") then
-                storage.requests[i] = nil
-            end
-        end
-        storage.store["paused_requests"] = storage.requests
-        storage.requests = nil
+    if not storage or not storage.store then
+        return {}
     end
+
     local tmp = {}
     for name, stored in pairs(storage.store) do
         log("Converting: " .. name)
@@ -185,15 +179,14 @@ end
 
 local function combine_from_vanilla(player)
     if not player.character then return end
-    local tmp = {config = {}, config_by_name = {}}
+    local tmp = {config = {}}
     local requests, max_slot = get_requests(player)
     local trash = player.auto_trash_filters
     log(serpent.block(trash))
---    local no_slot = {}
+
     for name, config in pairs(requests) do
         config.trash = false
         tmp.config[config.slot] = config
-        tmp.config_by_name[name] = config
         if trash[name] then
             config.trash = trash[name] > config.request and trash[name] or config.request
             trash[name] = nil
@@ -201,13 +194,12 @@ local function combine_from_vanilla(player)
     end
     local no_slot = {}
     for name, count in pairs(trash) do
-        tmp.config_by_name[name] = {
+        no_slot[#no_slot+1] = {
             name = name,
             request = 0,
             trash = count,
             slot = false
         }
-        no_slot[#no_slot+1] = tmp.config_by_name[name]
     end
     local start = 1
     for _, s in pairs(no_slot) do
@@ -229,9 +221,9 @@ local function set_trash(player)
     if player.character then
         local trash_filters = {}
         --TODO ensure trash >= requests
-        for name, item_config in pairs(global.config_new[player.index].config_by_name) do
+        for _, item_config in pairs(global.config_new[player.index].config) do
             if item_config.trash then
-                trash_filters[name] = item_config.trash
+                trash_filters[item_config.name] = item_config.trash
             end
         end
         player.auto_trash_filters = trash_filters
@@ -277,8 +269,8 @@ if min == 0 and max == 0: unset req, set trash to 0
 local function init_player(player)
     local index = player.index
     global.config[index] = global.config[index] or {}
-    global.config_new[index] = global.config_new[index] or {config = {}, config_by_name = {}}
-    global["config_tmp"][index] = global["config_tmp"][index] or {config = {}, config_by_name = {}}
+    global.config_new[index] = global.config_new[index] or {config = {}}
+    global["config_tmp"][index] = global["config_tmp"][index] or {config = {}}
     global.selected[index] = global.selected[index] or false
 
     global.mainNetwork[index] = false
@@ -347,7 +339,7 @@ local function on_configuration_changed(data)
                 end
                 saveVar(global, "storage_pre")
                 global.needs_import = {}
-                local settings
+                local settings, paused_requests
                 for pi, player in pairs(game.players) do
                     log("Updating data for player " .. player.name .. ", index: " .. pi)
                     GUI.close(player)
@@ -373,7 +365,18 @@ local function on_configuration_changed(data)
                             cleanup_table(stored, _)
                         end
                     end
-                    global.config_new[pi] = convert_logistics(global["logistics-config"][pi], global.config[pi])
+                    if settings.pause_requests and global.storage[pi].requests and #global.storage[pi].requests > 0 then
+                        log("paused")
+                        cleanup_table(global.storage[pi].requests, "paused requests")
+                        paused_requests = global.storage[pi].requests
+                    else
+                        log("unpaused")
+                        paused_requests = global["logistics-config"][pi]
+                    end
+                    log(serpent.block(paused_requests))
+                    global.config_new[pi] = convert_logistics(paused_requests, global.config[pi])
+                    global.config_tmp[pi] = util.table.deepcopy(global.config_new[pi])
+
                     log("Converting storage")
                     global.storage_new[pi] = convert_storage(global.storage[pi])
 
@@ -406,7 +409,6 @@ local function on_configuration_changed(data)
         for i, item_config in pairs(p.config) do
             if item_config and not items[item_config.name] then
                     p.config[i] = nil
-                    p.config_by_name[item_config.name] = nil
             end
         end
     end
@@ -414,7 +416,6 @@ local function on_configuration_changed(data)
         for i, item_config in pairs(p.config) do
             if item_config and not items[item_config.name] then
                     p.config[i] = nil
-                    p.config_by_name[item_config.name] = nil
                     if global.selected[pi] and global.selected[pi] == i then
                         global.selected[pi] = false
                     end
@@ -709,8 +710,6 @@ local function select_elem_button(player_index, element)
 end
 
 local function clear_elem_button(player_index, index, element)
-    local name = element.elem_value or global["config_tmp"][player_index].config[index].name
-    global["config_tmp"][player_index].config_by_name[name] = nil
     global["config_tmp"][player_index].config[index] = nil
     element.elem_value = nil
     element.locked = false
@@ -831,6 +830,7 @@ local function on_gui_click(event)
         else
             local type, index, _ = string.match(element.name, "autotrash_preset_(%a+)_(%d*)")
             if type and index then
+                index = tonumber(index)
                 log(serpent.line({t = type, i = index}))
                 if type == "load" then
                     if not event.shift and not event.control then
@@ -839,21 +839,22 @@ local function on_gui_click(event)
                         local selected_presets = global.selected_presets[player_index]
                         if not selected_presets[element.caption] then
                             log("merging preset")
-                            selected_presets[element.caption] = index
+                            selected_presets[element.caption] = true
                         else
                             log("unmerging preset")
                             selected_presets[element.caption] = nil
                         end
-                        global.config_tmp[player_index] = {config = {}, config_by_name = {}}
+                        global.config_tmp[player_index] = {config = {}}
                         for name, _ in pairs(selected_presets) do
                             global.config_tmp[player_index] = presets.merge(global.config_tmp[player_index], global.storage_new[player_index][name])
                         end
+                        global.selected[player_index] = false
                         GUI.update_presets(player)
                         GUI.create_buttons(player)
                         GUI.update_sliders(player)
                     end
                 elseif type == "delete" then
-                    GUI.remove(player, element, tonumber(index))
+                    GUI.remove(player, element, index)
                 else
                     error("Unexpected type/index from " .. element.name)--TODO remove
                 end
@@ -924,6 +925,7 @@ local function on_gui_selection_state_changed(event)
         if global.storage_new[event.player_index][name] then
             global.selected_presets[player_index] = {[name] = true}
             global.config_new[player_index] = util.table.deepcopy(global.storage_new[player_index][name])
+            global.config_tmp[player_index] = util.table.deepcopy(global.storage_new[player_index][name])
             global.selected[player_index] = false
             global.dirty[player_index] = false
             if not global.settings[player_index].pause_trash then
@@ -933,6 +935,9 @@ local function on_gui_selection_state_changed(event)
                 set_requests(player)
             end
             display_message(player, "Preset '" .. tostring(name) .. "' loaded", "success")
+            GUI.update_presets(player)
+            GUI.create_buttons(player)
+            GUI.update_sliders(player)
         else
             display_message(player, "Unknown preset: " .. tostring(name), true)
         end
@@ -984,13 +989,12 @@ local function update_selected_value(player_index, element, number, check)
     local i = global.selected[player_index]
 
     local button = frame_new and frame_new.children[i]
-    if not button or not button.valid then
+    if not button or not button.valid or not i then
         GUI.update_sliders(player)
         return
     end
     assert(button.elem_value)--TODO remove
     global["config_tmp"][player_index].config[i] = global["config_tmp"][player_index].config[i] or {name = false, trash = 0, request = 0}
-    global["config_tmp"][player_index].config_by_name[button.elem_value] = global["config_tmp"][player_index].config[i]
     local item_config = global["config_tmp"][player_index].config[i]
     item_config.name = button.elem_value
 

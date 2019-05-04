@@ -168,16 +168,16 @@ function GUI.update_sliders(player)
         return
     end
     local player_index = player.index
-    local visible = global.selected[player_index] or false
+    local item_config = global.config_tmp[player_index].config[global.selected[player_index]]
+    local visible = item_config and true or false
     for _, child in pairs(slider_flow.children) do
         child.visible = visible
     end
     if visible then
-        local req = global.config_tmp[player_index].config[visible]
-        slider_flow[def.config_request][def.config_slider].slider_value = convert_to_slider(req.request)
-        slider_flow[def.config_request][def.config_slider_text].text = format_request(req) or 0
-        slider_flow[def.config_trash][def.config_slider].slider_value = req.trash and convert_to_slider(req.trash) or 42
-        slider_flow[def.config_trash][def.config_slider_text].text = format_trash(req) or "∞"
+        slider_flow[def.config_request][def.config_slider].slider_value = convert_to_slider(item_config.request)
+        slider_flow[def.config_request][def.config_slider_text].text = format_request(item_config) or 0
+        slider_flow[def.config_trash][def.config_slider].slider_value = item_config.trash and convert_to_slider(item_config.trash) or 42
+        slider_flow[def.config_trash][def.config_slider_text].text = format_trash(item_config) or "∞"
     end
     local buttons = left[def.config_flow_h] and left[def.config_flow_h][def.button_flow]
     if not buttons or not buttons.valid then
@@ -609,9 +609,11 @@ function GUI.reset_changes(player, element)
         global.config_tmp[player.index] = util.table.deepcopy(global.config_new[player.index])
         element.enabled = false
         global.selected[player.index] = false
+        global.selected_presets[player.index] = {}
         global.dirty[player.index] = false
         GUI.create_buttons(player)
         GUI.update_sliders(player)
+        GUI.update_presets(player)
     end
 end
 
@@ -621,14 +623,13 @@ function GUI.clear_all(player, element)
     local config_tmp = global.config_tmp[player_index]
     if mode == 1 then
         config_tmp.config = {}
-        config_tmp.config_by_name = {}
         global.selected[player_index] = false
     elseif mode == 2 then
-        for _, config in pairs(config_tmp.config_by_name) do
+        for _, config in pairs(config_tmp.config) do
             config.request = 0
         end
     elseif mode == 3 then
-        for _, config in pairs(config_tmp.config_by_name) do
+        for _, config in pairs(config_tmp.config) do
             config.trash = false
         end
     end
@@ -644,20 +645,25 @@ function GUI.set_item(player, index, element)
 
     local elem_value = element.elem_value
     if elem_value then
-        local config_tmp = global.config_tmp[player_index]
-        if config_tmp.config_by_name[elem_value] then
-            display_message(player, {"", {"cant-set-duplicate-request", game.item_prototypes[elem_value].localised_name}}, true)
-            element.elem_value = nil
-            return config_tmp.config_by_name[elem_value].slot
+        local config_tmp = global.config_tmp[player_index].config
+        for i, item in pairs(config_tmp) do
+            if item.name == elem_value then
+                display_message(player, {"", {"cant-set-duplicate-request", game.item_prototypes[elem_value].localised_name}}, true)
+                element.elem_value = nil
+                return i
+            end
         end
-        config_tmp.config[index] = {name = elem_value, request = game.item_prototypes[elem_value].default_request_amount, trash = false, slot = index}
-        config_tmp.config_by_name[elem_value] = config_tmp.config[index]
+        log(serpent.line(config_tmp))
+        config_tmp[index] = {name = elem_value, request = game.item_prototypes[elem_value].default_request_amount, trash = false, slot = index}
     end
     return true
 end
 
 function GUI.update_presets(player, storage_grid)
     storage_grid = storage_grid or GUI.get_storage_grid(player)
+    if not storage_grid or not storage_grid.valid then
+        return
+    end
     local children = storage_grid.children
     local presets = global.selected_presets[player.index]
     for i=1, #children, 2 do
@@ -726,7 +732,7 @@ function GUI.restore(player, element)
     global.selected_presets[player_index] = {[name] = true}
     global.config_tmp[player_index] = util.table.deepcopy(global.storage_new[player_index][name])
     global.selected[player_index] = false
-    global.dirty[player_index] = false
+    global.dirty[player_index] = true
 
     GUI.get_storage_textfield(player, element.parent).text = name
     GUI.update_presets(player, element.parent)
