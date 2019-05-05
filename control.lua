@@ -511,9 +511,6 @@ local function on_player_main_inventory_changed(event)
             local requests = get_requests(player)
             local protos = game.item_prototypes
             for name, _ in pairs(contents) do
-                --TODO checking for trash_filters[name] would allow hand set exceptions, either set in the vanilla gui or the stored rulesets
-                --possible problem when unchecking "unrequested" what trash filters should be reset to?
-                --the one in global.config or the ones set in vanilla before it was checked (needs saving in global)
                 if not requests[name] and not trash_filters[name]  and not trash_blacklist[protos[name].type] then
                     trash_filters[name] = 0
                 end
@@ -856,7 +853,7 @@ local function on_gui_click(event)
                 elseif type == "delete" then
                     GUI.remove(player, element, index)
                 else
-                    error("Unexpected type/index from " .. element.name)--TODO remove
+                    error("Unexpected type/index from " .. element.name)
                 end
                 log(serpent.block(global.selected_presets[player_index]))
             end

@@ -88,40 +88,60 @@ data:extend{{
     type = "sprite",
     name = "autotrash_trash",
     filename = "__AutoTrash__/graphics/gui2.png",
-    width = 128,
-    height = 128,
-    x = 0,
-    y = 0
+    size = 128,
+    position = {0, 0}
 }}
 
 data:extend{{
     type = "sprite",
     name = "autotrash_trash_paused",
-    filename = "__AutoTrash__/graphics/gui2.png",
-    width = 128,
-    height = 128,
-    x = 128,
-    y = 0
+    layers = {
+        {
+            filename = "__AutoTrash__/graphics/gui2.png",
+            size = 128,
+            position = {0, 0}
+        },
+        {
+            filename = "__AutoTrash__/graphics/gui2.png",
+            size = 128,
+            position = {128, 0}
+        }
+    }
+
 }}
 
 data:extend{{
     type = "sprite",
-    name = "autotrash_logistics",
-    filename = "__AutoTrash__/graphics/gui2.png",
-    width = 128,
-    height = 128,
-    x = 0,
-    y = 128
+    name = "autotrash_requests_paused",
+    layers = {
+        {
+            filename = "__AutoTrash__/graphics/gui2.png",
+            size = 128,
+            position = {0, 0}
+        },
+        {
+            filename = "__AutoTrash__/graphics/gui2.png",
+            size = 128,
+            position = {0, 128}
+        }
+    }
 }}
 
 data:extend{{
     type = "sprite",
-    name = "autotrash_logistics_paused",
-    filename = "__AutoTrash__/graphics/gui2.png",
-    width = 128,
-    height = 128,
-    x = 128,
-    y = 128
+    name = "autotrash_both_paused",
+    layers = {
+        {
+            filename = "__AutoTrash__/graphics/gui2.png",
+            size = 128,
+            position = {0, 0}
+        },
+        {
+            filename = "__AutoTrash__/graphics/gui2.png",
+            size = 128,
+            position = {128, 128}
+        }
+    }
 }}
 
 data:extend{

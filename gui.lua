@@ -129,10 +129,13 @@ function GUI.update(player)
     if not mainButton then
         return
     end
-    --TODO come up with a graphic that represents trash AND requests being paused
-    --mainButton.sprite = "autotrash_logistics_paused"
-    if global.settings[player.index].pause_trash then
+    local settings = global.settings[player.index]
+    if settings.pause_trash and not settings.pause_requests then
         mainButton.sprite = "autotrash_trash_paused"
+    elseif settings.pause_requests and not settings.pause_trash then
+        mainButton.sprite = "autotrash_requests_paused"
+    elseif settings.pause_trash and settings.pause_requests then
+        mainButton.sprite = "autotrash_both_paused"
     else
         mainButton.sprite = "autotrash_trash"
     end
@@ -633,7 +636,6 @@ function GUI.clear_all(player, element)
             config.trash = false
         end
     end
-    --TODO save selected_index somewhere
     GUI.create_buttons(player)
 end
 
@@ -727,7 +729,6 @@ end
 function GUI.restore(player, element)
     local player_index = player.index
     local name = element.caption
-    assert(global.storage_new[player_index] and global.storage_new[player_index][name]) --TODO remove
 
     global.selected_presets[player_index] = {[name] = true}
     global.config_tmp[player_index] = util.table.deepcopy(global.storage_new[player_index][name])
