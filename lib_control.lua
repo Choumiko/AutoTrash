@@ -1,4 +1,54 @@
 local floor = math.floor
+
+local function set_trash(player)
+    if player.character then
+        local trash_filters = {}
+        --TODO ensure trash >= requests
+        for _, item_config in pairs(global.config_new[player.index].config) do
+            if item_config.trash then
+                trash_filters[item_config.name] = item_config.trash
+            end
+        end
+        player.auto_trash_filters = trash_filters
+    end
+end
+
+local function set_requests(player)
+    if player.character then
+        local character = player.character
+        local storage = global.config_new[player.index].config
+        local set_request_slot = character.set_request_slot
+        local clear_request_slot = character.clear_request_slot
+        local req
+
+        for c = 1, character.request_slot_count do
+            req = storage[c]
+            if req then
+                set_request_slot({name = req.name, count = req.request}, c)
+            else
+                clear_request_slot(c)
+            end
+        end
+    end
+end
+
+local function get_requests(player)
+    if not player.character then
+        return {}
+    end
+    local requests = {}
+    local get_request_slot = player.character.get_request_slot
+    local t, max_slot
+    for c = player.character.request_slot_count, 1, -1 do
+        t = get_request_slot(c)
+        if t then
+            max_slot = not max_slot and c or max_slot
+            requests[t.name] = {name = t.name, request = t.count, slot = c}
+        end
+    end
+    return requests, max_slot
+end
+
 local function saveVar(var, name)
     var = var or global
     local n = name and "autotrash_" .. name or "autotrash"
@@ -113,6 +163,9 @@ local M = {
     format_trash = format_trash,
     convert_to_slider = convert_to_slider,
     convert_from_slider = convert_from_slider,
+    set_trash = set_trash,
+    set_requests = set_requests,
+    get_requests = get_requests
 }
 
 return M

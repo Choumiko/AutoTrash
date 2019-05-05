@@ -13,6 +13,9 @@ local format_number = lib_control.format_number
 local format_request = lib_control.format_request
 local format_trash = lib_control.format_trash
 local convert_from_slider = lib_control.convert_from_slider
+local set_trash = lib_control.set_trash
+local set_requests = lib_control.set_requests
+local get_requests = lib_control.get_requests
 
 local gui_def = GUI.defines
 local floor = math.floor
@@ -107,42 +110,6 @@ local function convert_storage(storage)
     return tmp
 end
 
-local function set_requests(player)
-    if player.character then
-        local character = player.character
-        local storage = global.config_new[player.index].config
-        local set_request_slot = character.set_request_slot
-        local clear_request_slot = character.clear_request_slot
-        local req
-
-        for c = 1, character.request_slot_count do
-            req = storage[c]
-            if req then
-                set_request_slot({name = req.name, count = req.request}, c)
-            else
-                clear_request_slot(c)
-            end
-        end
-    end
-end
-
-local function get_requests(player)
-    if not player.character then
-        return {}
-    end
-    local requests = {}
-    local get_request_slot = player.character.get_request_slot
-    local t, max_slot
-    for c = player.character.request_slot_count, 1, -1 do
-        t = get_request_slot(c)
-        if t then
-            max_slot = not max_slot and c or max_slot
-            requests[t.name] = {name = t.name, request = t.count, slot = c}
-        end
-    end
-    return requests, max_slot
-end
-
 local function get_requests_by_index(player)--luacheck: ignore
     if not player.character then
         return {}
@@ -177,66 +144,21 @@ local function requested_items(player)
     return requests
 end
 
-local function combine_from_vanilla(player)
-    if not player.character then return end
-    local tmp = {config = {}}
-    local requests, max_slot = get_requests(player)
-    local trash = player.auto_trash_filters
-    log(serpent.block(trash))
-
-    for name, config in pairs(requests) do
-        config.trash = false
-        tmp.config[config.slot] = config
-        if trash[name] then
-            config.trash = trash[name] > config.request and trash[name] or config.request
-            trash[name] = nil
-        end
-    end
-    local no_slot = {}
-    for name, count in pairs(trash) do
-        no_slot[#no_slot+1] = {
-            name = name,
-            request = 0,
-            trash = count,
-            slot = false
-        }
-    end
-    local start = 1
-    for _, s in pairs(no_slot) do
-        for i = start, max_slot + #no_slot do
-            if not tmp.config[i] then
-                s.slot = i
-                tmp.config[i] = s
-                start = i + 1
-                break
-            end
-        end
-    end
-    saveVar(tmp, "combined")
-    log(serpent.block(tmp))
-    return tmp
-end
-
-local function set_trash(player)
-    if player.character then
-        local trash_filters = {}
-        --TODO ensure trash >= requests
-        for _, item_config in pairs(global.config_new[player.index].config) do
-            if item_config.trash then
-                trash_filters[item_config.name] = item_config.trash
-            end
-        end
-        player.auto_trash_filters = trash_filters
-    end
-end
-
 local default_settings = {
     auto_trash_above_requested = false,
     auto_trash_unrequested = false,
     auto_trash_in_main_network = false,
     pause_trash = false,
     pause_requests = false,
+    clear_option = 1
 }
+
+local gui_elements = {
+    config_frame = {},
+    storage_frame = {},
+    reset_button = {},
+}
+
 
 local function init_global()
     global = global or {}
@@ -253,6 +175,10 @@ local function init_global()
     global.settings = global.settings or {}
     global.dirty = global.dirty or {}
     global.selected_presets = global.selected_presets or {}
+    global.selected_clear_option = global.selected_clear_option or {}
+
+    global.gui_actions = global.gui_actions or {}
+    global.gui_elements = global.gui_elements or gui_elements
 end
 
 --[[
@@ -281,13 +207,15 @@ local function init_player(player)
     global.settings[index] = global.settings[index] or util.table.deepcopy(default_settings)
     global.dirty[index] = global.dirty[index] or false
     global.selected_presets[index] = global.selected_presets[index] or {}
+
+    global.gui_actions[index] = global.gui_actions[index] or {}
     GUI.init(player)
 end
 
 local function init_players(resetGui)
     for _, player in pairs(game.players) do
         if resetGui then
-            GUI.destroy(player)
+            GUI.delete(player)
         end
         init_player(player)
     end
@@ -353,6 +281,8 @@ local function on_configuration_changed(data)
                         -- global.settings[player_index].YARM_active_filter = remote.call("YARM", "get_filter", player_index)
                         settings.YARM_active_filter = 'warnings'
                     end
+                    settings.clear_option = settings.clear_option or 1
+
                     settings.YARM_old_expando = nil
                     settings.options_extended = nil
 
@@ -373,7 +303,7 @@ local function on_configuration_changed(data)
                         log("unpaused")
                         paused_requests = global["logistics-config"][pi]
                     end
-                    log(serpent.block(paused_requests))
+
                     global.config_new[pi] = convert_logistics(paused_requests, global.config[pi])
                     global.config_tmp[pi] = util.table.deepcopy(global.config_new[pi])
 
@@ -640,7 +570,7 @@ script.on_event(defines.events.on_pre_player_mined_item, on_pre_mined_item)
 script.on_event(defines.events.on_robot_pre_mined, on_pre_mined_item)
 script.on_event(defines.events.on_entity_died, on_pre_mined_item)
 
-local function add_order(player)
+local function add_order(player)--luacheck: ignore
     local entities = player.cursor_stack.get_blueprint_entities()
     local orders = {}
     for _, ent in pairs(entities) do
@@ -719,48 +649,18 @@ end
 local function on_gui_click(event)
     local status, err = pcall(function()
         local element = event.element
-        if not element.valid or element.type == "checkbox" then
+        if not (element and element.valid) or element.type == "checkbox" then
             return
         end
         local player_index = event.player_index
         local player = game.get_player(player_index)
-        local left = mod_gui.get_frame_flow(player)
-        local config_frame = left[gui_def.config_frame]
-        local storage_frame = left[gui_def.storage_frame]
-        if config_frame and not config_frame.valid then
-            log("Invalid config frame")
-            GUI.close(player)
-            return
-        end
-        if storage_frame and not storage_frame.valid then
-            log("Invalid storage frame")
-            GUI.close(player)
-            return
-        end
+
         log("on click " .. serpent.line(element.name))
         log(serpent.line(event))
 
-        if element.name == gui_def.main_button then
-            if event.button == defines.mouse_button_type.right then
-                GUI.open_quick_presets(player, element.parent)
-            else
-                GUI.close_quick_presets(player, element.parent)
-                if player.cursor_stack.valid_for_read then
-                    if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
-                        add_order(player)
-                    elseif player.cursor_stack.name ~= "blueprint" then
-                        add_to_trash(player, player.cursor_stack.name)
-                    end
-                else
-                    if left[gui_def.config_frame] then
-                        GUI.close(player, left)
-                    else
-                        GUI.open_logistics_frame(player)
-                    end
-                end
-            end
-            return
-        end
+        GUI.generic_event(event, player)
+
+        if not element.valid then return end
 
         if element.type == "choose-elem-button" then
             local index = GUI.index_from_name(element.name)
@@ -786,77 +686,44 @@ local function on_gui_click(event)
             end
             return
         end
-
+        local left = mod_gui.get_frame_flow(player)
+        local config_frame = left[gui_def.config_frame]
         --No gui, nothing to do anymore
         if not config_frame then
             return
         end
 
-        if element.name == gui_def.save_button then
-            GUI.apply_changes(player, element)
-            if not global.settings[player_index].pause_trash then
-                set_trash(player)
-            end
-            if not global.settings[player_index].pause_requests then
-                set_requests(player)
-            end
-        elseif element.name == gui_def.reset_button then
-            GUI.reset_changes(player, element)
-        elseif element.name == gui_def.clear_button then
-            GUI.clear_all(player, element)
-        elseif element.name  == gui_def.store_button then
-            GUI.store(player, element)
-        elseif element.name == gui_def.set_main_network then
-            if global.mainNetwork[player_index] then
-                global.mainNetwork[player_index] = false
-            else
-                local network = player.character and player.character.logistic_network or false
-                if network then
-                    local cell = network.find_cell_closest_to(player.position)
-                    global.mainNetwork[player_index] = cell and cell.owner or false
-                end
-                if not global.mainNetwork[player_index] then
-                    display_message(player, {"auto-trash-not-in-network"}, true)
-                end
-            end
-            element.caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
-        elseif element.name == gui_def.import_vanilla then
-            global.config_tmp[player_index] = combine_from_vanilla(player)
-            GUI.create_buttons(player)
-            GUI.update_sliders(player)
-        else
-            local type, index, _ = string.match(element.name, "autotrash_preset_(%a+)_(%d*)")
-            if type and index then
-                index = tonumber(index)
-                log(serpent.line({t = type, i = index}))
-                if type == "load" then
-                    if not event.shift and not event.control then
-                        GUI.restore(player, element)
-                    else
-                        local selected_presets = global.selected_presets[player_index]
-                        if not selected_presets[element.caption] then
-                            log("merging preset")
-                            selected_presets[element.caption] = true
-                        else
-                            log("unmerging preset")
-                            selected_presets[element.caption] = nil
-                        end
-                        global.config_tmp[player_index] = {config = {}}
-                        for name, _ in pairs(selected_presets) do
-                            global.config_tmp[player_index] = presets.merge(global.config_tmp[player_index], global.storage_new[player_index][name])
-                        end
-                        global.selected[player_index] = false
-                        GUI.update_presets(player)
-                        GUI.create_buttons(player)
-                        GUI.update_sliders(player)
-                    end
-                elseif type == "delete" then
-                    GUI.remove(player, element, index)
+        local type, index, _ = string.match(element.name, "autotrash_preset_(%a+)_(%d*)")
+        if type and index then
+            index = tonumber(index)
+            log(serpent.line({t = type, i = index}))
+            if type == "load" then
+                if not event.shift and not event.control then
+                    GUI.restore(player, element)
                 else
-                    error("Unexpected type/index from " .. element.name)
+                    local selected_presets = global.selected_presets[player_index]
+                    if not selected_presets[element.caption] then
+                        log("merging preset")
+                        selected_presets[element.caption] = true
+                    else
+                        log("unmerging preset")
+                        selected_presets[element.caption] = nil
+                    end
+                    global.config_tmp[player_index] = {config = {}}
+                    for name, _ in pairs(selected_presets) do
+                        global.config_tmp[player_index] = presets.merge(global.config_tmp[player_index], global.storage_new[player_index][name])
+                    end
+                    global.selected[player_index] = false
+                    GUI.update_presets(player)
+                    GUI.create_buttons(player)
+                    GUI.update_sliders(player)
                 end
-                log(serpent.block(global.selected_presets[player_index]))
+            elseif type == "delete" then
+                GUI.remove(player, element, index)
+            else
+                error("Unexpected type/index from " .. element.name)
             end
+            log(serpent.block(global.selected_presets[player_index]))
         end
     end)
     if not status then
@@ -915,9 +782,12 @@ end
 
 local function on_gui_selection_state_changed(event)
     local status, err = pcall(function()
-        log(serpent.block(event))
         local player_index = event.player_index
         local player = game.get_player(player_index)
+        GUI.generic_event(event, player)
+
+        if event.element.name == gui_def.clear_option then return end
+
         local name = event.element.get_item(event.element.selected_index)
         if global.storage_new[event.player_index][name] then
             global.selected_presets[player_index] = {[name] = true}
