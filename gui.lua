@@ -70,32 +70,21 @@ local GUI = {--luacheck: allow defined top
         quick_presets = "at_quick_presets",
 
         config_frame = "at-config-frame",
-        config_flow_v = "at_config_flow_v",
-        config_flow_h = "at_config_flow_h",
         config_scroll = "at_config_scroll",
         config_grid = "at_ruleset_grid",
 
         storage_frame = "at-logistics-storage-frame",
         storage_scroll = "at_storage_scroll",
-        storage_grid = "at_storage_grid",
-        storage_textfield = "at_storage_textfield",
 
         trash_above_requested = "autotrash_above_requested",
         trash_unrequested = "autotrash_unrequested",
         trash_in_main_network = "autotrash_in_main_network",
 
         button_flow = "autotrash_button_flow",
-        save_button = "autotrash_logistics_apply",
-        reset_button = "autotrash_logistics_reset",
-        import_vanilla = "autotrash_import_vanilla",
 
-        clear_button = "autotrash_clear",
-        clear_option = "autotrash_clear_option",
-        set_main_network = "autotrash_set_main_network",
         trash_options = "autotrash_trash_options",
         pause_trash = "autotrash_pause_trash",
         pause_requests = "autotrash_pause_requests",
-        store_button = "autotrash_preset_save",
         config_request = "at_config_request",
         config_trash = "at_config_trash",
         config_slider = "at_config_slider",
@@ -133,11 +122,11 @@ local gui_functions = {
         return
     end,
 
-    apply_changes = function(event, player)
+    apply_changes = function(_, player)
         local player_index = player.index
         global.config_new[player_index] = util.table.deepcopy(global.config_tmp[player_index])
         global.dirty[player_index] = false
-        event.element.parent[def.reset_button].enabled = false
+        global.gui_elements.reset_button[player_index].enabled = false
         if player.mod_settings["autotrash_close_on_apply"].value then
             GUI.close(player)
         end
@@ -282,30 +271,6 @@ function GUI.get_ruleset_grid(player)
     return frame[def.config_flow_h] and frame[def.config_flow_h][def.config_scroll] and frame[def.config_flow_h][def.config_scroll][def.config_grid]
 end
 
-function GUI.get_button_flow(player)
-    local frame = mod_gui.get_frame_flow(player)[GUI.defines.config_frame]
-    if not frame or not frame.valid then
-        return
-    end
-    return frame[def.config_flow_h] and frame[def.config_flow_h][def.button_flow]
-end
-
-function GUI.get_storage_grid(player)
-local frame = mod_gui.get_frame_flow(player)[GUI.defines.storage_frame]
-    if not frame or not frame.valid then
-        return
-    end
-    return frame[def.storage_scroll] and frame[def.storage_scroll][GUI.defines.storage_grid]
-end
-
-function GUI.get_storage_textfield(player, storage_grid)
-    storage_grid = storage_grid or GUI.get_storage_grid(player)
-    if not storage_grid or not storage_grid.valid then
-        return
-    end
-    return storage_grid.parent.parent["auto-trash-logistics-storage-buttons"][GUI.defines.storage_textfield]
-end
-
 function GUI.index_from_name(name)
     return tonumber(string.match(name, GUI.defines.choose_button .. "(%d+)"))
 end
@@ -397,11 +362,9 @@ function GUI.update_sliders(player)
         slider_flow[def.config_trash][def.config_slider].slider_value = item_config.trash and convert_to_slider(item_config.trash) or 42
         slider_flow[def.config_trash][def.config_slider_text].text = format_trash(item_config) or "∞"
     end
-    local buttons = left[def.config_flow_h] and left[def.config_flow_h][def.button_flow]
-    if not buttons or not buttons.valid then
-        return
-    end
-    buttons[def.reset_button].enabled = global.dirty[player_index]
+    local reset = global.gui_elements.reset_button[player_index]
+    if not (reset and reset.valid) then return end
+    reset.enabled = global.dirty[player_index]
 end
 
 --creates/updates the choose-elem-buttons (update because i do something wierd with locked = true)
@@ -547,32 +510,21 @@ function GUI.open_logistics_frame(player)
     }
     global.gui_elements.config_frame[player_index] = frame
 
-    --global.config_tmp[player_index] = util.table.deepcopy(global.config_new[player_index])
-
-    -- local config_flow_h = frame.add{
-    --     type = "flow",
-    --     name = GUI.defines.config_flow_h,
-    --     direction = "horizontal"
-    -- }
-    --config_flow_h.style.horizontally_stretchable = true
-
     local config_flow_h = frame.add{
         type = "flow",
         name = GUI.defines.config_flow_h,
         direction = "horizontal"
     }
-    --config_flow_v.style.horizontally_stretchable = true
+
     GUI.create_buttons(player)
 
     local button_flow = config_flow_h.add{
         type = "flow",
-        name = def.button_flow,
         direction = "vertical",
         style = "shortcut_bar_column"
     }
     local checkmark = button_flow.add{
         type = "sprite-button",
-        name = GUI.defines.save_button,
         style = "shortcut_bar_button_green",
         sprite = "utility/check_mark_white"
     }
@@ -585,17 +537,16 @@ function GUI.open_logistics_frame(player)
 
     local reset_button = button_flow.add{
         type = "sprite-button",
-        name = GUI.defines.reset_button,
         style = "shortcut_bar_button_red",
         sprite = "utility/reset_white"
     }
     reset_button.enabled = global.dirty[player_index]
 
+    global.gui_elements.reset_button[player_index] = reset_button
     GUI.register_action(reset_button, {type = "reset_changes"})
 
     GUI.register_action(button_flow.add{
             type = "sprite-button",
-            name = GUI.defines.import_vanilla,
             style = "shortcut_bar_button",
             sprite = "utility/downloading",
             tooltip = "Import from vanilla gui"
@@ -735,7 +686,6 @@ function GUI.open_logistics_frame(player)
 
     GUI.register_action(trash_options.add{
                 type = "button",
-                name = GUI.defines.set_main_network,
                 caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
                 },
                 {type = "set_main_network"}
@@ -749,13 +699,11 @@ function GUI.open_logistics_frame(player)
 
     local clear_button = button_grid.add{
         type = "button",
-        name = GUI.defines.clear_button,
         caption = {"gui.clear"}
     }
 
     local clear_option = button_grid.add{
         type = "drop-down",
-        name = GUI.defines.clear_option,
         items = {
             [1] = "Both",
             [2] = "Requests",
@@ -763,7 +711,7 @@ function GUI.open_logistics_frame(player)
         },
         selected_index = settings.clear_option
     }
-
+    global.gui_elements.clear_option[player_index] = clear_option
     GUI.register_action(clear_button, {type = "clear_config"})
     GUI.register_action(clear_option, {type = "clear_option_changed"})
 
@@ -784,17 +732,16 @@ function GUI.open_logistics_frame(player)
     }
     local save_as = storage_frame_buttons.add{
         type = "textfield",
-        text = "",
-        name = GUI.defines.storage_textfield
+        text = ""
     }
 
     local save_button = storage_frame_buttons.add{
         type = "button",
         caption = {"gui-save-game.save-as"},
-        name = GUI.defines.store_button,
         style = "at_small_button"
     }
 
+    global.gui_elements.storage_textfield[player_index] = save_as
     GUI.register_action(save_button, {type = "save_preset", textfield = save_as})
 
     local storage_scroll = storage_frame.add{
@@ -805,30 +752,37 @@ function GUI.open_logistics_frame(player)
     storage_scroll.style.maximal_height = math.ceil(38*10+4)
     local storage_grid = storage_scroll.add{
         type = "table",
-        name = GUI.defines.storage_grid,
         column_count = 2,
     }
+    global.gui_elements.storage_grid[player_index] = storage_grid
 
     local i = 1
     for key, _ in pairs(global.storage_new[player_index]) do
-        GUI.add_preset(player, key, i, storage_grid)
+        GUI.add_preset(player, key, i)
         i = i + 1
     end
+    GUI.update_presets(player)
 end
 
 function GUI.close(player, frame_flow)
     local left = frame_flow or mod_gui.get_frame_flow(player)
     local storage_frame = left[GUI.defines.storage_frame]
     local frame = left[GUI.defines.config_frame]
+
+    local gui_elements = global.gui_elements
     if storage_frame and storage_frame.valid then
         GUI.deregister_action(storage_frame)
         storage_frame.destroy()
-        global.gui_elements.storage_frame[player.index] = nil
+        gui_elements.storage_frame[player.index] = nil
+        gui_elements.storage_textfield[player.index] = nil
+        gui_elements.storage_grid[player.index] = nil
     end
     if frame and frame.valid then
         GUI.deregister_action(frame)
         frame.destroy()
-        global.gui_elements.config_frame[player.index] = nil
+        gui_elements.config_frame[player.index] = nil
+        gui_elements.clear_option[player.index] = nil
+        gui_elements.reset_button[player.index] = nil
     end
     if player.mod_settings["autotrash_reset_on_close"].value then
         global.config_tmp[player.index] = util.table.deepcopy(global.config_new[player.index])
@@ -860,11 +814,9 @@ function GUI.set_item(player, index, element)
     return true
 end
 
-function GUI.update_presets(player, storage_grid)
-    storage_grid = storage_grid or GUI.get_storage_grid(player)
-    if not storage_grid or not storage_grid.valid then
-        return
-    end
+function GUI.update_presets(player)
+    local storage_grid = global.gui_elements.storage_grid[player.index]
+    if not (storage_grid and storage_grid.valid) then return end
     local children = storage_grid.children
     local presets = global.selected_presets[player.index]
     for i=1, #children, 2 do
@@ -875,14 +827,15 @@ function GUI.update_presets(player, storage_grid)
         end
     end
     if table_size(presets) == 1 then
-        GUI.get_storage_textfield(player, storage_grid).text = next(presets)
+        global.gui_elements.storage_textfield[player.index].text = next(presets)
     else
-        GUI.get_storage_textfield(player, storage_grid).text = ""
+        global.gui_elements.storage_textfield[player.index].text = ""
     end
 end
 
-function GUI.add_preset(player, preset_name, index, storage_grid)
-    storage_grid = storage_grid or GUI.get_storage_grid(player)
+function GUI.add_preset(player, preset_name, index)
+    local storage_grid = global.gui_elements.storage_grid[player.index]
+    if not (storage_grid and storage_grid.valid) then return end
     assert(not storage_grid.children[index*2-1] and not storage_grid.children[index*2])--TODO remove
 
     storage_grid.add{
@@ -911,8 +864,8 @@ function GUI.restore(player, element)
     global.selected[player_index] = false
     global.dirty[player_index] = true
 
-    GUI.get_storage_textfield(player, element.parent).text = name
-    GUI.update_presets(player, element.parent)
+    global.gui_elements.storage_textfield[player_index].text = name
+    GUI.update_presets(player)
     GUI.create_buttons(player)
     GUI.update_sliders(player)
 end

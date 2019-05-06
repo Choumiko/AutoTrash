@@ -155,8 +155,13 @@ local default_settings = {
 
 local gui_elements = {
     config_frame = {},
+    config_scroll = {},
+
     storage_frame = {},
+    storage_textfield = {},
+    storage_grid = {},
     reset_button = {},
+    clear_option = {}
 }
 
 
@@ -554,6 +559,7 @@ local function on_pre_mined_item(event)
                         end
                     end
                     if not newEntity and global.mainNetwork[player_index] then
+                        --TODO update gui if opened
                         game.get_player(player_index).print("Autotrash main network has been unset")
                     end
                     global.mainNetwork[player_index] = newEntity
@@ -784,10 +790,11 @@ local function on_gui_selection_state_changed(event)
     local status, err = pcall(function()
         local player_index = event.player_index
         local player = game.get_player(player_index)
+        if not (event.element and event.element.valid) then return end
         GUI.generic_event(event, player)
 
-        if event.element.name == gui_def.clear_option then return end
-
+        if (event.element == global.gui_elements.clear_option[player_index]) then return end
+log("gello")
         local name = event.element.get_item(event.element.selected_index)
         if global.storage_new[event.player_index][name] then
             global.selected_presets[player_index] = {[name] = true}
