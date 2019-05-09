@@ -110,23 +110,6 @@ local function convert_storage(storage)
     return tmp
 end
 
-local function get_requests_by_index(player)--luacheck: ignore
-    if not player.character then
-        return {}
-    end
-    local requests = {}
-    local get_request_slot = player.character.get_request_slot
-    local t, max_slot
-    for c = player.character.request_slot_count, 1, -1 do
-        t = get_request_slot(c)
-        if t then
-            max_slot = not max_slot and c or max_slot
-            requests[c] = {name = t.name, request = t.count, slot = c}
-        end
-    end
-    return requests, max_slot
-end
-
 local function requested_items(player)
     if not player.character then
         return {}
@@ -154,14 +137,17 @@ local default_settings = {
 }
 
 local gui_elements = {
+    main_button = {},
     config_frame = {},
     config_scroll = {},
+    slider_flow = {},
+    trash_options = {},
+    reset_button = {},
+    clear_option = {},
 
     storage_frame = {},
     storage_textfield = {},
     storage_grid = {},
-    reset_button = {},
-    clear_option = {}
 }
 
 
@@ -220,7 +206,7 @@ end
 local function init_players(resetGui)
     for _, player in pairs(game.players) do
         if resetGui then
-            GUI.delete(player)
+            GUI.delete(player.index)
         end
         init_player(player)
     end
@@ -233,7 +219,6 @@ end
 
 local function on_load()
     log("on_load")
-    assert(1 == GUI.index_from_name(gui_def.choose_button .. 1), "Update GUI.index_from_name, you fool!")--TODO remove
 end
 
 local function on_pre_player_removed(event)
@@ -281,10 +266,7 @@ local function on_configuration_changed(data)
                     settings.pause_trash = not global.active[pi]
                     settings.pause_requests = not global["logistics-active"][pi]
                     if remote.interfaces.YARM then
-                        -- global.settings[player_index].YARM_active_filter = remote.call("YARM", "set_filter", player_index, "none")
-                        -- remote.call("YARM", "set_filter", player_index, global.settings[player_index].YARM_active_filter)
-                        -- global.settings[player_index].YARM_active_filter = remote.call("YARM", "get_filter", player_index)
-                        settings.YARM_active_filter = 'warnings'
+                        settings.YARM_active_filter = remote.call("YARM", "get_current_filter", pi)
                     end
                     settings.clear_option = settings.clear_option or 1
 
@@ -383,7 +365,7 @@ local function pause_trash(player)
     global.settings[player.index].pause_trash = true
     --TODO backup current filters?
     player.character.auto_trash_filters = {}
-    GUI.update(player)
+    GUI.update_main_button(player.index)
 end
 
 local function unpause_trash(player)
@@ -393,7 +375,7 @@ local function unpause_trash(player)
     global.settings[player.index].pause_trash = false
     --TODO restore current filters?
     set_trash(player)
-    GUI.update(player)
+    GUI.update_main_button(player.index)
 end
 
 local function pause_requests(player)
@@ -406,7 +388,7 @@ local function pause_requests(player)
     for c = 1, character.request_slot_count do
         character.clear_request_slot(c)
     end
-    GUI.update(player)
+    GUI.update_main_button(player.index)
 end
 
 local function unpause_requests(player)
@@ -416,7 +398,7 @@ local function unpause_requests(player)
     global.settings[player.index].pause_requests = false
     --TODO restore current requests?
     set_requests(player)
-    GUI.update(player)
+    GUI.update_main_button(player.index)
 end
 
 local trash_blacklist = {
@@ -609,49 +591,6 @@ local function toggle_autotrash_pause_requests(player)
     GUI.close(player)
 end
 
-local function unselect_elem_button(player_index, parent)
-    local selected = global.selected[player_index]
-    local element = selected and parent.children[selected]
-    if selected and element then
-        element.style = "logistic_button_slot"
-        log("Unselect: " .. serpent.line({i = selected, item = element.elem_value}))
-        element.locked = element.elem_value or false
-    end
-    global.selected[player_index] = false
-    GUI.update_sliders(game.get_player(player_index))
-end
-
-local function select_elem_button(player_index, element)
-    local selected = global.selected[player_index]
-    if selected then
-        if element.parent.children[selected].name ~= element.name then
-            unselect_elem_button(player_index, element.parent)
-        else
-            return
-        end
-    end
-    if element.elem_value then
-        if element.locked then
-            element.locked = false
-            element.style = "logistic_button_selected_slot"
-            global.selected[player_index] = GUI.index_from_name(element.name)
-        end
-        GUI.update_sliders(game.get_player(player_index))
-    end
-    log("Selected " .. serpent.line({i = global.selected[player_index], item = element.elem_value}))
-    GUI.create_buttons(game.get_player(player_index))
-end
-
-local function clear_elem_button(player_index, index, element)
-    global["config_tmp"][player_index].config[index] = nil
-    element.elem_value = nil
-    element.locked = false
-    element.children[1].caption = " "
-    element.children[2].caption = " "
-    unselect_elem_button(player_index, element.parent)
-    GUI.create_buttons(game.get_player(player_index))
-end
-
 local function on_gui_click(event)
     local status, err = pcall(function()
         local element = event.element
@@ -659,43 +598,13 @@ local function on_gui_click(event)
             return
         end
         local player_index = event.player_index
-        local player = game.get_player(player_index)
 
-        log("on click " .. serpent.line(element.name))
-        log(serpent.line(event))
-
-        GUI.generic_event(event, player)
+        GUI.generic_event(event)
 
         if not element.valid then return end
 
-        if element.type == "choose-elem-button" then
-            local index = GUI.index_from_name(element.name)
-            --log(serpent.line({elem = element.elem_value, locked = element.locked, selected = global.selected[player_index]}))
-            if not index then
-                return
-            end
-            if event.button == defines.mouse_button_type.left then
-                if element.elem_value then
-                    if element.locked then
-                        unselect_elem_button(player_index, element.parent)
-                        select_elem_button(player_index, element)
-                        return
-                    else
-                        return
-                    end
-                else
-                    unselect_elem_button(player_index, element.parent)
-                end
-            -- clear the button here, since it's locked and gui_elem_changed doesn't trigger
-            elseif event.button == defines.mouse_button_type.right then
-                clear_elem_button(player_index, index, element)
-            end
-            return
-        end
-        local left = mod_gui.get_frame_flow(player)
-        local config_frame = left[gui_def.config_frame]
         --No gui, nothing to do anymore
-        if not config_frame then
+        if not (global.gui_elements.config_frame[player_index] and global.gui_elements.config_frame[player_index]) then
             return
         end
 
@@ -705,7 +614,7 @@ local function on_gui_click(event)
             log(serpent.line({t = type, i = index}))
             if type == "load" then
                 if not event.shift and not event.control then
-                    GUI.restore(player, element)
+                    GUI.restore(player_index, element)
                 else
                     local selected_presets = global.selected_presets[player_index]
                     if not selected_presets[element.caption] then
@@ -720,12 +629,12 @@ local function on_gui_click(event)
                         global.config_tmp[player_index] = presets.merge(global.config_tmp[player_index], global.storage_new[player_index][name])
                     end
                     global.selected[player_index] = false
-                    GUI.update_presets(player)
-                    GUI.create_buttons(player)
-                    GUI.update_sliders(player)
+                    GUI.update_presets(player_index)
+                    GUI.create_buttons(game.get_player(player_index))
+                    GUI.update_sliders(player_index)
                 end
             elseif type == "delete" then
-                GUI.remove(player, element, index)
+                GUI.remove(player_index, element, index)
             else
                 error("Unexpected type/index from " .. element.name)
             end
@@ -788,65 +697,17 @@ end
 
 local function on_gui_selection_state_changed(event)
     local status, err = pcall(function()
-        local player_index = event.player_index
-        local player = game.get_player(player_index)
         if not (event.element and event.element.valid) then return end
-        GUI.generic_event(event, player)
-
-        if (event.element == global.gui_elements.clear_option[player_index]) then return end
-log("gello")
-        local name = event.element.get_item(event.element.selected_index)
-        if global.storage_new[event.player_index][name] then
-            global.selected_presets[player_index] = {[name] = true}
-            global.config_new[player_index] = util.table.deepcopy(global.storage_new[player_index][name])
-            global.config_tmp[player_index] = util.table.deepcopy(global.storage_new[player_index][name])
-            global.selected[player_index] = false
-            global.dirty[player_index] = false
-            if not global.settings[player_index].pause_trash then
-                set_trash(player)
-            end
-            if not global.settings[player_index].pause_requests then
-                set_requests(player)
-            end
-            display_message(player, "Preset '" .. tostring(name) .. "' loaded", "success")
-            GUI.update_presets(player)
-            GUI.create_buttons(player)
-            GUI.update_sliders(player)
-        else
-            display_message(player, "Unknown preset: " .. tostring(name), true)
-        end
-        event.element.destroy()
+        GUI.generic_event(event)
     end)
     if not status then
-        if event.element and event.element.valid then
-            event.element.destroy()
-        end
         debugDump(err, true)
     end
 end
 
 local function on_gui_elem_changed(event)
     local status, err = pcall(function()
-        log("elem_changed: " .. event.element.name)
-        local element = event.element
-        local player_index = event.player_index
-        local index = GUI.index_from_name(element.name)
-        if not index then
-            return
-        end
-        local elem_value = element.elem_value
-
-        if elem_value then
-            local i = GUI.set_item(game.get_player(player_index), index, element)
-            if i == true then
-                element.locked = true
-                select_elem_button(event.player_index, element)
-            elseif i then
-                select_elem_button(event.player_index, element.parent[gui_def.choose_button .. i])
-            end
-        else
-            clear_elem_button(player_index, index, element)
-        end
+        GUI.generic_event(event)
     end)
     if not status then
         debugDump(err, true)
@@ -858,13 +719,14 @@ local function update_selected_value(player_index, element, number, check)
     local n = floor(tonumber(number) or 0)
     n = n <= max and n or max
     local flow = element.parent
-    local player = game.get_player(player_index)
-    local frame_new = GUI.get_ruleset_grid(player)
+    local frame_new = global.gui_elements.config_scroll[player_index]
+    if not (frame_new and frame_new.valid) then return end
+    local grid = frame_new.children[1]
     local i = global.selected[player_index]
 
-    local button = frame_new and frame_new.children[i]
+    local button = grid and grid.valid and grid.children[i]
     if not button or not button.valid or not i then
-        GUI.update_sliders(player)
+        GUI.update_sliders(player_index)
         return
     end
     assert(button.elem_value)--TODO remove
@@ -895,7 +757,7 @@ local function update_selected_value(player_index, element, number, check)
         end
     end
     global.dirty[player_index] = true
-    GUI.update_sliders(player)
+    GUI.update_sliders(player_index)
 end
 
 local function on_gui_value_changed(event)
@@ -903,7 +765,7 @@ local function on_gui_value_changed(event)
         return
     end
     if not global.selected[event.player_index] then
-        GUI.update_sliders(game.get_player(event.player_index))
+        GUI.update_sliders(event.player_index)
         return
     end
     if event.element.name == gui_def.config_slider then
@@ -912,15 +774,9 @@ local function on_gui_value_changed(event)
 end
 
 local function on_gui_text_changed(event)
+    GUI.generic_event(event)
     if event.element.name ~= gui_def.config_slider_text then
         return
-    end
-    if not global.selected[event.player_index] then
-        GUI.update_sliders(game.get_player(event.player_index))
-        return
-    end
-    if event.element.name == gui_def.config_slider_text then
-        update_selected_value(event.player_index, event.element, event.element.text)
     end
 end
 
@@ -988,6 +844,7 @@ local at_commands = {
 
     local button_flow = mod_gui.get_button_flow(game.player)[GUI.defines.main_button]
     if button_flow and button_flow.valid then
+        GUI.deregister_action(button_flow)
         button_flow.destroy()
     end
 

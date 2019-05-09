@@ -15,14 +15,43 @@ styles["at_request_label_top"] = {
     vertical_align = "top",
 }
 
+local default = util.table.deepcopy(styles.slot_button)
+
 styles["at_button_slot"] = {
     type = "button_style",
     parent = "logistic_button_slot",
+    --default_graphical_set = default,
+    --hovered_graphical_set = default,
+    --clicked_graphical_set = default.clicked_graphical_set,
+    --disabled_graphical_set = default,
+    --selected_graphical_set = default.default_graphical_set,
+    --selected_hovered_graphical_set = default,
+    --selected_clicked_graphical_set = default.default_graphical_set,
 }
 
 styles["at_button_slot_selected"] = {
     type = "button_style",
     parent = "logistic_button_selected_slot",
+    -- default_graphical_set = orangebuttongraphcialset(),--luacheck:ignore
+    -- hovered_graphical_set = orangebuttongraphcialset(),--luacheck:ignore
+    -- clicked_graphical_set = orangebuttongraphcialset(),--luacheck:ignore
+
+    -- selected_graphical_set = default.selected_hovered_graphical_set,
+    -- selected_hovered_graphical_set = default.selected_hovered_graphical_set,
+    -- selected_clicked_graphical_set = orangebuttongraphcialset(),--luacheck:ignore
+}
+log(serpent.block(styles["at_button_slot_selected"]))
+
+styles["at_button_slot_locked"] = {
+    type = "button_style",
+    parent = "logistic_button_slot",
+    --default_graphical_set = default.default_graphical_set,
+    --hovered_graphical_set = default,
+    clicked_graphical_set = default.selected_hovered_graphical_set,
+    --disabled_graphical_set = default,
+    selected_graphical_set = default.default_graphical_set, --did something good
+    --selected_hovered_graphical_set = default.hovered_graphical_set,
+    selected_clicked_graphical_set = default.selected_hovered_graphical_set,
 }
 
 styles["at_main_flow"] = {

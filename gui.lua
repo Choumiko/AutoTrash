@@ -65,32 +65,21 @@ end
 
 local GUI = {--luacheck: allow defined top
     defines = {
-        main_button = "at-config-button",
-        main_button_flow = "auto-trash-main-flow", --Don't rename, preserves top button order in existing saves
+        main_button = "at_config_button",
+        main_button_flow = "autotrash_main_flow",
         quick_presets = "at_quick_presets",
-
-        config_frame = "at-config-frame",
-        config_scroll = "at_config_scroll",
-        config_grid = "at_ruleset_grid",
-
-        storage_frame = "at-logistics-storage-frame",
-        storage_scroll = "at_storage_scroll",
 
         trash_above_requested = "autotrash_above_requested",
         trash_unrequested = "autotrash_unrequested",
         trash_in_main_network = "autotrash_in_main_network",
-
-        button_flow = "autotrash_button_flow",
-
-        trash_options = "autotrash_trash_options",
         pause_trash = "autotrash_pause_trash",
         pause_requests = "autotrash_pause_requests",
+
         config_request = "at_config_request",
         config_trash = "at_config_trash",
         config_slider = "at_config_slider",
         config_slider_text = "at_config_slider_text",
 
-        choose_button = "autotrash_item_",
         load_preset = "autotrash_preset_load_",
         delete_preset = "autotrash_preset_delete_"
     },
@@ -101,10 +90,11 @@ local def = GUI.defines
 local gui_functions = {
     main_button = function(event, player)
         local element = event.element
+        local player_index = event.player_index
         if event.button == defines.mouse_button_type.right then
-            GUI.open_quick_presets(player, element.parent)
+            GUI.open_quick_presets(player_index, element.parent)
         else
-            GUI.close_quick_presets(player, element.parent)
+            GUI.close_quick_presets(player_index, element.parent)
             if player.cursor_stack.valid_for_read then--luacheck: ignore
                 -- if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
                 --     add_order(player)
@@ -122,8 +112,8 @@ local gui_functions = {
         return
     end,
 
-    apply_changes = function(_, player)
-        local player_index = player.index
+    apply_changes = function(event, player)
+        local player_index = event.player_index
         global.config_new[player_index] = util.table.deepcopy(global.config_tmp[player_index])
         global.dirty[player_index] = false
         global.gui_elements.reset_button[player_index].enabled = false
@@ -131,30 +121,31 @@ local gui_functions = {
             GUI.close(player)
         end
 
-        if not global.settings[player.index].pause_trash then
+        if not global.settings[player_index].pause_trash then
             set_trash(player)
         end
-        if not global.settings[player.index].pause_requests then
+        if not global.settings[player_index].pause_requests then
             set_requests(player)
         end
     end,
 
-    reset_changes = function(event, player)
-        if global.dirty[player.index] then
-            global.config_tmp[player.index] = util.table.deepcopy(global.config_new[player.index])
+    reset_changes = function(event, _)
+        local player_index = event.player_index
+        if global.dirty[player_index] then
+            global.config_tmp[player_index] = util.table.deepcopy(global.config_new[player_index])
             event.element.enabled = false
-            global.selected[player.index] = false
-            global.selected_presets[player.index] = {}
-            global.dirty[player.index] = false
-            GUI.create_buttons(player)
-            GUI.update_sliders(player)
-            GUI.update_presets(player)
+            global.selected[player_index] = false
+            global.selected_presets[player_index] = {}
+            global.dirty[player_index] = false
+            GUI.update_buttons(player_index)
+            GUI.update_sliders(player_index)
+            GUI.update_presets(player_index)
         end
     end,
 
-    clear_config = function(_, player)
-        local player_index = player.index
-        local mode = global.settings[player.index].clear_option
+    clear_config = function(event, _)
+        local player_index = event.player_index
+        local mode = global.settings[player_index].clear_option
         local config_tmp = global.config_tmp[player_index]
         if mode == 1 then
             config_tmp.config = {}
@@ -168,16 +159,45 @@ local gui_functions = {
                 config.trash = false
             end
         end
-        GUI.create_buttons(player)
+        global.dirty[player_index] = true
+        GUI.update_buttons(player_index)
+        GUI.update_sliders(player_index)
     end,
 
-    clear_option_changed = function(event, player, params)--luacheck: ignore
+    clear_option_changed = function(event, _, _)
         if event.name ~= defines.events.on_gui_selection_state_changed then return end
-        global.settings[player.index].clear_option = event.element.selected_index
+        global.settings[event.player_index].clear_option = event.element.selected_index
     end,
 
-    save_preset = function(_, player, params)
-        local player_index = player.index
+    load_quick_preset = function(event, player, params)--luacheck: ignore
+        if event.name ~= defines.events.on_gui_selection_state_changed then return end
+        local player_index = event.player_index
+        local name = event.element.get_item(event.element.selected_index)
+        if global.storage_new[player_index][name] then
+            global.selected_presets[player_index] = {[name] = true}
+            global.config_new[player_index] = util.table.deepcopy(global.storage_new[player_index][name])
+            global.config_tmp[player_index] = util.table.deepcopy(global.storage_new[player_index][name])
+            global.selected[player_index] = false
+            global.dirty[player_index] = false
+            if not global.settings[player_index].pause_trash then
+                set_trash(player)
+            end
+            if not global.settings[player_index].pause_requests then
+                set_requests(player)
+            end
+            display_message(player, "Preset '" .. tostring(name) .. "' loaded", "success")
+            GUI.update_presets(player_index)
+            GUI.create_buttons(player)
+            GUI.update_sliders(player_index)
+        else
+            display_message(player, "Unknown preset: " .. tostring(name), true)
+        end
+        GUI.deregister_action(event.element)
+        event.element.destroy()
+    end,
+
+    save_preset = function(event, player, params)
+        local player_index = event.player_index
         local name = params.textfield.text
         if name == "" then
             display_message(player, {"auto-trash-storage-name-not-set"}, true)
@@ -191,13 +211,13 @@ local gui_functions = {
         end
 
         global.storage_new[player_index][name] = util.table.deepcopy(global.config_tmp[player_index])
-        GUI.add_preset(player, name, table_size(global.storage_new[player_index]))
+        GUI.add_preset(player_index, name, table_size(global.storage_new[player_index]))
         global.selected_presets[player_index] = {[name] = true}
-        GUI.update_presets(player)
+        GUI.update_presets(player_index)
     end,
 
     set_main_network = function(event, player)
-        local player_index = player.index
+        local player_index = event.player_index
         if global.mainNetwork[player_index] then
             global.mainNetwork[player_index] = false
         else
@@ -213,10 +233,105 @@ local gui_functions = {
         event.element.caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
     end,
 
-    import_from_vanilla = function(_, player)
-        global.config_tmp[player.index] = combine_from_vanilla(player)
-        GUI.create_buttons(player)
-        GUI.update_sliders(player)
+    import_from_vanilla = function(event, player)
+        local player_index = event.player_index
+        global.config_tmp[player_index] = combine_from_vanilla(player)
+        global.selected[player_index] = false
+        global.dirty[player_index] = true
+        GUI.update_buttons(player_index)
+        GUI.update_sliders(player_index)
+    end,
+
+    config_button_changed = function(event, player, params)
+        --log(serpent.line(params))
+        -- log(serpent.line(event))
+        local player_index = event.player_index
+        local old_selected = global.selected[player_index]
+        if event.name == defines.events.on_gui_click then
+            if event.button == defines.mouse_button_type.right then
+                if not event.element.elem_value then return end
+                log("Clear button")
+                assert(params.slot ~= old_selected)
+                log(serpent.block(params))
+                global.config_tmp[player_index].config[params.slot] = nil
+                global.dirty[player_index] = true
+                GUI.destroy_create_button(player_index, event.element.parent, params.slot, old_selected)
+                --GUI.update_button(player_index, event.element.parent, params.slot, old_selected)
+            elseif event.button == defines.mouse_button_type.left then
+                if not event.element.elem_value or old_selected == params.slot then return end--empty button
+                log("Select button: " .. params.slot .. " old: " .. tostring(old_selected))
+                global.selected[player_index] = params.slot
+                local flow = event.element.parent
+                GUI.destroy_create_button(player_index, flow, params.slot, params.slot)
+                --GUI.update_button(player_index, flow, params.slot, params.slot)
+                GUI.destroy_create_button(player_index, flow.parent.children[old_selected], old_selected, params.slot)
+                --GUI.update_button(player_index, flow, old_selected, params.slot)
+            end
+        elseif event.name == defines.events.on_gui_elem_changed then
+            if event.element.elem_value then
+                if event.element.elem_value == params.item then return end--changed to same item
+                log("New item")
+                local ruleset_grid = event.element.parent.parent
+                local found
+                for i, flow in pairs(ruleset_grid.children) do
+                    if i ~= params.slot and flow.children[1].elem_value == event.element.elem_value then
+                        log(serpent.line{i=i, params=params, s = global.selected[player_index]} )
+                        display_message(player, {"", {"cant-set-duplicate-request", game.item_prototypes[event.element.elem_value].localised_name}}, true)
+                        event.element.elem_value = params.item
+                        global.selected[player_index] = i
+                        GUI.destroy_create_button(player_index, flow, params.slot, i)
+                        GUI.destroy_create_button(player_index, flow, i, i)
+                        found = true
+                        break
+                    end
+                end
+                if not found then
+                    log("changed")
+                    global.selected[player_index] = params.slot
+                    global.dirty[player_index] = true
+                    local config_tmp = global.config_tmp[player_index].config
+                    config_tmp[params.slot] = {name = event.element.elem_value, request = game.item_prototypes[event.element.elem_value].default_request_amount, trash = false, slot = params.slot}
+                    GUI.update_button(player_index, event.element.parent, params.slot, params.slot)
+                    GUI.update_button(player_index, event.element.parent.parent.children[old_selected], old_selected, params.slot)
+                end
+            elseif params.item then
+                log("Clear button2")
+                assert(params.slot == old_selected)
+                global.selected[player_index] = false
+                global.config_tmp[player_index].config[params.slot] = nil
+                global.dirty[player_index] = true
+                GUI.update_button(player_index, event.element.parent, params.slot)
+            end
+        else
+            log("Unhandled event: " .. GUI.get_event_name(event.name))
+            return
+        end
+        GUI.update_sliders(player_index)
+    end,
+
+    request_textfield_changed = function(event, _, _)
+        if event.name ~= defines.events.on_gui_text_changed then return end
+        local player_index = event.player_index
+        local selected = global.selected[player_index]
+        local item_config = global.config_tmp[player_index].config[selected]
+        if not (selected and item_config) then
+            GUI.update_sliders(player_index)
+            return
+        end
+        local number = tonumber(event.element.text)
+        assert(number >= 0, "request has to be a positive number") --TODO remove
+        assert(item_config.name, "item config without name")
+        item_config.request = number
+        --prevent trash being set to a lower value than request to prevent infinite robo loop
+        if item_config.trash and number > item_config.trash then
+            item_config.trash = number
+        end
+        global.dirty[player_index] = true
+        GUI.update_sliders(player_index)
+    end,
+
+    trash_textfield_changed = function(event, player, params)--luacheck: ignore
+        log("trash text changed")
     end
 }
 
@@ -244,10 +359,18 @@ function GUI.register_action(element, params)
         player_gui_actions = gui_actions[element.player_index]
     end
     player_gui_actions[element.index] = params
-    log(serpent.block(global.gui_actions[element.player_index]))
+    --log(serpent.block(global.gui_actions[element.player_index]))
 end
 
-function GUI.generic_event(event, player)
+function GUI.get_event_name(i)
+    for key, v in pairs(defines.events) do
+        if v == i then
+            return key
+        end
+    end
+end
+
+function GUI.generic_event(event)
     local gui = event.element
     if not (gui and gui.valid) then return end
 
@@ -256,30 +379,21 @@ function GUI.generic_event(event, player)
 
     local action = player_gui_actions[gui.index]
     if not action then return end
-    log(serpent.line({action, event}))
-    gui_functions[action.type](event, player, action)
-    log(serpent.block(global.gui_elements))
+    log(GUI.get_event_name(event.name))
+    log(serpent.line(action.type))
+    gui_functions[action.type](event, game.get_player(gui.player_index), action)
+    --log(serpent.block(global.gui_elements))
+    log("Registered gui actions:" .. table_size(player_gui_actions))
     return true
 end
 
-
-function GUI.get_ruleset_grid(player)
-    local frame = mod_gui.get_frame_flow(player)[GUI.defines.config_frame]
-    if not frame or not frame.valid then
-        return
-    end
-    return frame[def.config_flow_h] and frame[def.config_flow_h][def.config_scroll] and frame[def.config_flow_h][def.config_scroll][def.config_grid]
-end
-
-function GUI.index_from_name(name)
-    return tonumber(string.match(name, GUI.defines.choose_button .. "(%d+)"))
-end
-
 function GUI.init(player)
-    local button_flow = mod_gui.get_button_flow(player)
-    if button_flow[GUI.defines.main_button_flow] then
+    local button_flow = mod_gui.get_button_flow(player)[GUI.defines.main_button_flow]
+    if button_flow and button_flow.valid and button_flow[GUI.defines.main_button] and button_flow[GUI.defines.main_button].valid then
+        global.gui_elements.main_button[player.index] = button_flow[GUI.defines.main_button]
         return
     end
+    log("init gui")
     if player.force.technologies["character-logistic-slots-1"].researched
     or player.force.technologies["character-logistic-trash-slots-1"].researched then
         local flow = button_flow.add{
@@ -294,17 +408,17 @@ function GUI.init(player)
             style = "at_sprite_button"
         }
         button.sprite = "autotrash_trash"
+        global.gui_elements.main_button[player.index] = button
         GUI.register_action(button, {type = "main_button"})
     end
 end
 
-function GUI.update(player)
-    local mainButton = mod_gui.get_button_flow(player)[GUI.defines.main_button_flow]
-    mainButton = mainButton and mainButton[GUI.defines.main_button]
-    if not mainButton then
+function GUI.update_main_button(player_index)
+    local mainButton = global.gui_elements.main_button[player_index]
+    if not (mainButton and mainButton.valid) then
         return
     end
-    local settings = global.settings[player.index]
+    local settings = global.settings[player_index]
     if settings.pause_trash and not settings.pause_requests then
         mainButton.sprite = "autotrash_trash_paused"
     elseif settings.pause_requests and not settings.pause_trash then
@@ -314,17 +428,13 @@ function GUI.update(player)
     else
         mainButton.sprite = "autotrash_trash"
     end
-    GUI.update_settings(player)
+    GUI.update_settings(player_index)
 end
 
-function GUI.update_settings(player)
-    local frame = mod_gui.get_frame_flow(player)[GUI.defines.config_frame]
-    if not frame or not frame.valid then
-        return
-    end
-    frame = frame[GUI.defines.trash_options]
-    if not frame or not frame.valid then return end
-    local settings = global.settings[player.index]
+function GUI.update_settings(player_index)
+    local frame = global.gui_elements.trash_options[player_index]
+    if not (frame and frame.valid) then return end
+    local settings = global.settings[player_index]
     frame[GUI.defines.trash_unrequested].state = settings.auto_trash_unrequested
     frame[GUI.defines.trash_above_requested].state = settings.auto_trash_above_requested
     frame[GUI.defines.trash_in_main_network].state = settings.auto_trash_in_main_network
@@ -332,8 +442,7 @@ function GUI.update_settings(player)
     frame[GUI.defines.pause_requests].state = settings.pause_requests
 end
 
-function GUI.delete(player)
-    local player_index = player.index
+function GUI.delete(player_index)
     for k, guis in pairs(global.gui_elements) do
         local element = guis[player_index]
         if element and element.valid then
@@ -344,13 +453,15 @@ function GUI.delete(player)
     end
 end
 
-function GUI.update_sliders(player)
-    local left = mod_gui.get_frame_flow(player)[GUI.defines.config_frame]
-    local slider_flow = left and left.valid and left["at_slider_flow_vertical"]
-    if not slider_flow or not slider_flow.valid then
-        return
-    end
-    local player_index = player.index
+-- function GUI.update_selected_button(player)
+--     button.children[2].caption = format_number(format_trash(item_config), true)
+--     button.children[1].caption = format_number(format_request(item_config), true)
+-- end
+
+function GUI.update_sliders(player_index)
+    local slider_flow = global.gui_elements.slider_flow[player_index]
+    if not (slider_flow and slider_flow.valid) then return end
+
     local item_config = global.config_tmp[player_index].config[global.selected[player_index]]
     local visible = item_config and true or false
     for _, child in pairs(slider_flow.children) do
@@ -367,105 +478,184 @@ function GUI.update_sliders(player)
     reset.enabled = global.dirty[player_index]
 end
 
---creates/updates the choose-elem-buttons (update because i do something wierd with locked = true)
-function GUI.create_buttons(player)
-    local left = mod_gui.get_frame_flow(player)
-    local frame = (left and left.valid) and left[GUI.defines.config_frame]
-    if not frame or not frame.valid then
-        return
+function GUI.update_button_action(button, i, _, foo)
+    local action
+    if button.locked then
+        action = {type = "config_button_changed", slot = i, item = button.elem_value}
+    else
+        action = {type = "config_button_changed", slot = i, item = button.elem_value}
     end
-    frame = frame[GUI.defines.config_flow_h]
-
-    local scroll_pane = frame[def.config_scroll]
-    scroll_pane = scroll_pane or frame.add{
-        type = "scroll-pane",
-        name = def.config_scroll,
-    }
-    local mod_settings = player.mod_settings
-    local display_rows = mod_settings["autotrash_gui_max_rows"].value
-    scroll_pane.style.maximal_height = 38 * display_rows + 6
-
-    local ruleset_grid = scroll_pane[def.config_grid]
-    if ruleset_grid and ruleset_grid.valid then
-        ruleset_grid.destroy()
+    if foo then
+        log(serpent.block(action))
     end
+    GUI.register_action(button, action)
+    -- if button.elem_value then
+    --     log(i .. " " .. tostring(button.elem_value) .. "\t\t\t" .. action.type .. " " .. tostring(button.locked) .. " " .. button.style.name)
+    -- end
+end
 
-    ruleset_grid = scroll_pane.add{
-        type = "table",
-        column_count = mod_settings["autotrash_gui_columns"].value,
-        name = def.config_grid,
-        style = "slot_table"
-    }
+function GUI.clear_button(button, i)
+    button.locked = false
+    button.elem_value = nil
+    button.children[1].caption = ""
+    button.children[2].caption = ""
+    button.style = "at_button_slot"
+    GUI.update_button_action(button, i, nil)
+end
 
-    local player_index = player.index
-    local slots = mod_settings["autotrash_slots"].value or player.character.request_slot_count
-    for i = 1, slots-1 do
+function GUI.destroy_create_button(player_index, flow, i, selected)
+        if not i then return end
+        if not (flow and flow.valid) then return end
+        GUI.deregister_action(flow)
+        flow.clear()
+        --log("update button: " .. i .. " " .. tostring(selected))
+        local button = GUI.create_button(player_index, flow, i, selected)
+        GUI.update_button_action(button, i, selected, true)
+        return button
+end
+
+function GUI.update_button(player_index, flow, i, selected)
+        local button = flow.children[1]
+        local req = global.config_tmp[player_index].config[i]
+        button.locked = req and i ~= selected
+        if req then
+            button.children[1].caption = format_number(format_request(req), true)
+            button.children[2].caption = format_number(format_trash(req), true)
+            button.elem_value = req.name
+        else
+            button.children[1].caption = ""
+            button.children[2].caption = ""
+            button.elem_value = nil
+        end
+        --button.style = button.locked and "at_button_slot_locked" or "at_button_slot"
+        button.style = (i == selected) and "at_button_slot_selected" or "at_button_slot"
+        GUI.update_button_action(button, i, selected)
+end
+
+function GUI.update_buttons(player_index, old_selected)
+    --log("update buttons")
+    local scroll_pane = global.gui_elements.config_scroll[player_index]
+    if not (scroll_pane and scroll_pane.valid) then return end
+    local ruleset_grid = scroll_pane.children[1]
+    if not (ruleset_grid and ruleset_grid.valid) then return end
+
+    local selected = global.selected[player_index]
+    local req, button
+    local start = old_selected or 1
+    log("update buttons, start: " .. start)
+    for i = start, #ruleset_grid.children do
+    --for i, button in pairs(ruleset_grid.children) do
+        button = ruleset_grid.children[i].children[1]
+        req = global.config_tmp[player_index].config[i]
+        button.locked = req and i ~= selected
+        if req then
+            button.children[1].caption = format_number(format_request(req), true)
+            button.children[2].caption = format_number(format_trash(req), true)
+            button.elem_value = req.name
+        else
+            button.children[1].caption = ""
+            button.children[2].caption = ""
+            button.elem_value = nil
+        end
+        --button.style = button.locked and "at_button_slot_locked" or "at_button_slot"
+        button.style = "at_button_slot"
+        if i == selected then
+            button.style = "at_button_slot_selected"
+        end
+        GUI.update_button_action(button, i, selected)
+        -- if req then
+        --     log(button.style.name .. "\t\t" .. req.name .. "\t\t" .. tostring(button.locked))
+        -- end
+    end
+    --log("")
+end
+
+function GUI.create_button(player_index, flow, i, selected)
         local req = global["config_tmp"][player_index].config[i]
         local elem_value = req and req.name or nil
-        local button_name = GUI.defines.choose_button .. i
-        local choose_button = ruleset_grid.add{
+        local button = flow.add{
             type = "choose-elem-button",
-            name = button_name,
             elem_type = "item"
         }
-        choose_button.elem_value = elem_value
-        choose_button.style = global.selected[player_index] == i and "at_button_slot_selected" or "at_button_slot"
+        button.elem_value = elem_value
+        --button.style = selected == i and "at_button_slot_selected" or "at_button_slot"
 
-        local lbl_top = choose_button.add{
+        local lbl_top = button.add{
             type = "label",
             style = "at_request_label_top",
             ignored_by_interaction = true,
-            caption = " "
+            caption = ""
         }
-
-        local lbl_bottom = choose_button.add{
+        local lbl_bottom = button.add{
             type = "label",
             style = "at_request_label_bottom",
             ignored_by_interaction = true,
-            caption = " "
+            caption = ""
         }
-
         if elem_value then
             lbl_top.caption = format_number(format_request(req), true)
             lbl_bottom.caption = format_number(format_trash(req), true)
             --disable popup gui, keeps on_click active
-            choose_button.locked = choose_button.name ~=  GUI.defines.choose_button .. tostring(global.selected[player_index])
+            button.locked = not (i == selected)
         end
-    end
-
-    local extend_button_flow = ruleset_grid.add{
-        type = "flow",
-        name = "autotrash-extend-flow",
-        direction = "vertical",
-        style = "at_extend_flow"
-    }
-
-    local minus = extend_button_flow.add{
-        type = "button",
-        name = "autotrash-extend-less",
-        caption = "-",
-        style = "at_sprite_button"
-    }
-    local plus = extend_button_flow.add{
-        type = "sprite-button",
-        name = "autotrash-extend-more",
-        caption = "+",
-        style = "at_sprite_button"
-    }
-    minus.style.maximal_height = 16
-    minus.style.minimal_width = 16
-    minus.style.font = "default-bold"
-    plus.style.maximal_height = 16
-    plus.style.minimal_width = 16
-    plus.style.font = "default-bold"
+        --button.style = button.locked and "at_button_slot_locked" or "at_button_slot"
+        button.style = "at_button_slot"
+        if i == selected then
+            button.style = "at_button_slot_selected"
+        end
+        return button
 end
 
-function GUI.open_quick_presets(player, main_flow)
-    local button_flow = main_flow or mod_gui.get_button_flow(player)[GUI.defines.main_button_flow]
-    if not button_flow or not button_flow.valid then
+--creates/updates the choose-elem-buttons (update because i do something wierd with locked = true)
+function GUI.create_buttons(player, old_selected)
+    local player_index = player.index
+    local scroll_pane = global.gui_elements.config_scroll[player_index]
+    if not (scroll_pane and scroll_pane.valid) then return end
+    local ruleset_grid = scroll_pane.children[1]
+    if ruleset_grid and ruleset_grid.valid and not old_selected then
+        GUI.deregister_action(ruleset_grid)
+        ruleset_grid.destroy()
+    end
+    local mod_settings = player.mod_settings
+    local slots = mod_settings["autotrash_slots"].value or player.character.request_slot_count
+    local selected = global.selected[player_index]
+    local start
+    if not old_selected then
+        ruleset_grid = scroll_pane.add{
+            type = "table",
+            column_count = mod_settings["autotrash_gui_columns"].value,
+            style = "slot_table"
+        }
+        start = 1
+    else
+        start = old_selected
+        local children = ruleset_grid.children
+        for i = start, slots do
+            GUI.deregister_action(children[i])
+            children[i].destroy()
+        end
+    end
+    log("create buttons, start: " .. start)
+    local flow
+    for i = start, slots do
+        flow = ruleset_grid.add{type = "flow", direction = "horizontal"}
+        local button = GUI.create_button(player_index, flow, i, selected)
+        GUI.update_button_action(button, i, selected)
+
+        -- if req then
+        --     log(button.style.name .. "\t\t" .. req.name .. "\t\t" .. tostring(button.locked))
+        -- end
+    end
+    --log("create_buttons, selected: " .. serpent.line(global.selected[player_index]) .. "\n")
+end
+
+function GUI.open_quick_presets(player_index)
+    local button_flow = global.gui_elements.main_button[player_index]
+    if not (button_flow and button_flow.valid) then
         return
     end
     if button_flow[GUI.defines.quick_presets] and button_flow[GUI.defines.quick_presets].valid then
+        GUI.deregister_action(button_flow[GUI.defines.quick_presets])
         button_flow[GUI.defines.quick_presets].destroy()
         return
     end
@@ -477,19 +667,21 @@ function GUI.open_quick_presets(player, main_flow)
 
     local i = 1
     local tmp = {}
-    for key, _ in pairs(global.storage_new[player.index]) do
+    for key, _ in pairs(global.storage_new[player_index]) do
         tmp[i] = key
         i = i + 1
     end
     quick_presets.items = tmp
+    GUI.register_action(quick_presets, {type = "load_quick_preset"})
 end
 
-function GUI.close_quick_presets(player, main_flow)
-    local button_flow = main_flow or mod_gui.get_button_flow(player)[GUI.defines.main_button_flow]
+function GUI.close_quick_presets(player_index)
+    local button_flow = global.gui_elements.main_button[player_index]
     if not button_flow or not button_flow.valid then
         return
     end
     if button_flow[GUI.defines.quick_presets] and button_flow[GUI.defines.quick_presets].valid then
+        GUI.deregister_action(button_flow[GUI.defines.quick_presets])
         button_flow[GUI.defines.quick_presets].destroy()
         return
     end
@@ -497,15 +689,12 @@ end
 
 function GUI.open_logistics_frame(player)
     local player_index = player.index
-    assert(not global.selected[player.index], "selected should be false")
-    log("Selected: " .. serpent.line(global.selected[player_index]))
     hide_yarm(player_index)
     local left = mod_gui.get_frame_flow(player)
 
     local frame = left.add{
         type = "frame",
         caption = {"gui-logistic.title"},
-        name = GUI.defines.config_frame,
         direction = "vertical"
     }
     global.gui_elements.config_frame[player_index] = frame
@@ -515,6 +704,16 @@ function GUI.open_logistics_frame(player)
         name = GUI.defines.config_flow_h,
         direction = "horizontal"
     }
+
+    local scroll_pane = config_flow_h.add{
+        type = "scroll-pane",
+    }
+    scroll_pane.style.maximal_height = 38 * player.mod_settings["autotrash_gui_max_rows"].value + 6
+    global.gui_elements.config_scroll[player_index] = scroll_pane
+
+    if not global.config_tmp[player_index].config[global.selected[player_index]] then
+        global.selected[player_index] = false
+    end
 
     GUI.create_buttons(player)
 
@@ -577,9 +776,10 @@ function GUI.open_logistics_frame(player)
 
     local slider_vertical_flow = frame.add{
         type = "table",
-        name = "at_slider_flow_vertical",
         column_count = 2
     }
+    global.gui_elements.slider_flow[player_index] = slider_vertical_flow
+
     slider_vertical_flow.style.minimal_height = 60
     slider_vertical_flow.add{
         type = "label",
@@ -598,11 +798,12 @@ function GUI.open_logistics_frame(player)
         minimum_value = 0,
         maximum_value = 41,
     }
-    slider_flow_request.add{
+    local request_textfield = slider_flow_request.add{
         type = "textfield",
         name = GUI.defines.config_slider_text,
         style = "slider_value_textfield",
     }
+    GUI.register_action(request_textfield, {type = "request_textfield_changed"})
 
     slider_vertical_flow.add{
         type = "label",
@@ -621,13 +822,13 @@ function GUI.open_logistics_frame(player)
         minimum_value = 0,
         maximum_value = 42,
     }
-    slider_flow_trash.add{
+    local trash_textfield = slider_flow_trash.add{
         type = "textfield",
         name = GUI.defines.config_slider_text,
         style = "slider_value_textfield",
     }
-
-    GUI.update_sliders(player)
+    GUI.register_action(trash_textfield, {type = "trash_textfield_changed"})
+    GUI.update_sliders(player_index)
 
     --TODO add a dropdown for quick actions, that apply to each item e.g.
     --Set trash to requested amount
@@ -637,10 +838,10 @@ function GUI.open_logistics_frame(player)
 
     local trash_options = frame.add{
         type = "frame",
-        name = GUI.defines.trash_options,
         style = "bordered_frame",
         direction = "vertical",
     }
+    global.gui_elements.trash_options[player_index] = trash_options
     trash_options.style.use_header_filler = false
     trash_options.style.horizontally_stretchable = true
     trash_options.style.font = "default-bold"
@@ -717,7 +918,6 @@ function GUI.open_logistics_frame(player)
 
     local storage_frame = left.add{
         type = "frame",
-        name = GUI.defines.storage_frame,
         caption = {"auto-trash-storage-frame-title"},
         direction = "vertical"
     }
@@ -746,7 +946,6 @@ function GUI.open_logistics_frame(player)
 
     local storage_scroll = storage_frame.add{
         type = "scroll-pane",
-        name = GUI.defines.storage_scroll
     }
 
     storage_scroll.style.maximal_height = math.ceil(38*10+4)
@@ -758,67 +957,47 @@ function GUI.open_logistics_frame(player)
 
     local i = 1
     for key, _ in pairs(global.storage_new[player_index]) do
-        GUI.add_preset(player, key, i)
+        GUI.add_preset(player_index, key, i)
         i = i + 1
     end
-    GUI.update_presets(player)
+    GUI.update_presets(player_index)
 end
 
-function GUI.close(player, frame_flow)
-    local left = frame_flow or mod_gui.get_frame_flow(player)
-    local storage_frame = left[GUI.defines.storage_frame]
-    local frame = left[GUI.defines.config_frame]
-
+function GUI.close(player)
+    local player_index = player.index
     local gui_elements = global.gui_elements
+    local storage_frame = gui_elements.storage_frame[player_index]
+    local frame = gui_elements.config_frame[player_index]
+
     if storage_frame and storage_frame.valid then
         GUI.deregister_action(storage_frame)
         storage_frame.destroy()
-        gui_elements.storage_frame[player.index] = nil
-        gui_elements.storage_textfield[player.index] = nil
-        gui_elements.storage_grid[player.index] = nil
+        gui_elements.storage_frame[player_index] = nil
+        gui_elements.storage_textfield[player_index] = nil
+        gui_elements.storage_grid[player_index] = nil
     end
     if frame and frame.valid then
         GUI.deregister_action(frame)
         frame.destroy()
-        gui_elements.config_frame[player.index] = nil
-        gui_elements.clear_option[player.index] = nil
-        gui_elements.reset_button[player.index] = nil
+        gui_elements.config_frame[player_index] = nil
+        gui_elements.config_scroll[player_index] = nil
+        gui_elements.slider_flow[player_index] = nil
+        gui_elements.trash_options[player_index] = nil
+        gui_elements.clear_option[player_index] = nil
+        gui_elements.reset_button[player_index] = nil
     end
     if player.mod_settings["autotrash_reset_on_close"].value then
-        global.config_tmp[player.index] = util.table.deepcopy(global.config_new[player.index])
-        global.dirty[player.index] = false
+        global.config_tmp[player_index] = util.table.deepcopy(global.config_new[player_index])
+        global.dirty[player_index] = false
     end
-    global.selected[player.index] = false
-    show_yarm(player.index)
+    show_yarm(player_index)
 end
 
-function GUI.set_item(player, index, element)
-    local player_index = player.index
-    if not index then
-        return
-    end
-
-    local elem_value = element.elem_value
-    if elem_value then
-        local config_tmp = global.config_tmp[player_index].config
-        for i, item in pairs(config_tmp) do
-            if item.name == elem_value then
-                display_message(player, {"", {"cant-set-duplicate-request", game.item_prototypes[elem_value].localised_name}}, true)
-                element.elem_value = nil
-                return i
-            end
-        end
-        log(serpent.line(config_tmp))
-        config_tmp[index] = {name = elem_value, request = game.item_prototypes[elem_value].default_request_amount, trash = false, slot = index}
-    end
-    return true
-end
-
-function GUI.update_presets(player)
-    local storage_grid = global.gui_elements.storage_grid[player.index]
+function GUI.update_presets(player_index)
+    local storage_grid = global.gui_elements.storage_grid[player_index]
     if not (storage_grid and storage_grid.valid) then return end
     local children = storage_grid.children
-    local presets = global.selected_presets[player.index]
+    local presets = global.selected_presets[player_index]
     for i=1, #children, 2 do
         if presets[children[i].caption] then
             children[i].style = "at_preset_button_selected"
@@ -827,14 +1006,14 @@ function GUI.update_presets(player)
         end
     end
     if table_size(presets) == 1 then
-        global.gui_elements.storage_textfield[player.index].text = next(presets)
+        global.gui_elements.storage_textfield[player_index].text = next(presets)
     else
-        global.gui_elements.storage_textfield[player.index].text = ""
+        global.gui_elements.storage_textfield[player_index].text = ""
     end
 end
 
-function GUI.add_preset(player, preset_name, index)
-    local storage_grid = global.gui_elements.storage_grid[player.index]
+function GUI.add_preset(player_index, preset_name, index)
+    local storage_grid = global.gui_elements.storage_grid[player_index]
     if not (storage_grid and storage_grid.valid) then return end
     assert(not storage_grid.children[index*2-1] and not storage_grid.children[index*2])--TODO remove
 
@@ -855,8 +1034,7 @@ function GUI.add_preset(player, preset_name, index)
     remove.style.bottom_padding = 0
 end
 
-function GUI.restore(player, element)
-    local player_index = player.index
+function GUI.restore(player_index, element)
     local name = element.caption
 
     global.selected_presets[player_index] = {[name] = true}
@@ -865,21 +1043,23 @@ function GUI.restore(player, element)
     global.dirty[player_index] = true
 
     global.gui_elements.storage_textfield[player_index].text = name
-    GUI.update_presets(player)
-    GUI.create_buttons(player)
-    GUI.update_sliders(player)
+    GUI.update_presets(player_index)
+    GUI.update_buttons(player_index)
+    GUI.update_sliders(player_index)
 end
 
-function GUI.remove(player, element, index)
+function GUI.remove(player_index, element, index)
     local storage_grid = element.parent
     local btn1 = storage_grid[GUI.defines.load_preset .. index]
     local btn2 = storage_grid[GUI.defines.delete_preset .. index]
-    assert(global.storage_new[player.index] and global.storage_new[player.index][btn1.caption]) --TODO remove
-    global.selected_presets[player.index][btn1.caption] = nil
-    global["storage_new"][player.index][btn1.caption] = nil
+    assert(global.storage_new[player_index] and global.storage_new[player_index][btn1.caption]) --TODO remove
+    global.selected_presets[player_index][btn1.caption] = nil
+    global["storage_new"][player_index][btn1.caption] = nil
+    GUI.deregister_action(btn1)
+    GUI.deregister_action(btn2)
     btn1.destroy()
     btn2.destroy()
-    GUI.update_presets(player)
+    GUI.update_presets(player_index)
 end
 
 return GUI

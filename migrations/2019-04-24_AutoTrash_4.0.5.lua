@@ -21,7 +21,6 @@ for _, player in pairs(game.players) do
         top["auto-trash-logistics-button"].destroy()
     end
     if top["auto-trash-main-flow"] and top["auto-trash-main-flow"].valid then
-        top["auto-trash-main-flow"].clear()
-        top["auto-trash-main-flow"].style = "at_main_flow"
+        top["auto-trash-main-flow"].destroy()
     end
 end
