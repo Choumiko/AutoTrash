@@ -59,14 +59,14 @@ data:extend({
         setting_type = "runtime-per-user",
         default_value = true,
         order = "i"
-    }
-    -- {
-    --     type = "bool-setting",
-    --     name = prefix .. "enable_module",
-    --     setting_type = "startup",
-    --     default_value = true,
-    --     order = "a"
-    -- },
+    },
+    {
+        type = "bool-setting",
+        name = prefix .. "overwrite",
+        setting_type = "runtime-per-user",
+        default_value = false,
+        order = "j"
+    },
     -- {
     --     type = "bool-setting",
     --     name = prefix .. "free_wires",

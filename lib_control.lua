@@ -55,22 +55,27 @@ local function saveVar(var, name)
     game.write_file(n..".lua", serpent.block(var, {name = "global", comment = false}))
 end
 
-local function debugDump(var, force)
+local function debugDump(var, player, force)
     if false or force then
-        for _, player in pairs(game.players) do
-            local msg
-            if type(var) == "string" then
-                msg = var
-            else
-                msg = serpent.dump(var, {name = "var", comment = false, sparse = false, sortkeys = true})
-            end
-            player.print(msg)
+        local msg
+        if type(var) == "string" then
+            msg = var
+        else
+            msg = serpent.dump(var, {name = "var", comment = false, sparse = false, sortkeys = true})
         end
+        if player then
+            player.print(msg)
+        else
+            for _, p in pairs(game.players) do
+                p.print(msg)
+            end
+        end
+        log(msg)
     end
 end
 
 local function display_message(player, message, sound)
-    player.create_local_flying_text{position = player.position, text = message}
+    player.surface.create_entity{name = "flying-text", position = player.position, text = message, color = {r=1, g=1, b=1}}
     if sound then
         if sound == "success" then
             player.play_sound{path = "utility/console_message", position = player.position}
@@ -112,11 +117,11 @@ local function format_number(n, append_suffix)
 end
 
 local function format_request(item_config)
-    return (item_config.request and item_config.request > 0) and item_config.request or (item_config.trash and 0) or " "
+    return (item_config.request and item_config.request > 0) and item_config.request or (item_config.trash and 0) or ""
 end
 
 local function format_trash(item_config)
-    return item_config.trash and item_config.trash or (item_config.request > 0 and "∞") or " "
+    return item_config.trash and item_config.trash or (item_config.request > 0 and "∞") or ""
 end
 
 local function convert_from_slider(n)

@@ -4,21 +4,15 @@ local mod_gui = require '__core__/lualib/mod-gui'
 local v = require '__AutoTrash__/semver'
 local lib_control = require '__AutoTrash__/lib_control'
 local GUI = require "__AutoTrash__/gui"
-local presets = require "__AutoTrash__/presets"
 
 local saveVar = lib_control.saveVar
 local debugDump = lib_control.debugDump
 local display_message = lib_control.display_message
-local format_number = lib_control.format_number
-local format_request = lib_control.format_request
-local format_trash = lib_control.format_trash
-local convert_from_slider = lib_control.convert_from_slider
 local set_trash = lib_control.set_trash
 local set_requests = lib_control.set_requests
 local get_requests = lib_control.get_requests
 
 local gui_def = GUI.defines
-local floor = math.floor
 
 local function cleanup_table(tbl, tbl_name)
     if tbl then
@@ -550,7 +544,7 @@ local function on_pre_mined_item(event)
         end
     end)
     if not status then
-        debugDump(err, true)
+        debugDump(err, event.player_index, true)
     end
 end
 
@@ -589,61 +583,6 @@ local function toggle_autotrash_pause_requests(player)
         pause_requests(player)
     end
     GUI.close(player)
-end
-
-local function on_gui_click(event)
-    local status, err = pcall(function()
-        local element = event.element
-        if not (element and element.valid) or element.type == "checkbox" then
-            return
-        end
-        local player_index = event.player_index
-
-        GUI.generic_event(event)
-
-        if not element.valid then return end
-
-        --No gui, nothing to do anymore
-        if not (global.gui_elements.config_frame[player_index] and global.gui_elements.config_frame[player_index]) then
-            return
-        end
-
-        local type, index, _ = string.match(element.name, "autotrash_preset_(%a+)_(%d*)")
-        if type and index then
-            index = tonumber(index)
-            log(serpent.line({t = type, i = index}))
-            if type == "load" then
-                if not event.shift and not event.control then
-                    GUI.restore(player_index, element)
-                else
-                    local selected_presets = global.selected_presets[player_index]
-                    if not selected_presets[element.caption] then
-                        log("merging preset")
-                        selected_presets[element.caption] = true
-                    else
-                        log("unmerging preset")
-                        selected_presets[element.caption] = nil
-                    end
-                    global.config_tmp[player_index] = {config = {}}
-                    for name, _ in pairs(selected_presets) do
-                        global.config_tmp[player_index] = presets.merge(global.config_tmp[player_index], global.storage_new[player_index][name])
-                    end
-                    global.selected[player_index] = false
-                    GUI.update_presets(player_index)
-                    GUI.create_buttons(game.get_player(player_index))
-                    GUI.update_sliders(player_index)
-                end
-            elseif type == "delete" then
-                GUI.remove(player_index, element, index)
-            else
-                error("Unexpected type/index from " .. element.name)
-            end
-            log(serpent.block(global.selected_presets[player_index]))
-        end
-    end)
-    if not status then
-        debugDump(err, true)
-    end
 end
 
 local function on_gui_checked_changed_state(event)
@@ -691,92 +630,7 @@ local function on_gui_checked_changed_state(event)
         end
     end)
     if not status then
-        debugDump(err, true)
-    end
-end
-
-local function on_gui_selection_state_changed(event)
-    local status, err = pcall(function()
-        if not (event.element and event.element.valid) then return end
-        GUI.generic_event(event)
-    end)
-    if not status then
-        debugDump(err, true)
-    end
-end
-
-local function on_gui_elem_changed(event)
-    local status, err = pcall(function()
-        GUI.generic_event(event)
-    end)
-    if not status then
-        debugDump(err, true)
-    end
-end
-
-local max = 2^32-1
-local function update_selected_value(player_index, element, number, check)
-    local n = floor(tonumber(number) or 0)
-    n = n <= max and n or max
-    local flow = element.parent
-    local frame_new = global.gui_elements.config_scroll[player_index]
-    if not (frame_new and frame_new.valid) then return end
-    local grid = frame_new.children[1]
-    local i = global.selected[player_index]
-
-    local button = grid and grid.valid and grid.children[i]
-    if not button or not button.valid or not i then
-        GUI.update_sliders(player_index)
-        return
-    end
-    assert(button.elem_value)--TODO remove
-    global["config_tmp"][player_index].config[i] = global["config_tmp"][player_index].config[i] or {name = false, trash = 0, request = 0}
-    local item_config = global["config_tmp"][player_index].config[i]
-    item_config.name = button.elem_value
-
-    if flow.name == gui_def.config_request then
-        assert(n >= 0, "request has to be a positive number") --TODO remove
-        item_config.request = n
-        button.children[1].caption = format_number(format_request(item_config), true)
-        --prevent trash being set to a lower value than request to prevent infinite robo loop
-        if item_config.trash and n > item_config.trash then
-            item_config.trash = n
-            button.children[2].caption = format_number(format_trash(item_config), true)
-        end
-    elseif flow.name == gui_def.config_trash then
-        if element.type == "slider" and element.slider_value == 42 then
-            n = false
-        end
-        item_config.trash = n
-        button.children[2].caption = format_number(format_trash(item_config), true)
-
-        --prevent trash being set to a lower value than request to prevent infinite robo loop
-        if check and n and item_config.request > n then
-            item_config.request = n
-            button.children[2].caption = format_number(format_request(item_config), true)
-        end
-    end
-    global.dirty[player_index] = true
-    GUI.update_sliders(player_index)
-end
-
-local function on_gui_value_changed(event)
-    if event.element.name ~= gui_def.config_slider then
-        return
-    end
-    if not global.selected[event.player_index] then
-        GUI.update_sliders(event.player_index)
-        return
-    end
-    if event.element.name == gui_def.config_slider then
-        update_selected_value(event.player_index, event.element, convert_from_slider(event.element.slider_value), true)
-    end
-end
-
-local function on_gui_text_changed(event)
-    GUI.generic_event(event)
-    if event.element.name ~= gui_def.config_slider_text then
-        return
+        debugDump(err, event.player_index, true)
     end
 end
 
@@ -798,12 +652,12 @@ local function on_runtime_mod_setting_changed(event)
     end
 end
 
-script.on_event(defines.events.on_gui_click, on_gui_click)
+script.on_event(defines.events.on_gui_click, GUI.generic_event)
 script.on_event(defines.events.on_gui_checked_state_changed, on_gui_checked_changed_state)
-script.on_event(defines.events.on_gui_elem_changed, on_gui_elem_changed)
-script.on_event(defines.events.on_gui_value_changed, on_gui_value_changed)
-script.on_event(defines.events.on_gui_text_changed, on_gui_text_changed)
-script.on_event(defines.events.on_gui_selection_state_changed, on_gui_selection_state_changed)
+script.on_event(defines.events.on_gui_elem_changed, GUI.generic_event)
+script.on_event(defines.events.on_gui_value_changed, GUI.generic_event)
+script.on_event(defines.events.on_gui_text_changed, GUI.generic_event)
+script.on_event(defines.events.on_gui_selection_state_changed, GUI.generic_event)
 script.on_event(defines.events.on_runtime_mod_setting_changed, on_runtime_mod_setting_changed)
 
 local function on_research_finished(event)
@@ -878,6 +732,19 @@ remote.add_interface("at",
             local button = mod_gui.get_button_flow(game.player)[gui_def.main_button]
             if button then
                 button.visible = true
+            end
+        end,
+
+        test = function(max)
+            GUI.close(game.player)
+            for j = 1, max or 1 do
+                local p = game.create_profiler()
+                for i = 1, 100 do
+                    GUI.open_logistics_frame(game.player)
+                    GUI.close(game.player)
+                end
+                p.stop()
+                log{"", p}
             end
         end
     })
