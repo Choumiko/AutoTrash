@@ -8,9 +8,12 @@ local GUI = require "__AutoTrash__/gui"
 local saveVar = lib_control.saveVar
 local debugDump = lib_control.debugDump
 local display_message = lib_control.display_message
-local set_trash = lib_control.set_trash
-local set_requests = lib_control.set_requests
 local get_requests = lib_control.get_requests
+local pause_requests = lib_control.pause_requests
+local pause_trash = lib_control.pause_trash
+local unpause_trash = lib_control.unpause_trash
+local unpause_requests = lib_control.unpause_requests
+local in_network = lib_control.in_network
 
 local gui_def = GUI.defines
 
@@ -31,9 +34,10 @@ local function cleanup_table(tbl, tbl_name)
 end
 
 local function update_item_config(stored)
-    local tmp = {config = {}}
+    local tmp = {config = {}, c_requests = 0}
     local by_name = {}
     local max_slot = 0
+    local c = 0
     for i, p in pairs(stored) do
         tmp.config[i] = {
             name = p.name,
@@ -43,8 +47,13 @@ local function update_item_config(stored)
         }
         by_name[p.name] = tmp.config[i]
         max_slot = max_slot < i and i or max_slot
+        if tmp.config[i].request > 0 then
+            c = c + 1
+        end
         --log(serpent.line(tmp[name].config[i]))
     end
+    tmp.c_requests = c
+    tmp.max_slot = max_slot
     return tmp, max_slot, by_name
 end
 
@@ -83,6 +92,7 @@ local function convert_logistics(stored, stored_trash)
                 tmp.config[i] = s
                 start = i + 1
                 log("Assigning slot " .. serpent.line(s))
+                tmp.max_slot = tmp.max_slot > i and tmp.max_slot or i
                 break
             end
         end
@@ -122,12 +132,12 @@ local function requested_items(player)
 end
 
 local default_settings = {
-    auto_trash_above_requested = false,
-    auto_trash_unrequested = false,
-    auto_trash_in_main_network = false,
+    trash_above_requested = false,
+    trash_unrequested = false,
+    trash_network = false,
     pause_trash = false,
     pause_requests = false,
-    clear_option = 1
+    clear_option = 1,
 }
 
 local gui_elements = {
@@ -180,8 +190,8 @@ if min == 0 and max == 0: unset req, set trash to 0
 local function init_player(player)
     local index = player.index
     global.config[index] = global.config[index] or {}
-    global.config_new[index] = global.config_new[index] or {config = {}}
-    global["config_tmp"][index] = global["config_tmp"][index] or {config = {}}
+    global.config_new[index] = global.config_new[index] or {config = {}, c_requests = 0, max_slot = 0}
+    global.config_tmp[index] = global.config_tmp[index] or {config = {}, c_requests = 0, max_slot = 0}
     global.selected[index] = global.selected[index] or false
 
     global.mainNetwork[index] = false
@@ -263,9 +273,16 @@ local function on_configuration_changed(data)
                         settings.YARM_active_filter = remote.call("YARM", "get_current_filter", pi)
                     end
                     settings.clear_option = settings.clear_option or 1
+                    settings.trash_above_requested = settings.auto_trash_above_requested or false
+                    settings.trash_unrequested = settings.auto_trash_unrequested or false
+                    settings.trash_network = settings.auto_trash_in_main_network or false
 
                     settings.YARM_old_expando = nil
                     settings.options_extended = nil
+
+                    settings.auto_trash_above_requested = nil
+                    settings.auto_trash_unrequested = nil
+                    settings.auto_trash_in_main_network = nil
 
                     log("Cleaning tables")
                     cleanup_table(global.config[pi], "trash table")
@@ -290,7 +307,7 @@ local function on_configuration_changed(data)
 
                     log("Converting storage")
                     global.storage_new[pi] = convert_storage(global.storage[pi])
-
+                    GUI.update_main_button(pi)
                     GUI.open_logistics_frame(player)
                 end
 
@@ -340,61 +357,6 @@ local function on_player_created(event)
     init_player(game.get_player(event.player_index))
 end
 
-local function inMainNetwork(player)
-    if not global.settings[player.index].auto_trash_in_main_network then
-        return true
-    end
-    local currentNetwork = player.character.logistic_network
-    local entity = global.mainNetwork[player.index]
-    if currentNetwork and entity and entity.valid and currentNetwork == entity.logistic_network then
-        return true
-    end
-    return false
-end
-
-local function pause_trash(player)
-    if not player.character then
-        return
-    end
-    global.settings[player.index].pause_trash = true
-    --TODO backup current filters?
-    player.character.auto_trash_filters = {}
-    GUI.update_main_button(player.index)
-end
-
-local function unpause_trash(player)
-    if not player.character then
-        return
-    end
-    global.settings[player.index].pause_trash = false
-    --TODO restore current filters?
-    set_trash(player)
-    GUI.update_main_button(player.index)
-end
-
-local function pause_requests(player)
-    if not player.character then
-        return
-    end
-    global.settings[player.index].pause_requests = true
-    --TODO backup current requests?
-    local character = player.character
-    for c = 1, character.request_slot_count do
-        character.clear_request_slot(c)
-    end
-    GUI.update_main_button(player.index)
-end
-
-local function unpause_requests(player)
-    if not player.character then
-        return
-    end
-    global.settings[player.index].pause_requests = false
-    --TODO restore current requests?
-    set_requests(player)
-    GUI.update_main_button(player.index)
-end
-
 local trash_blacklist = {
     ["blueprint"] = true,
     ["blueprint-book"] = true,
@@ -414,7 +376,8 @@ local function on_player_main_inventory_changed(event)
     --         end
     --     end
     -- end
-    if not global.settings[event.player_index].pause_trash and global.settings[event.player_index].auto_trash_unrequested then
+    local settings = global.settings[event.player_index]
+    if not settings.pause_trash and settings.autotrash_unrequested then
         local player = game.get_player(event.player_index)
         if player.character then
             local trash_filters = player.auto_trash_filters
@@ -481,25 +444,28 @@ local function on_pre_player_died(event)
     local player = game.get_player(event.player_index)
     if player.mod_settings["autotrash_pause_on_death"].value then
         pause_requests(player)
+        GUI.update_main_button(player.index)
     end
 end
 
 local function on_player_changed_position(event)
-    if not global.settings[event.player_index].auto_trash_in_main_network then
+    if not global.settings[event.player_index].autotrash_network then
         return
     end
     local player = game.get_player(event.player_index)
     if player.character then
-        local in_network = inMainNetwork(player)
+        local is_in_network = in_network(player)
         local paused = global.settings[event.player_index].pause_trash
-        if not in_network and not paused then
+        if not is_in_network and not paused then
             pause_trash(player)
+            GUI.update_main_button(player.index)
             if player.mod_settings["autotrash_display_messages"].value then
                 display_message(player, "AutoTrash paused")
             end
             return
-        elseif in_network and paused then
+        elseif is_in_network and paused then
             unpause_trash(player)
+            GUI.update_main_button(player.index)
             if player.mod_settings["autotrash_display_messages"].value then
                 display_message(player, "AutoTrash unpaused")
             end
@@ -573,6 +539,7 @@ local function toggle_autotrash_pause(player)
     else
         pause_trash(player)
     end
+    GUI.update_main_button(player.index)
     GUI.close(player)
 end
 
@@ -582,62 +549,13 @@ local function toggle_autotrash_pause_requests(player)
     else
         pause_requests(player)
     end
+    GUI.update_main_button(player.index)
     GUI.close(player)
-end
-
-local function on_gui_checked_changed_state(event)
-    local status, err = pcall(function()
-        local element = event.element
-
-        local player_index = event.player_index
-        local player = game.get_player(player_index)
-
-        if element.name == gui_def.trash_in_main_network then
-            if element.state and not global.mainNetwork[player_index] then
-                player.print("No main network set")
-                element.state = false
-            else
-                global.settings[player_index].auto_trash_in_main_network = element.state
-                if element.state and inMainNetwork(player) then
-                    unpause_trash(player)
-                end
-            end
-        elseif element.name == gui_def.trash_above_requested then
-            global.settings[player_index].auto_trash_above_requested = element.state
-            if global.settings[player_index].auto_trash_unrequested and not global.settings[player_index].auto_trash_above_requested then
-                global.settings[player_index].auto_trash_above_requested = true
-                element.state = true
-                player.print({"", "'", {"auto-trash-above-requested"}, "' has to be active if '", {"auto-trash-unrequested"}, "' is active"})
-            end
-        elseif element.name == gui_def.trash_unrequested then
-            global.settings[player_index].auto_trash_unrequested = element.state
-            if global.settings[player_index].auto_trash_unrequested then
-                global.settings[player_index].auto_trash_above_requested = true
-                element.parent[gui_def.trash_above_requested].state = true
-            end
-        elseif element.name == gui_def.pause_trash then
-            if element.state then
-                pause_trash(player)
-            else
-                unpause_trash(player)
-            end
-        elseif element.name == gui_def.pause_requests then
-            if element.state then
-                pause_requests(player)
-            else
-                unpause_requests(player)
-            end
-        end
-    end)
-    if not status then
-        debugDump(err, event.player_index, true)
-    end
 end
 
 local gui_settings = {
     ["autotrash_gui_columns"] = true,
     ["autotrash_gui_max_rows"] = true,
-    ["autotrash_slots"] = true,
 }
 local function on_runtime_mod_setting_changed(event)
     if gui_settings[event.setting] then
@@ -653,11 +571,12 @@ local function on_runtime_mod_setting_changed(event)
 end
 
 script.on_event(defines.events.on_gui_click, GUI.generic_event)
-script.on_event(defines.events.on_gui_checked_state_changed, on_gui_checked_changed_state)
+script.on_event(defines.events.on_gui_checked_state_changed, GUI.generic_event)
 script.on_event(defines.events.on_gui_elem_changed, GUI.generic_event)
 script.on_event(defines.events.on_gui_value_changed, GUI.generic_event)
 script.on_event(defines.events.on_gui_text_changed, GUI.generic_event)
 script.on_event(defines.events.on_gui_selection_state_changed, GUI.generic_event)
+
 script.on_event(defines.events.on_runtime_mod_setting_changed, on_runtime_mod_setting_changed)
 
 local function on_research_finished(event)

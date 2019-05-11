@@ -13,6 +13,22 @@ local function set_trash(player)
     end
 end
 
+local function pause_trash(player)
+    if not player.character then
+        return
+    end
+    global.settings[player.index].pause_trash = true
+    player.character.auto_trash_filters = {}
+end
+
+local function unpause_trash(player)
+    if not player.character then
+        return
+    end
+    global.settings[player.index].pause_trash = false
+    set_trash(player)
+end
+
 local function set_requests(player)
     if player.character then
         local character = player.character
@@ -47,6 +63,37 @@ local function get_requests(player)
         end
     end
     return requests, max_slot
+end
+
+local function pause_requests(player)
+    if not player.character then
+        return
+    end
+    global.settings[player.index].pause_requests = true
+    local character = player.character
+    for c = 1, character.request_slot_count do
+        character.clear_request_slot(c)
+    end
+end
+
+local function unpause_requests(player)
+    if not player.character then
+        return
+    end
+    global.settings[player.index].pause_requests = false
+    set_requests(player)
+end
+
+local function in_network(player)
+    if not global.settings[player.index].autotrash_network then
+        return true
+    end
+    local currentNetwork = player.character.logistic_network
+    local entity = global.mainNetwork[player.index]
+    if currentNetwork and entity and entity.valid and currentNetwork == entity.logistic_network then
+        return true
+    end
+    return false
 end
 
 local function saveVar(var, name)
@@ -169,8 +216,13 @@ local M = {
     convert_to_slider = convert_to_slider,
     convert_from_slider = convert_from_slider,
     set_trash = set_trash,
+    pause_trash = pause_trash,
+    unpause_trash = unpause_trash,
     set_requests = set_requests,
-    get_requests = get_requests
+    get_requests = get_requests,
+    pause_requests = pause_requests,
+    unpause_requests = unpause_requests,
+    in_network = in_network
 }
 
 return M

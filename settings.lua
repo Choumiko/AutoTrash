@@ -27,7 +27,7 @@ data:extend({
         type = "int-setting",
         name = prefix .. "slots",
         setting_type = "runtime-per-user",
-        default_value = 36,
+        default_value = 6,
         minimum_value = 2,
         order = "e"
     },
