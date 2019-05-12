@@ -396,17 +396,16 @@ end
 
 local function on_player_trash_inventory_changed(event)
     local player = game.get_player(event.player_index)
-    local inventory = player.get_main_inventory()
+    local main_inventory_count = player.get_main_inventory().get_item_count
     local trash_filters = player.auto_trash_filters
     local requests = requested_items(player)
     local desired, changed
     for name, saved_count in pairs(global.temporaryTrash[player.index]) do
         if trash_filters[name] then
              desired = requests[name] and requests[name] or 0
-            if inventory.get_item_count(name) <= desired then
-                player.print({"", "removed ", game.item_prototypes[name].localised_name, " from temporary trash"})
-                log("Removed ".. name .. " " .. serpent.block(event))
-                trash_filters[name] = tonumber(saved_count)
+            if main_inventory_count(name) <= desired then
+                player.print({"", "Removed ", game.item_prototypes[name].localised_name, " from temporary trash"})
+                trash_filters[name] = saved_count >= 0 and saved_count or nil
                 global.temporaryTrash[player.index][name] = nil
                 changed = true
             end
@@ -424,7 +423,7 @@ local function add_to_trash(player, item)
         display_message(player, {"", game.item_prototypes[item].localised_name, " is on the blacklist for trashing"}, true)
         return
     end
-    global.temporaryTrash[player_index][item] = player.auto_trash_filters[item] or true --true: wasn't set, remove when cleaning temporaryTrash
+    global.temporaryTrash[player_index][item] = player.auto_trash_filters[item] or -1 ---1: wasn't set, remove when cleaning temporaryTrash
     local trash_filters = player.auto_trash_filters
     local requests = requested_items(player)
     if not trash_filters[item] then

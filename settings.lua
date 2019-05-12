@@ -50,7 +50,7 @@ data:extend({
         type = "bool-setting",
         name = prefix .. "reset_on_close",
         setting_type = "runtime-per-user",
-        default_value = true,
+        default_value = false,
         order = "h"
     },
         {
@@ -67,11 +67,4 @@ data:extend({
         default_value = false,
         order = "j"
     },
-    -- {
-    --     type = "bool-setting",
-    --     name = prefix .. "free_wires",
-    --     setting_type = "runtime-global",
-    --     default_value = false,
-    --     order = "a"
-    -- }
 })

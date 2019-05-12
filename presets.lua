@@ -5,13 +5,13 @@ local presets = {}
 --if one preset has trash set to false it is set to a non false value
 --slot from current are kept
 function presets.merge(current, preset)
-    local result = util.table.deepcopy(current)
+    local result = current.config
     local b = util.table.deepcopy(preset)
     local no_slot = {}
     local tmp
-    local max_slot = 0
+    local max_slot = current.max_slot
 
-    for j, result_config in pairs(result.config) do
+    for j, result_config in pairs(result) do
         tmp = result_config
         for i, config in pairs(b.config) do
             if config.name == result_config.name then
@@ -24,10 +24,11 @@ function presets.merge(current, preset)
             end
         end
     end
+    --preserve slot number if possible
     for i, config in pairs(b.config) do
         assert(i==config.slot)
-        if not result.config[config.slot] then
-            result.config[config.slot] = config
+        if not result[config.slot] then
+            result[config.slot] = config
         else
             no_slot[#no_slot + 1] = config
         end
@@ -38,16 +39,18 @@ function presets.merge(current, preset)
     --log(max_slot .. " " .. #no_slot)
     for _, s in pairs(no_slot) do
         for i = start, max_slot + #no_slot do
-            if not result.config[i] then
+            if not result[i] then
                 s.slot = i
-                result.config[i] = s
+                result[i] = s
                 start = i + 1
+                max_slot = max_slot > i and max_slot or i
                 break
             end
         end
     end
     --log(serpent.block(result, {name="test"}))
-    return result
+    current.max_slot = max_slot
+    return current, max_slot
 end
 
 return presets
