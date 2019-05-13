@@ -28,7 +28,7 @@ end
 local function combine_from_vanilla(player_index)
     local player = game.get_player(player_index)
     if not player.character then return end
-    local tmp = {config = {}}
+    local tmp = {config = {}, max_slot = 0}
     local requests, max_slot = get_requests(player)
     local trash = player.auto_trash_filters
     log(serpent.block(trash))
@@ -58,10 +58,12 @@ local function combine_from_vanilla(player_index)
                 s.slot = i
                 tmp.config[i] = s
                 start = i + 1
+                max_slot = max_slot > i and max_slot or i
                 break
             end
         end
     end
+    tmp.max_slot = max_slot
     saveVar(tmp, "combined")
     log(serpent.block(tmp))
     return tmp
@@ -478,6 +480,15 @@ local gui_functions = {
         GUI.update_main_button(player_index)
     end,
 
+    toggle_trash_above_requested = function(event, player_index)
+        if event.name ~= defines.events.on_gui_checked_state_changed then return end
+        local settings = global.settings[player_index]
+        settings[event.element.name] = event.element.state
+        if not settings.pause_trash then
+            set_trash(game.get_player(player_index))
+        end
+    end,
+
     toggle_trash_option = function(event, player_index)
         if event.name ~= defines.events.on_gui_checked_state_changed then return end
         global.settings[player_index][event.element.name] = event.element.state
@@ -890,6 +901,7 @@ function GUI.open_logistics_frame(player)
 
     local scroll_pane = config_flow_h.add{
         type = "scroll-pane",
+        vertical_scroll_policy = "auto-and-reserve-space"
     }
     scroll_pane.style.maximal_height = 38 * player.mod_settings["autotrash_gui_max_rows"].value + 6
     global.gui_elements.config_scroll[player_index] = scroll_pane
@@ -1052,7 +1064,7 @@ function GUI.open_logistics_frame(player)
                             caption = {"auto-trash-above-requested"},
                             state = settings[GUI.defines.trash_above_requested]
                         },
-                        {type = "toggle_trash_option"})
+                        {type = "toggle_trash_above_requested"})
 
     GUI.register_action(trash_options.add{
                             type = "checkbox",

@@ -216,13 +216,68 @@ local function init_players(resetGui)
     end
 end
 
-local function on_init()
-    log("on_init")
-    init_global()
+--TODO: bad event for removing temporaryTrash, since it's probably used rarely and trash inventory changes quite frequently
+--for now, only check if the trash inventory got emptied
+--ideally only subscribe if any player has something in temporaryTrash
+local function on_player_trash_inventory_changed(event)
+    local p_o = game.create_profiler()
+    local player = game.get_player(event.player_index)
+    if not player.get_inventory(defines.inventory.character_trash).is_empty() then
+        log{"", "bail: ", p_o}
+        return
+    end
+    log{"", "After check: ", p_o}
+    local main_inventory_count = player.get_main_inventory().get_item_count
+    local trash_filters = player.auto_trash_filters
+    local requests = requested_items(player)
+    local desired, changed
+    for name, saved_count in pairs(global.temporaryTrash[player.index]) do
+        if trash_filters[name] then
+             desired = requests[name] and requests[name] or 0
+            if main_inventory_count(name) <= desired then
+                player.print({"", "Removed ", game.item_prototypes[name].localised_name, " from temporary trash"})
+                trash_filters[name] = saved_count >= 0 and saved_count or nil
+                global.temporaryTrash[player.index][name] = nil
+                changed = true
+            end
+        end
+    end
+    if changed then
+        player.auto_trash_filters = trash_filters
+        for _, trash in pairs(global.temporaryTrash) do
+            if next(trash) then
+                --some player has stuff in temporaryTrash, don't unregister the event
+                return
+            end
+        end
+        log("unregistering on_player_trash_inventory_changed")
+        script.on_event(defines.events.on_player_trash_inventory_changed, nil)
+    end
+    log{"", "End: ", p_o}
+end
+
+local function register_conditional_events()
+    for _, trash in pairs(global.temporaryTrash) do
+        if next(trash) then
+            --some player has stuff in temporaryTrash, register the event
+            log("registering on_player_trash_inventory_changed")
+            script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
+            return
+        end
+    end
+    log("not registering on_player_trash_inventory_changed")
+    script.on_event(defines.events.on_player_trash_inventory_changed, nil)
 end
 
 local function on_load()
     log("on_load")
+    register_conditional_events()
+end
+
+local function on_init()
+    log("on_init")
+    init_global()
+    on_load()
 end
 
 local function on_pre_player_removed(event)
@@ -232,6 +287,7 @@ local function on_pre_player_removed(event)
             global[name][event.player_index] = nil
         end
     end
+    register_conditional_events()
 end
 
 local function on_configuration_changed(data)
@@ -305,6 +361,9 @@ local function on_configuration_changed(data)
                     global.config_new[pi] = convert_logistics(paused_requests, global.config[pi])
                     global.config_tmp[pi] = util.table.deepcopy(global.config_new[pi])
 
+                    global.temporaryRequests[pi] = {}
+                    global.temporaryTrash[pi] = {}
+
                     log("Converting storage")
                     global.storage_new[pi] = convert_storage(global.storage[pi])
                     GUI.update_main_button(pi)
@@ -331,6 +390,7 @@ local function on_configuration_changed(data)
 
     init_global()
     init_players()
+    on_load()
     local items = game.item_prototypes
 
     for _, p in pairs(global.config_new) do
@@ -377,41 +437,20 @@ local function on_player_main_inventory_changed(event)
     --     end
     -- end
     local settings = global.settings[event.player_index]
-    if not settings.pause_trash and settings.autotrash_unrequested then
-        local player = game.get_player(event.player_index)
-        if player.character then
-            local trash_filters = player.auto_trash_filters
-            local contents = player.get_main_inventory().get_contents()
-            local requests = get_requests(player)
-            local protos = game.item_prototypes
-            for name, _ in pairs(contents) do
-                if not requests[name] and not trash_filters[name]  and not trash_blacklist[protos[name].type] then
-                    trash_filters[name] = 0
-                end
-            end
-            player.auto_trash_filters = trash_filters
-        end
-    end
-end
-
-local function on_player_trash_inventory_changed(event)
     local player = game.get_player(event.player_index)
-    local main_inventory_count = player.get_main_inventory().get_item_count
-    local trash_filters = player.auto_trash_filters
-    local requests = requested_items(player)
-    local desired, changed
-    for name, saved_count in pairs(global.temporaryTrash[player.index]) do
-        if trash_filters[name] then
-             desired = requests[name] and requests[name] or 0
-            if main_inventory_count(name) <= desired then
-                player.print({"", "Removed ", game.item_prototypes[name].localised_name, " from temporary trash"})
-                trash_filters[name] = saved_count >= 0 and saved_count or nil
-                global.temporaryTrash[player.index][name] = nil
-                changed = true
+    if not player.character then return end
+    --that's a bad event to handle unrequested, since adding stuff to the trash filters immediately triggers the next on_main_inventory_changed event
+    -- on_nth_tick might work better
+    if not settings.pause_trash and settings.autotrash_unrequested then
+        local trash_filters = player.auto_trash_filters
+        local contents = player.get_main_inventory().get_contents()
+        local requests = get_requests(player)
+        local protos = game.item_prototypes
+        for name, _ in pairs(contents) do
+            if not requests[name] and not trash_filters[name]  and not trash_blacklist[protos[name].type] then
+                trash_filters[name] = 0
             end
         end
-    end
-    if changed then
         player.auto_trash_filters = trash_filters
     end
 end
@@ -423,14 +462,16 @@ local function add_to_trash(player, item)
         display_message(player, {"", game.item_prototypes[item].localised_name, " is on the blacklist for trashing"}, true)
         return
     end
-    global.temporaryTrash[player_index][item] = player.auto_trash_filters[item] or -1 ---1: wasn't set, remove when cleaning temporaryTrash
     local trash_filters = player.auto_trash_filters
-    local requests = requested_items(player)
+    global.temporaryTrash[player_index][item] = trash_filters[item] or -1 ---1: wasn't set, remove when cleaning temporaryTrash
     if not trash_filters[item] then
+        local requests = requested_items(player)
         trash_filters[item] = requests[item] or 0
         log(serpent.block(trash_filters))
         player.auto_trash_filters = trash_filters
     end
+    log("registering trash inventory changed")
+    script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
     player.print({"", "Added ", game.item_prototypes[item].localised_name, " to temporary trash"})
 end
 
@@ -477,7 +518,6 @@ script.on_load(on_load)
 script.on_configuration_changed(on_configuration_changed)
 script.on_event(defines.events.on_player_created, on_player_created)
 script.on_event(defines.events.on_player_main_inventory_changed, on_player_main_inventory_changed)
-script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
 
 script.on_event(defines.events.on_player_toggled_map_editor, on_player_toggled_map_editor)
 script.on_event(defines.events.on_pre_player_removed, on_pre_player_removed)
@@ -658,8 +698,11 @@ remote.add_interface("at",
             for j = 1, max or 1 do
                 local p = game.create_profiler()
                 for i = 1, 100 do
-                    GUI.open_logistics_frame(game.player)
-                    GUI.close(game.player)
+                    if not game.player.get_inventory(defines.inventory.character_trash).is_empty() then--luacheck:ignore
+
+                    end
+                    -- GUI.open_logistics_frame(game.player)
+                    -- GUI.close(game.player)
                 end
                 p.stop()
                 log{"", p}

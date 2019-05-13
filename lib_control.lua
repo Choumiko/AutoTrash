@@ -1,49 +1,57 @@
 local floor = math.floor
 
 local function set_trash(player)
-    if player.character then
-        local trash_filters = {}
-        --TODO ensure trash >= requests
-        for _, item_config in pairs(global.config_new[player.index].config) do
+    if not player.character then return end
+    local trash_filters = {}
+    local player_index = player.index
+    --TODO ensure trash >= requests
+    if global.settings[player_index].trash_above_requested then
+        local threshold = player.mod_settings["autotrash_trash_above_requested_threshold"].value
+        local amount
+        for i, item_config in pairs(global.config_new[player_index].config) do
+            if item_config.trash or item_config.request > 0 then
+                amount = item_config.request + threshold
+                trash_filters[item_config.name] = (amount > (item_config.trash or 0)) and amount or item_config.trash
+            end
+        end
+    else
+        for _, item_config in pairs(global.config_new[player_index].config) do
             if item_config.trash then
+                assert(item_config.trash >= item_config.request, serpent.line(item_config))--TODO: remove
                 trash_filters[item_config.name] = item_config.trash
             end
         end
-        player.auto_trash_filters = trash_filters
     end
+
+    player.auto_trash_filters = trash_filters
 end
 
 local function pause_trash(player)
-    if not player.character then
-        return
-    end
+    if not player.character then return end
     global.settings[player.index].pause_trash = true
     player.character.auto_trash_filters = {}
 end
 
 local function unpause_trash(player)
-    if not player.character then
-        return
-    end
+    if not player.character then return end
     global.settings[player.index].pause_trash = false
     set_trash(player)
 end
 
 local function set_requests(player)
-    if player.character then
-        local character = player.character
-        local storage = global.config_new[player.index].config
-        local set_request_slot = character.set_request_slot
-        local clear_request_slot = character.clear_request_slot
-        local req
+    if not player.character then return end
+    local character = player.character
+    local storage = global.config_new[player.index].config
+    local set_request_slot = character.set_request_slot
+    local clear_request_slot = character.clear_request_slot
+    local req
 
-        for c = 1, character.request_slot_count do
-            req = storage[c]
-            if req then
-                set_request_slot({name = req.name, count = req.request}, c)
-            else
-                clear_request_slot(c)
-            end
+    for c = 1, character.request_slot_count do
+        req = storage[c]
+        if req then
+            set_request_slot({name = req.name, count = req.request}, c)
+        else
+            clear_request_slot(c)
         end
     end
 end
