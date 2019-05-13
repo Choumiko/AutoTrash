@@ -5,7 +5,38 @@ data:extend({
         name = prefix .. "pause_on_death",
         setting_type = "runtime-per-user",
         default_value = true,
+        order = "a"
+    },
+    {
+        type = "bool-setting",
+        name = prefix .. "overwrite",
+        setting_type = "runtime-per-user",
+        default_value = false,
         order = "b"
+    },
+    {
+        type = "bool-setting",
+        name = prefix .. "reset_on_close",
+        setting_type = "runtime-per-user",
+        default_value = false,
+        order = "c"
+    },
+    {
+        type = "bool-setting",
+        name = prefix .. "close_on_apply",
+        setting_type = "runtime-per-user",
+        default_value = true,
+        order = "d"
+    },
+    {
+        type = "int-setting",
+        name = prefix .. "threshold",
+        setting_type = "runtime-per-user",
+        default_value = 0,
+        minimum_value = 0,
+        maximum_value = 4294967295,--2^32-1
+        order = "e",
+        localised_description = {"autotrash_threshold", {"auto-trash-above-requested"}}
     },
     {
         type = "int-setting",
@@ -13,7 +44,7 @@ data:extend({
         setting_type = "runtime-per-user",
         default_value = 6,
         minimum_value = 1,
-        order = "c"
+        order = "x"
     },
     {
         type = "int-setting",
@@ -21,50 +52,13 @@ data:extend({
         setting_type = "runtime-per-user",
         default_value = 6,
         minimum_value = 1,
-        order = "d"
-    },
-    {
-        type = "int-setting",
-        name = prefix .. "slots",
-        setting_type = "runtime-per-user",
-        default_value = 6,
-        minimum_value = 2,
-        order = "e"
-    },
-    {
-        type = "int-setting",
-        name = prefix .. "trash_above_requested_threshold",
-        setting_type = "runtime-per-user",
-        default_value = 0,
-        minimum_value = 0,
-        order = "f"
+        order = "y"
     },
     {
         type = "bool-setting",
         name = prefix .. "display_messages",
         setting_type = "runtime-per-user",
         default_value = true,
-        order = "g"
-    },
-    {
-        type = "bool-setting",
-        name = prefix .. "reset_on_close",
-        setting_type = "runtime-per-user",
-        default_value = false,
-        order = "h"
-    },
-        {
-        type = "bool-setting",
-        name = prefix .. "close_on_apply",
-        setting_type = "runtime-per-user",
-        default_value = true,
-        order = "i"
-    },
-    {
-        type = "bool-setting",
-        name = prefix .. "overwrite",
-        setting_type = "runtime-per-user",
-        default_value = false,
-        order = "j"
+        order = "z"
     },
 })

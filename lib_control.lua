@@ -4,9 +4,8 @@ local function set_trash(player)
     if not player.character then return end
     local trash_filters = {}
     local player_index = player.index
-    --TODO ensure trash >= requests
     if global.settings[player_index].trash_above_requested then
-        local threshold = player.mod_settings["autotrash_trash_above_requested_threshold"].value
+        local threshold = player.mod_settings["autotrash_threshold"].value
         local amount
         for i, item_config in pairs(global.config_new[player_index].config) do
             if item_config.trash or item_config.request > 0 then
@@ -18,7 +17,7 @@ local function set_trash(player)
         for _, item_config in pairs(global.config_new[player_index].config) do
             if item_config.trash then
                 assert(item_config.trash >= item_config.request, serpent.line(item_config))--TODO: remove
-                trash_filters[item_config.name] = item_config.trash
+                trash_filters[item_config.name] = (item_config.trash > item_config.request) and item_config.trash or item_config.request
             end
         end
     end

@@ -97,6 +97,7 @@ local GUI = {--luacheck: allow defined top
         trash_network = "trash_network",
         pause_trash = "autotrash_pause_trash",
         pause_requests = "autotrash_pause_requests",
+        network_button = "network_button",
 
         config_request = "at_config_request",
         config_trash = "at_config_trash",
@@ -287,7 +288,7 @@ local gui_functions = {
         GUI.update_presets(player_index)
     end,
 
-    set_main_network = function(event, player_index)
+    set_main_network = function(_, player_index)
         local player = game.get_player(player_index)
         if global.mainNetwork[player_index] then
             global.mainNetwork[player_index] = false
@@ -301,7 +302,7 @@ local gui_functions = {
                 display_message(player, {"auto-trash-not-in-network"}, true)
             end
         end
-        event.element.caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+        GUI.update_settings(player_index)
     end,
 
     import_from_vanilla = function(_, player_index)
@@ -419,7 +420,9 @@ local gui_functions = {
         if event.name ~= defines.events.on_gui_text_changed and event.name ~= defines.events.on_gui_value_changed then return end
         local selected = global.selected[player_index]
         local item_config = global.config_tmp[player_index].config[selected]
-        assert(item_config.name, "item config without name")--TODO: remove
+        if not selected or not item_config then
+            error("Request amount changed without a selected item")
+        end
         local number
         if event.name == defines.events.on_gui_text_changed then
             number = tonumber_max(event.element.text) or 0
@@ -647,6 +650,7 @@ function GUI.update_settings(player_index)
     frame[GUI.defines.trash_network].state = settings.trash_network
     frame[GUI.defines.pause_trash].state = settings.pause_trash
     frame[GUI.defines.pause_requests].state = settings.pause_requests
+    frame[GUI.defines.network_button].caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
 end
 
 function GUI.delete(player_index)
@@ -685,7 +689,9 @@ function GUI.update_sliders(player_index)
     if not (slider_flow and slider_flow.valid) then return end
 
     local item_config = global.config_tmp[player_index].config[global.selected[player_index]]
-    assert(item_config)--TODO: remove
+    if not global.selected[player_index] or not item_config then
+        error("Update sliders without a selected item")
+    end
     local visible = item_config and true or false
     for _, child in pairs(slider_flow.children) do
         child.visible = visible
@@ -876,7 +882,7 @@ function GUI.open_logistics_frame(player)
     hide_yarm(player_index)
     local left = mod_gui.get_frame_flow(player)
 
-    assert(not global.selected[player_index])--TODO: remove
+    global.selected[player_index] = false
 
     local frame = left.add{
         type = "frame",
@@ -1102,6 +1108,7 @@ function GUI.open_logistics_frame(player)
 
     GUI.register_action(trash_options.add{
                 type = "button",
+                name = GUI.defines.network_button,
                 caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
                 },
                 {type = "set_main_network"}
