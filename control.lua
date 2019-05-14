@@ -139,21 +139,6 @@ local default_settings = {
     clear_option = 1,
 }
 
-local gui_elements = {
-    main_button = {},
-    config_frame = {},
-    config_scroll = {},
-    slider_flow = {},
-    trash_options = {},
-    reset_button = {},
-    clear_option = {},
-
-    storage_frame = {},
-    storage_textfield = {},
-    storage_grid = {},
-}
-
-
 local function init_global()
     global = global or {}
     global["config"] = global["config"] or {}
@@ -171,7 +156,7 @@ local function init_global()
     global.selected_presets = global.selected_presets or {}
 
     global.gui_actions = global.gui_actions or {}
-    global.gui_elements = global.gui_elements or gui_elements
+    global.gui_elements = global.gui_elements or {}
 end
 
 local function init_player(player)
@@ -191,6 +176,7 @@ local function init_player(player)
     global.selected_presets[index] = global.selected_presets[index] or {}
 
     global.gui_actions[index] = global.gui_actions[index] or {}
+    global.gui_elements[index] = global.gui_elements[index] or {}
     GUI.init(player)
 end
 
@@ -262,12 +248,9 @@ local function on_pre_player_removed(event)
     local player_index = event.player_index
     log("Removing invalid player index " .. player_index)
     for name, _ in pairs(global) do
-        if name ~= "version" and name ~= "gui_elements" then
+        if name ~= "version" then
             global[name][player_index] = nil
         end
-    end
-    for name, _ in pairs(global.gui_elements) do
-        global.gui_elements[name][player_index] = nil
     end
     register_conditional_events()
 end
@@ -710,14 +693,14 @@ local at_commands = {
     end,
 
     hide = function(args)
-        local button = global.gui_elements.main_button[args.player_index]
+        local button = global.gui_elements[args.player_index].main_button
         if button and button.valid then
             button.visible = false
         end
     end,
 
     show = function(args)
-        local button = global.gui_elements.main_button[args.player_index]
+        local button = global.gui_elements[args.player_index].main_button
         if button and button.valid then
             button.visible = true
         end
