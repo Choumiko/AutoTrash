@@ -368,9 +368,7 @@ local function on_configuration_changed(data)
                         p.max_slot = false
                     end
                 else
-                    if not p.max_slot then
-                        p.max_slot = i
-                    end
+                    p.max_slot = p.max_slot or i
                 end
             end
         end
@@ -381,14 +379,14 @@ local function on_configuration_changed(data)
             if item_config then
                 if not items[item_config.name] then
                     p.config[i] = nil
-                    p.max_slot = false
+                    if p.max_slot == i then
+                        p.max_slot = false
+                    end
                     if global.selected[pi] and global.selected[pi] == i then
                         global.selected[pi] = false
                     end
                 else
-                    if not p.max_slot then
-                        p.max_slot = i
-                    end
+                    p.max_slot = p.max_slot or i
                 end
             end
         end
@@ -405,12 +403,12 @@ local function on_configuration_changed(data)
                         log("Removing missing item '" .. item_config.name .. "' from preset '" .. name .. "'")
                         removed_config[item_config.name] = util.table.deepcopy(item_config)
                         found = true
-                        p.max_slot = false
+                        if p.max_slot == i then
+                            p.max_slot = false
+                        end
                         p.config[i] = nil
                     else
-                        if not p.max_slot then
-                            p.max_slot = i
-                        end
+                        p.max_slot = p.max_slot or i
                     end
                 end
             end
