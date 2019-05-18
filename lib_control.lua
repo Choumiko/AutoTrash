@@ -41,16 +41,33 @@ local function set_requests(player)
     if not player.character then return end
     local character = player.character
     local storage = global.config_new[player.index].config
+    local slot_count = character.request_slot_count
     local set_request_slot = character.set_request_slot
     local clear_request_slot = character.clear_request_slot
     local req
-
-    for c = 1, character.request_slot_count do
-        req = storage[c]
-        if req then
-            set_request_slot({name = req.name, count = req.request}, c)
-        else
-            clear_request_slot(c)
+    for i = 1, slot_count do
+        clear_request_slot(i)
+    end
+    if global.config_new[player.index].max_slot <= slot_count then
+        for c = 1, slot_count do--TODO: that's bullshit, skips configured items in lower slots
+            req = storage[c]
+            if req then
+                set_request_slot({name = req.name, count = req.request}, c)
+            end
+        end
+    --ignore configured slot order for now, i could set the matching slots first and iterate a second time..
+    else
+        local c = 1
+        for i, item in pairs(storage) do
+            if c > slot_count then
+                log("Too many requests")
+                return
+            end
+            log(c .. " " .. serpent.line(item))
+            if item.request > 0 then
+                set_request_slot({name = item.name, count = item.request}, c)
+                c = c + 1
+            end
         end
     end
 end
@@ -60,6 +77,7 @@ local function get_requests(player)
         return {}
     end
     local requests = {}
+    local count = 0
     local get_request_slot = player.character.get_request_slot
     local t, max_slot
     for c = player.character.request_slot_count, 1, -1 do
@@ -67,9 +85,10 @@ local function get_requests(player)
         if t then
             max_slot = not max_slot and c or max_slot
             requests[t.name] = {name = t.name, request = t.count, slot = c}
+            count = t.count > 0 and count + 1 or count
         end
     end
-    return requests, max_slot
+    return requests, max_slot, count
 end
 
 local function pause_requests(player)

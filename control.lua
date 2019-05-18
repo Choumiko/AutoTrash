@@ -363,6 +363,9 @@ local function on_configuration_changed(data)
             item_config = p.config[i]
             if item_config then
                 if not items[item_config.name] then
+                    if p.config[i].request > 0 then
+                        p.c_requests = p.c_requests - 1
+                    end
                     p.config[i] = nil
                     if i == p.max_slot then
                         p.max_slot = false
@@ -378,6 +381,9 @@ local function on_configuration_changed(data)
             item_config = p.config[i]
             if item_config then
                 if not items[item_config.name] then
+                    if p.config[i].request > 0 then
+                        p.c_requests = p.c_requests - 1
+                    end
                     p.config[i] = nil
                     if p.max_slot == i then
                         p.max_slot = false
@@ -405,6 +411,9 @@ local function on_configuration_changed(data)
                         found = true
                         if p.max_slot == i then
                             p.max_slot = false
+                        end
+                        if p.config[i].request > 0 then
+                            p.c_requests = p.c_requests - 1
                         end
                         p.config[i] = nil
                     else
@@ -718,6 +727,22 @@ remote.add_interface("at",
 
         init_gui = function()
             GUI.init(game.player)
+        end,
+
+        logistic = function()
+            -- local function get_name(m)
+            --     for k, value in pairs(defines.logistic_mode) do
+            --         if m == value then
+            --             return k
+            --         end
+            --     end
+
+            -- end
+            local req = game.player.character.get_logistic_point(defines.logistic_member_index.character_requester) --requests of the player
+            log(serpent.block(req.targeted_items_deliver))-- items on the way
+            log(serpent.block(game.player.character.logistic_network.get_contents())) --network the player is in
+            --log(serpent.block(req.filters))
+
         end,
 
         test = function(max)

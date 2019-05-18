@@ -29,7 +29,7 @@ local function combine_from_vanilla(player_index)
     local player = game.get_player(player_index)
     if not player.character then return end
     local tmp = {config = {}, max_slot = 0}
-    local requests, max_slot = get_requests(player)
+    local requests, max_slot, c_requests = get_requests(player)
     local trash = player.auto_trash_filters
     log(serpent.block(trash))
 
@@ -64,6 +64,7 @@ local function combine_from_vanilla(player_index)
         end
     end
     tmp.max_slot = max_slot
+    tmp.c_requests = c_requests
     saveVar(tmp, "combined")
     log(serpent.block(tmp))
     return tmp
@@ -325,6 +326,9 @@ local gui_functions = {
                 log("Clear button")
                 assert(params.slot ~= old_selected)
                 log(serpent.block(params))
+                if config_tmp.config[params.slot].request > 0 then
+                    config_tmp.c_requests = config_tmp.c_requests - 1
+                end
                 config_tmp.config[params.slot] = nil
                 GUI.destroy_create_button(player_index, event.element.parent, params.slot, old_selected)
                 GUI.mark_dirty(player_index)
@@ -408,6 +412,9 @@ local gui_functions = {
                         trash = false, slot = params.slot
                     }
                     config_tmp.max_slot = params.slot > config_tmp.max_slot and params.slot or config_tmp.max_slot
+                    if config_tmp.config[params.slot].request > 0 then
+                        config_tmp.c_requests = config_tmp.c_requests + 1
+                    end
                     GUI.mark_dirty(player_index)
                     GUI.update_sliders(player_index)
                     GUI.update_button(player_index, params.slot, params.slot, event.element)
@@ -422,6 +429,9 @@ local gui_functions = {
             elseif params.item then
                 log("Clear button2")
                 assert(params.slot == old_selected)
+                if config_tmp.config[params.slot].request > 0 then
+                    config_tmp.c_requests = config_tmp.c_requests - 1
+                end
                 config_tmp.config[params.slot] = nil
                 GUI.mark_dirty(player_index)
                 GUI.hide_sliders(player_index)
@@ -444,6 +454,7 @@ local gui_functions = {
             return
         end
         log("max_slot: " .. config_tmp.max_slot)
+        log("c_requests: " .. config_tmp.c_requests)
     end,
 
     request_amount_changed = function(event, player_index, _)
@@ -460,18 +471,20 @@ local gui_functions = {
         elseif event.name == defines.events.on_gui_value_changed then
             number = tonumber_max(convert_from_slider(event.element.slider_value)) or 0
         end
-        assert(number ~= item_config.request, "Request didn't change")
-        if item_config.request == 0 then
-            config_tmp.c_request = config_tmp.c_request + 1
-        elseif number == 0 then
-            config_tmp.c_request = config_tmp.c_request - 1
-            assert(config_tmp.c_request >= 0, "Negative number of requests")
+        if number == item_config.request then return end
+        if item_config.request == 0 and number > 0 then
+            config_tmp.c_requests = config_tmp.c_requests + 1
+        end
+        if item_config.request > 0 and number == 0 then
+            config_tmp.c_requests = config_tmp.c_requests - 1
+            assert(config_tmp.c_requests >= 0, "Negative number of requests")
         end
         item_config.request = number
         --prevent trash being set to a lower value than request to prevent infinite robo loop
         if item_config.trash and number > item_config.trash then
             item_config.trash = number
         end
+        log(config_tmp.c_requests)
         GUI.mark_dirty(player_index)
         GUI.update_button(player_index, selected, selected)
         GUI.update_sliders(player_index)
@@ -480,7 +493,8 @@ local gui_functions = {
     trash_amount_changed = function(event, player_index, _)
         if event.name ~= defines.events.on_gui_text_changed and event.name ~= defines.events.on_gui_value_changed then return end
         local selected = global.selected[player_index]
-        local item_config = global.config_tmp[player_index].config[selected]
+        local config_tmp = global.config_tmp[player_index]
+        local item_config = config_tmp.config[selected]
         assert(item_config.name, "item config without name")
         local number
         if event.name == defines.events.on_gui_text_changed then
@@ -492,10 +506,14 @@ local gui_functions = {
                 number = tonumber_max(convert_from_slider(event.element.slider_value)) or false
             end
             if number and item_config.request > number then
+                if item_config.request > 0 and number == 0 then
+                    config_tmp.c_requests = config_tmp.c_requests - 1
+                end
                 item_config.request = number
             end
         end
         item_config.trash = number
+        log(config_tmp.c_requests)
         GUI.mark_dirty(player_index)
         GUI.update_button(player_index, selected, selected)
         GUI.update_sliders(player_index)
