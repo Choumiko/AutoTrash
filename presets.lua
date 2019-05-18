@@ -1,5 +1,16 @@
 local presets = {}
 
+local function log_blueprint_entities(ents)
+    for i, ent in pairs(ents) do
+        log(serpent.line({entity_number = ent.entity_number, position = ent.position}))
+        if ent.control_behavior then
+            for j, item in pairs(ent.control_behavior.filters) do
+                log("\t" .. serpent.line(item))
+            end
+        end
+    end
+end
+
 --merge 2 presets,
 --requests and trash are set to max(current, preset)
 --if one preset has trash set to false it is set to a non false value
@@ -51,6 +62,82 @@ function presets.merge(current, preset)
     --log(serpent.block(result, {name="test"}))
     current.max_slot = max_slot
     return current, max_slot
+end
+
+local ceil = math.ceil
+--creates a blueprint with 2 rows of constant combinators
+--first row for requests, second for trash (signal omitted when no trash value is set)
+--preserves slot order, empty combinators are not included
+-- for importing, slot can be recalculated by the x position: starting_slot = x * 18 + 1
+-- y position of 0: request, y = 4: trash
+function presets.export(preset)
+    local item_slot_count = game.entity_prototypes["constant-combinator"].item_slot_count
+    local combinators = ceil(preset.max_slot / item_slot_count)
+    local half_cc = ceil(combinators / 2)
+    local start
+    local request_cc = {}
+    local trash_cc = {}
+    local bp = {}
+    local item_config, request_items, trash_items, item_signal, pos_x
+    local index_offset, index
+    for cc = 1, combinators do
+        pos_x = cc - 1
+        start = pos_x * item_slot_count + 1
+        index_offset = start + 1
+        request_cc[cc] = {entity_number = cc, name = "constant-combinator", position = {x = pos_x, y = 0}, control_behavior = {filters = {}}}
+        trash_cc[cc] = {entity_number = cc + half_cc, name = "constant-combinator", position = {x = pos_x, y = 4}, control_behavior = {filters = {}}}
+        request_items = request_cc[cc].control_behavior.filters
+        trash_items = trash_cc[cc].control_behavior.filters
+        for i = start, start + item_slot_count - 1 do
+            item_config = preset.config[i]
+            if item_config then
+                index = item_config.slot - index_offset
+                item_signal = {name = item_config.name, type = "item"}
+                request_items[#request_items+1] = {index = index, count = item_config.request, signal = item_signal}
+                if item_config.trash then
+                    trash_items[#trash_items+1] = {index = index, count = item_config.trash, signal = item_signal}
+                end
+            end
+        end
+        --maybe skip empty combinators (can mess with entity_number but does it matter?)
+        bp[#bp+1] = request_cc[cc]
+        bp[#bp+1] = trash_cc[cc]
+    end
+    log_blueprint_entities(bp)
+    return bp, {{index = 1, signal = {name = "signal-A", type = "virtual"}},{index = 2, signal = {name = "signal-T", type = "virtual"}},{index = 3, signal = {name = "signal-0", type = "virtual"}}}
+end
+
+--Storing the exported string in the blueprint library preserves it even when mod items have been removed
+--Importing a string with invalid item signals removes the combinator containing the invalid signals.
+function presets.import(preset, icons)--luacheck: ignore
+    local item_slot_count = game.entity_prototypes["constant-combinator"].item_slot_count
+    local tmp = {config = {}, max_slot = 0}
+    local config = tmp.config
+    local index_offset, index
+    if icons then--luacheck: ignore
+        log_blueprint_entities(preset)
+        for _, cc in pairs(preset) do
+            index_offset = cc.position.x * item_slot_count
+            if cc.control_behavior then
+                for i, item_config in pairs(cc.control_behavior.filters) do
+                    index = index_offset + item_config.index
+                    if not config[index] then
+                        config[index] = {name = item_config.signal.name, slot = index, trash = false, request = 0}
+                    end
+                    if cc.position.y == 0 then
+                        config[index].request = item_config.count
+                    else
+                        config[index].trash = item_config.count
+                    end
+                    tmp.max_slot = tmp.max_slot > index and tmp.max_slot or index
+                end
+            end
+        end
+        log(serpent.block(tmp))
+    else--luacheck: ignore
+        --do
+    end
+    return tmp
 end
 
 return presets

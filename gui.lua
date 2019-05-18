@@ -316,7 +316,7 @@ local gui_functions = {
 
     config_button_changed = function(event, player_index, params)
         --log(serpent.line(params))
-        -- log(serpent.line(event))
+        --log(serpent.line(event))
         local old_selected = global.selected[player_index]
         local config_tmp = global.config_tmp[player_index]
         if event.name == defines.events.on_gui_click then
@@ -341,8 +341,35 @@ local gui_functions = {
                     config_tmp.max_slot = 0
                 end
             elseif event.button == defines.mouse_button_type.left then
-                if not event.element.elem_value or old_selected == params.slot then return end--empty button
                 log("Select button: " .. params.slot .. " old: " .. tostring(old_selected))
+                -- local player = game.get_player(player_index)
+                -- if event.shift then
+                --     local cursor_stack = player.cursor_stack
+                --     if not cursor_stack.valid_for_read and event.element.elem_value then
+                --         cursor_stack.set_stack{name = "cheesy_item", count = 1}
+                --         cursor_stack.set_tag("config", config_tmp.config[params.slot])
+                --         cursor_stack.set_tag("max_slot", config_tmp.max_slot)
+                --         log("Pickup config")
+                --         return
+                --     elseif cursor_stack.name == "cheesy_item" then
+                --         log("Drop config")
+                --         local dragged = cursor_stack.get_tag("config")
+                --         if event.element.elem_value then
+                --             log(event.element.elem_value)
+                --             local tmp = util.table.deepcopy(config_tmp.config[params.slot])
+                --             old_selected = dragged.slot
+                --             config_tmp.config[params.slot] = dragged
+                --             config_tmp.config[dragged.slot] = tmp
+                --             cursor_stack.clear()
+                --         else
+                --             error()
+                --             config_tmp[params.slot] = dragged
+                --             config_tmp.max_slot = config_tmp.max_slot > params.slot and config_tmp.max_slot or params.slot
+                --             event.element.elem_value = dragged.name
+                --         end
+                --     end
+                -- end
+                if not event.element.elem_value or old_selected == params.slot then return end--empty button
                 global.selected[player_index] = params.slot
                 local flow = event.element.parent
                 GUI.destroy_create_button(player_index, flow, params.slot, params.slot)
@@ -351,7 +378,7 @@ local gui_functions = {
             end
         elseif event.name == defines.events.on_gui_elem_changed then
             if event.element.elem_value then
-                if event.element.elem_value == params.item then return end--changed to same item
+                if event.element.elem_value == params.item or event.element.elem_value == "cheesy_item" then return end--changed to same item
                 log("New item")
                 local gui_elements = global.gui_elements[player_index]
                 local ruleset_grid = gui_elements.config_scroll.children[1]
@@ -422,7 +449,8 @@ local gui_functions = {
     request_amount_changed = function(event, player_index, _)
         if event.name ~= defines.events.on_gui_text_changed and event.name ~= defines.events.on_gui_value_changed then return end
         local selected = global.selected[player_index]
-        local item_config = global.config_tmp[player_index].config[selected]
+        local config_tmp = global.config_tmp[player_index]
+        local item_config = config_tmp.config[selected]
         if not selected or not item_config then
             error("Request amount changed without a selected item")
         end
@@ -431,6 +459,13 @@ local gui_functions = {
             number = tonumber_max(event.element.text) or 0
         elseif event.name == defines.events.on_gui_value_changed then
             number = tonumber_max(convert_from_slider(event.element.slider_value)) or 0
+        end
+        assert(number ~= item_config.request, "Request didn't change")
+        if item_config.request == 0 then
+            config_tmp.c_request = config_tmp.c_request + 1
+        elseif number == 0 then
+            config_tmp.c_request = config_tmp.c_request - 1
+            assert(config_tmp.c_request >= 0, "Negative number of requests")
         end
         item_config.request = number
         --prevent trash being set to a lower value than request to prevent infinite robo loop
@@ -514,6 +549,116 @@ local gui_functions = {
                 GUI.update_main_button(player_index)
             end
         end
+    end,
+
+    export_config = function(event, player_index)
+        local player = game.get_player(player_index)
+        local stack = player.cursor_stack
+        if stack.valid_for_read and not (stack.name == "blueprint" and not stack.is_blueprint_setup()) then
+            player.print("Click with an empty cursor or an empty blueprint")
+            return
+        end
+        --if stack.set_stack{name = "cheesy_item", count = 1} then
+        if not stack.set_stack{name = "blueprint", count = 1} then
+            player.print({"", {"error-while-importing-string"}, " Could not set stack"})
+            log("Error setting stack")
+            return
+        end
+        local ents, icons = presets.export(global.config_tmp[player_index])
+        stack.set_blueprint_entities(ents)
+        stack.blueprint_icons = icons
+        if event.shift then return end
+
+        local text = stack.export_stack()
+        stack.clear()--the blueprint we spawned in
+        log(text)
+        log(global.config_tmp[player_index].max_slot)
+        local gui = player.gui.center
+        local frame = gui.add{type = "frame", caption = {"gui.export-to-string"}, direction = "vertical"}
+        local textfield = frame.add{type = "text-box"}
+        textfield.word_wrap = true
+        textfield.read_only = true
+        textfield.style.height = player.display_resolution.height * 0.3 / player.display_scale
+        textfield.style.width = player.display_resolution.width * 0.3 / player.display_scale
+        textfield.text = text
+        textfield.select_all()
+        textfield.focus()
+        local flow = frame.add{type = "flow", direction = "horizontal"}
+        flow.style.horizontally_stretchable = true
+        local pusher = flow.add{type = "flow"}
+        pusher.style.horizontally_stretchable = true
+        GUI.register_action(
+            flow.add{type = "button", caption = {"gui.close"}, style = "dialog_button"},
+            {type = "import_export_close", frame = frame}
+        )
+    end,
+
+    import_config = function(_, player_index)
+        local player = game.get_player(player_index)
+        local stack = player.cursor_stack
+        --if stack and stack.valid_for_read and stack.name == "cheesy_item" then
+        if stack and stack.valid_for_read and stack.name == "blueprint" and stack.is_blueprint_setup() then
+            global.config_tmp[player_index] = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
+            player.print({"string-import-successful", "AutoTrash configuration"})
+            global.selected[player_index] = false
+            GUI.update_buttons(player_index)
+            GUI.hide_sliders(player_index)
+            return
+        end
+        local gui = player.gui.center
+        local frame = gui.add{type = "frame", caption = {"gui-blueprint-library.import-string"}, direction = "vertical"}
+        local textfield = frame.add{type = "text-box"}
+        textfield.word_wrap = true
+        textfield.focus()
+        textfield.style.height = player.display_resolution.height * 0.3 / player.display_scale
+        textfield.style.width = player.display_resolution.width * 0.3 / player.display_scale
+        local flow = frame.add{type = "flow", direction = "horizontal"}
+        flow.style.horizontally_stretchable = true
+        GUI.register_action(
+            flow.add{type = "button", caption = {"gui.close"}, style = "dialog_button"},
+            {type = "import_export_close", frame = frame}
+        )
+        local pusher = flow.add{type = "flow"}
+        pusher.style.horizontally_stretchable = true
+        GUI.register_action(
+            flow.add{type = "button", caption = {"gui-blueprint-library.import"}, style = "confirm_button"},
+            {type = "import_confirm", frame = frame, textfield = textfield}
+        )
+    end,
+
+    import_confirm = function(_, player_index, params)
+        local player = game.get_player(player_index)
+        local frame, textfield = params.frame, params.textfield
+        if not (frame and frame.valid) then return end
+        if not (textfield and textfield.valid) then return end
+        local stack = player.cursor_stack
+        if stack.valid_for_read and not (stack.name == "blueprint" and not stack.is_blueprint_setup()) then
+            player.print("Click with an empty cursor or empty blueprint")
+            return
+        end
+        --if stack.set_stack{name = "cheesy_item", count = 1} then
+        if not stack.set_stack{name = "blueprint", count = 1} then
+            player.print({"", {"error-while-importing-string"}, " Could not set stack"})
+            GUI.deregister_action(frame)
+            frame.destroy()
+            return
+        end
+        stack.import_stack(textfield.text)
+        global.selected[player_index] = false
+        global.config_tmp[player_index] = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
+        stack.clear()--the blueprint we spawned in
+        player.print({"string-import-successful", "AutoTrash configuration"})
+        GUI.update_buttons(player_index)
+        GUI.hide_sliders(player_index)
+        GUI.deregister_action(frame)
+        frame.destroy()
+    end,
+
+    import_export_close = function(_, _, params)
+        local frame = params.frame
+        if not (frame and frame.valid) then return end
+        GUI.deregister_action(frame)
+        frame.destroy()
     end,
 }
 
@@ -948,18 +1093,29 @@ function GUI.open_logistics_frame(player)
         },
         {type = "import_from_vanilla"}
     )
-    --TODO: Import/export presets
-    -- button_flow.add{
-    --     type = "sprite-button",
-    --     style = "shortcut_bar_button_blue",
-    --     sprite = "utility/import_slot",
-    -- }
 
-    -- button_flow.add{
-    --     type = "sprite-button",
-    --     style = "shortcut_bar_button_blue",
-    --     sprite = "utility/export_slot",
-    -- }
+    local export_btn = button_flow.add{
+        type = "sprite-button",
+        style = "shortcut_bar_button_blue",
+        sprite = "utility/export_slot",
+    }
+    export_btn.style.top_padding = 4
+    export_btn.style.right_padding = 4
+    export_btn.style.bottom_padding = 4
+    export_btn.style.left_padding = 4
+    GUI.register_action(export_btn, {type = "export_config"})
+
+    local import_btn = button_flow.add{
+        type = "sprite-button",
+        style = "shortcut_bar_button_blue",
+        sprite = "utility/import_slot",
+    }
+
+    import_btn.style.top_padding = 4
+    import_btn.style.right_padding = 4
+    import_btn.style.bottom_padding = 4
+    import_btn.style.left_padding = 4
+    GUI.register_action(import_btn, {type = "import_config"})
 
     local slider_vertical_flow = config_flow_v.add{
         type = "table",
