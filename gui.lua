@@ -127,6 +127,17 @@ function GUI.clear_button(player_index, params, config_tmp)
     GUI.mark_dirty(player_index)
 end
 
+function GUI.extend_buttons(player_index, max_slot)
+    local gui_elements = global.gui_elements[player_index]
+    local ruleset_grid = gui_elements.config_scroll.children[1]
+    local count = #ruleset_grid.children
+    if max_slot >= count then
+        log("more buttons")
+        local last = GUI.create_buttons(game.get_player(player_index), count+1)
+        gui_elements.config_scroll.scroll_to_element(ruleset_grid.children[last].children[1], "top-third")
+    end
+end
+
 local gui_functions = {
     main_button = function(event, player_index)
         local element = event.element
@@ -340,61 +351,66 @@ local gui_functions = {
         --log(serpent.line(event))
         local old_selected = global.selected[player_index]
         local config_tmp = global.config_tmp[player_index]
+        local element = event.element
+        local elem_value = element.elem_value
         if event.name == defines.events.on_gui_click then
             if event.button == defines.mouse_button_type.right then
-                if not event.element.elem_value then return end
+                if not elem_value then return end
                 log("Clear button")
                 log(serpent.block(params))
                 GUI.clear_button(player_index, params, config_tmp)
-                GUI.destroy_create_button(player_index, event.element.parent, params.slot, old_selected)
+                GUI.destroy_create_button(player_index, element.parent, params.slot, old_selected)
             elseif event.button == defines.mouse_button_type.left then
                 log("Select button: " .. params.slot .. " old: " .. tostring(old_selected))
-                -- local player = game.get_player(player_index)
-                -- if event.shift then
-                --     local cursor_stack = player.cursor_stack
-                --     if not cursor_stack.valid_for_read and event.element.elem_value then
-                --         cursor_stack.set_stack{name = "cheesy_item", count = 1}
-                --         cursor_stack.set_tag("config", config_tmp.config[params.slot])
-                --         cursor_stack.set_tag("max_slot", config_tmp.max_slot)
-                --         log("Pickup config")
-                --         return
-                --     elseif cursor_stack.name == "cheesy_item" then
-                --         log("Drop config")
-                --         local dragged = cursor_stack.get_tag("config")
-                --         if event.element.elem_value then
-                --             log(event.element.elem_value)
-                --             local tmp = util.table.deepcopy(config_tmp.config[params.slot])
-                --             old_selected = dragged.slot
-                --             config_tmp.config[params.slot] = dragged
-                --             config_tmp.config[dragged.slot] = tmp
-                --             cursor_stack.clear()
-                --         else
-                --             error()
-                --             config_tmp[params.slot] = dragged
-                --             config_tmp.max_slot = config_tmp.max_slot > params.slot and config_tmp.max_slot or params.slot
-                --             event.element.elem_value = dragged.name
-                --         end
-                --     end
-                -- end
-                if not event.element.elem_value or old_selected == params.slot then return end--empty button
+                local flow = element.parent
+                if event.shift then
+                    local player = game.get_player(player_index)
+                    local cursor_ghost = player.cursor_ghost
+                    if not cursor_ghost and not player.cursor_stack.valid_for_read and elem_value then
+                        global.selected[player_index] = params.slot
+                        player.cursor_ghost = elem_value
+                        log("Pickup config")
+                        GUI.destroy_create_button(player_index, flow, params.slot, params.slot)
+                        GUI.destroy_create_button(player_index, flow.parent.children[old_selected], old_selected, params.slot)
+                        GUI.update_sliders(player_index)
+                        return
+                    elseif cursor_ghost and cursor_ghost.name == config_tmp.config[old_selected].name then
+                        log("Drop config")
+                        if elem_value then--always true, even when shift clicking an empty button with a ghost, since it gets set before on_click
+                            log(elem_value)
+                            local tmp = util.table.deepcopy(config_tmp.config[params.slot])
+                            config_tmp.config[params.slot] = util.table.deepcopy(config_tmp.config[old_selected])
+                            config_tmp.config[old_selected] = tmp
+                            player.cursor_ghost = nil
+                            global.selected[player_index] = params.slot
+                            config_tmp.max_slot = params.slot > config_tmp.max_slot and params.slot or config_tmp.max_slot
+                            GUI.extend_buttons(player_index, config_tmp.max_slot)
+                            GUI.destroy_create_button(player_index, flow, params.slot, params.slot)
+                            GUI.destroy_create_button(player_index, flow.parent.children[old_selected], old_selected, params.slot)
+                            GUI.update_sliders(player_index)
+                            return
+                        end
+                    end
+                end
+                if not elem_value or old_selected == params.slot then return end--empty button
                 global.selected[player_index] = params.slot
-                local flow = event.element.parent
                 GUI.destroy_create_button(player_index, flow, params.slot, params.slot)
                 GUI.destroy_create_button(player_index, flow.parent.children[old_selected], old_selected, params.slot)
                 GUI.update_sliders(player_index)
             end
         elseif event.name == defines.events.on_gui_elem_changed then
-            if event.element.elem_value then
-                if event.element.elem_value == params.item or event.element.elem_value == "cheesy_item" then return end--changed to same item
+            if game.get_player(player_index).cursor_ghost then return end--dragging to an empty slot, on_gui_click raised later
+            if elem_value then
+                if elem_value == params.item then return end--changed to same item
                 log("New item")
                 local gui_elements = global.gui_elements[player_index]
                 local ruleset_grid = gui_elements.config_scroll.children[1]
                 local found
                 for i, flow in pairs(ruleset_grid.children) do
-                    if i ~= params.slot and flow.children[1].elem_value == event.element.elem_value then
+                    if i ~= params.slot and flow.children[1].elem_value == elem_value then
                         log(serpent.line{i=i, params=params, s = global.selected[player_index], old_selected = old_selected} )
-                        display_message(game.get_player(player_index), {"", {"cant-set-duplicate-request", game.item_prototypes[event.element.elem_value].localised_name}}, true)
-                        event.element.elem_value = params.item
+                        display_message(game.get_player(player_index), {"", {"cant-set-duplicate-request", game.item_prototypes[elem_value].localised_name}}, true)
+                        element.elem_value = params.item
                         global.selected[player_index] = i
                         gui_elements.config_scroll.scroll_to_element(flow.parent.children[i], "top-third")
                         GUI.destroy_create_button(player_index, flow, params.slot, i)
@@ -411,7 +427,7 @@ local gui_functions = {
                     log("changed")
                     global.selected[player_index] = params.slot
                     config_tmp.config[params.slot] = {
-                        name = event.element.elem_value, request = game.item_prototypes[event.element.elem_value].default_request_amount,
+                        name = elem_value, request = game.item_prototypes[elem_value].default_request_amount,
                         trash = false, slot = params.slot
                     }
                     config_tmp.max_slot = params.slot > config_tmp.max_slot and params.slot or config_tmp.max_slot
@@ -420,20 +436,15 @@ local gui_functions = {
                     end
                     GUI.mark_dirty(player_index)
                     GUI.update_sliders(player_index)
-                    GUI.update_button(player_index, params.slot, params.slot, event.element)
+                    GUI.update_button(player_index, params.slot, params.slot, element)
                     GUI.update_button(player_index, old_selected, params.slot)
-                    local count = #ruleset_grid.children
-                    if config_tmp.max_slot >= count then
-                        log("more buttons")
-                        local last = GUI.create_buttons(game.get_player(player_index), count+1)
-                        gui_elements.config_scroll.scroll_to_element(ruleset_grid.children[last].children[1], "top-third")
-                    end
+                    GUI.extend_buttons(player_index, config_tmp.max_slot)
                 end
             elseif params.item then
                 log("Clear button2")
                 GUI.clear_button(player_index, params, config_tmp)
                 GUI.hide_sliders(player_index)
-                GUI.update_button(player_index, params.slot, false, event.element)
+                GUI.update_button(player_index, params.slot, false, element)
             end
         else
             log("Unhandled event: " .. GUI.get_event_name(event.name))
