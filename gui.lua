@@ -107,6 +107,26 @@ local GUI = {--luacheck: allow defined top
     },
 }
 
+function GUI.clear_button(player_index, params, config_tmp)
+    if config_tmp.config[params.slot].request > 0 then
+        config_tmp.c_requests = config_tmp.c_requests - 1
+    end
+    config_tmp.config[params.slot] = nil
+    if params.slot == config_tmp.max_slot then
+        ----TODO: decrease number of buttons if last row + x buttons are empty
+        for i = params.slot-1, 1, -1 do
+            if config_tmp.config[i] then
+                config_tmp.max_slot = i
+                break
+            end
+        end
+    end
+    if config_tmp.max_slot == params.slot then
+        config_tmp.max_slot = 0
+    end
+    GUI.mark_dirty(player_index)
+end
+
 local gui_functions = {
     main_button = function(event, player_index)
         local element = event.element
@@ -324,26 +344,9 @@ local gui_functions = {
             if event.button == defines.mouse_button_type.right then
                 if not event.element.elem_value then return end
                 log("Clear button")
-                assert(params.slot ~= old_selected)
                 log(serpent.block(params))
-                if config_tmp.config[params.slot].request > 0 then
-                    config_tmp.c_requests = config_tmp.c_requests - 1
-                end
-                config_tmp.config[params.slot] = nil
+                GUI.clear_button(player_index, params, config_tmp)
                 GUI.destroy_create_button(player_index, event.element.parent, params.slot, old_selected)
-                GUI.mark_dirty(player_index)
-                if params.slot == config_tmp.max_slot then
-                    ----TODO: decrease number of buttons if last row + x buttons are empty
-                    for i = params.slot-1, 1, -1 do
-                        if config_tmp.config[i] then
-                            config_tmp.max_slot = i
-                            break
-                        end
-                    end
-                end
-                if config_tmp.max_slot == params.slot then
-                    config_tmp.max_slot = 0
-                end
             elseif event.button == defines.mouse_button_type.left then
                 log("Select button: " .. params.slot .. " old: " .. tostring(old_selected))
                 -- local player = game.get_player(player_index)
@@ -428,26 +431,9 @@ local gui_functions = {
                 end
             elseif params.item then
                 log("Clear button2")
-                assert(params.slot == old_selected)
-                if config_tmp.config[params.slot].request > 0 then
-                    config_tmp.c_requests = config_tmp.c_requests - 1
-                end
-                config_tmp.config[params.slot] = nil
-                GUI.mark_dirty(player_index)
+                GUI.clear_button(player_index, params, config_tmp)
                 GUI.hide_sliders(player_index)
                 GUI.update_button(player_index, params.slot, false, event.element)
-                if params.slot == config_tmp.max_slot then
-                    ----TODO: decrease number of buttons if last row + x buttons are empty
-                    for i = params.slot-1, 1, -1 do
-                        if config_tmp.config[i] then
-                            config_tmp.max_slot = i
-                            break
-                        end
-                    end
-                    if config_tmp.max_slot == params.slot then
-                        config_tmp.max_slot = 0
-                    end
-                end
             end
         else
             log("Unhandled event: " .. GUI.get_event_name(event.name))
@@ -477,7 +463,7 @@ local gui_functions = {
         end
         if item_config.request > 0 and number == 0 then
             config_tmp.c_requests = config_tmp.c_requests - 1
-            assert(config_tmp.c_requests >= 0, "Negative number of requests")
+            assert(config_tmp.c_requests >= 0, "Negative number of requests")--TODO: remove
         end
         item_config.request = number
         --prevent trash being set to a lower value than request to prevent infinite robo loop
@@ -495,7 +481,6 @@ local gui_functions = {
         local selected = global.selected[player_index]
         local config_tmp = global.config_tmp[player_index]
         local item_config = config_tmp.config[selected]
-        assert(item_config.name, "item config without name")
         local number
         if event.name == defines.events.on_gui_text_changed then
             number = tonumber_max(event.element.text) or false
