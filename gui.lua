@@ -113,7 +113,6 @@ function GUI.clear_button(player_index, params, config_tmp)
     end
     config_tmp.config[params.slot] = nil
     if params.slot == config_tmp.max_slot then
-        ----TODO: decrease number of buttons if last row + x buttons are empty
         for i = params.slot-1, 1, -1 do
             if config_tmp.config[i] then
                 config_tmp.max_slot = i
@@ -123,6 +122,21 @@ function GUI.clear_button(player_index, params, config_tmp)
     end
     if config_tmp.max_slot == params.slot then
         config_tmp.max_slot = 0
+    end
+    local gui_elements = global.gui_elements[player_index]
+    local ruleset_grid = gui_elements.config_scroll.children[1]
+    local columns = game.get_player(player_index).mod_settings["autotrash_gui_columns"].value
+    local count = #ruleset_grid.children
+    local max_buttons = config_tmp.max_slot + columns + 1
+    local flow
+    if count >= max_buttons then
+        log("Destroying")
+        for i = count, max_buttons, -1 do
+            flow = ruleset_grid.children[i]
+            assert(not config_tmp.config[i], "Should be empty")
+            GUI.deregister_action(flow)
+            flow.destroy()
+        end
     end
     GUI.mark_dirty(player_index)
 end
@@ -572,7 +586,6 @@ local gui_functions = {
             player.print("Click with an empty cursor or an empty blueprint")
             return
         end
-        --if stack.set_stack{name = "cheesy_item", count = 1} then
         if not stack.set_stack{name = "blueprint", count = 1} then
             player.print({"", {"error-while-importing-string"}, " Could not set stack"})
             log("Error setting stack")
@@ -610,7 +623,6 @@ local gui_functions = {
     import_config = function(_, player_index)
         local player = game.get_player(player_index)
         local stack = player.cursor_stack
-        --if stack and stack.valid_for_read and stack.name == "cheesy_item" then
         if stack and stack.valid_for_read and stack.name == "blueprint" and stack.is_blueprint_setup() then
             global.config_tmp[player_index] = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
             player.print({"string-import-successful", "AutoTrash configuration"})
@@ -650,7 +662,6 @@ local gui_functions = {
             player.print("Click with an empty cursor or empty blueprint")
             return
         end
-        --if stack.set_stack{name = "cheesy_item", count = 1} then
         if not stack.set_stack{name = "blueprint", count = 1} then
             player.print({"", {"error-while-importing-string"}, " Could not set stack"})
             GUI.deregister_action(frame)

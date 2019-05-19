@@ -38,36 +38,25 @@ local function unpause_trash(player)
 end
 
 local function set_requests(player)
-    if not player.character then return end
     local character = player.character
-    local storage = global.config_new[player.index].config
+    if not character then return end
+    local config_new = global.config_new[player.index]
+    local storage = config_new.config
     local slot_count = character.request_slot_count
     local set_request_slot = character.set_request_slot
     local clear_request_slot = character.clear_request_slot
     local req
-    for i = 1, slot_count do
-        clear_request_slot(i)
+    --kind of cheaty..
+    if slot_count < config_new.max_slot then
+        player.character_logistic_slot_count_bonus = player.character_logistic_slot_count_bonus + (config_new.max_slot - slot_count)
+        slot_count = character.request_slot_count
     end
-    if global.config_new[player.index].max_slot <= slot_count then
-        for c = 1, slot_count do--TODO: that's bullshit, skips configured items in lower slots
-            req = storage[c]
-            if req then
-                set_request_slot({name = req.name, count = req.request}, c)
-            end
-        end
-    --ignore configured slot order for now, i could set the matching slots first and iterate a second time..
-    else
-        local c = 1
-        for i, item in pairs(storage) do
-            if c > slot_count then
-                log("Too many requests")
-                return
-            end
-            log(c .. " " .. serpent.line(item))
-            if item.request > 0 then
-                set_request_slot({name = item.name, count = item.request}, c)
-                c = c + 1
-            end
+    if config_new.max_slot > slot_count then error("Should not happen") end
+    for c = 1, slot_count do
+        clear_request_slot(c)
+        req = storage[c]
+        if req then
+            set_request_slot({name = req.name, count = req.request}, c)
         end
     end
 end
