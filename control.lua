@@ -15,6 +15,7 @@ local pause_trash = lib_control.pause_trash
 local unpause_trash = lib_control.unpause_trash
 local unpause_requests = lib_control.unpause_requests
 local in_network = lib_control.in_network
+local item_prototype = lib_control.item_prototype
 
 local function cleanup_table(tbl, tbl_name)
     if tbl then
@@ -191,7 +192,7 @@ end
 
 local function on_player_trash_inventory_changed(event)
     local player = game.get_player(event.player_index)
-    if not player.get_inventory(defines.inventory.character_trash).is_empty() then return end
+    if not (player.character and player.get_inventory(defines.inventory.character_trash).is_empty()) then return end
     local main_inventory_count = player.get_main_inventory().get_item_count
     local trash_filters = player.auto_trash_filters
     local requests = requested_items(player)
@@ -200,7 +201,7 @@ local function on_player_trash_inventory_changed(event)
         if trash_filters[name] then
              desired = requests[name] and requests[name] or 0
             if main_inventory_count(name) <= desired then
-                player.print({"", "Removed ", game.item_prototypes[name].localised_name, " from temporary trash"})
+                player.print({"", "Removed ", item_prototype(name).localised_name, " from temporary trash"})
                 trash_filters[name] = saved_count >= 0 and saved_count or nil
                 global.temporaryTrash[player.index][name] = nil
                 changed = true
@@ -221,16 +222,20 @@ local function on_player_trash_inventory_changed(event)
 end
 
 local function register_conditional_events()
+    local handler
     for _, trash in pairs(global.temporaryTrash) do
         if next(trash) then
             --some player has stuff in temporaryTrash, register the event
-            log("registering on_player_trash_inventory_changed")
-            script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
-            return
+            handler = on_player_trash_inventory_changed
+            break
         end
     end
-    log("not registering on_player_trash_inventory_changed")
-    script.on_event(defines.events.on_player_trash_inventory_changed, nil)
+    if handler then
+        log("registering on_player_trash_inventory_changed")
+    else
+        log("not registering on_player_trash_inventory_changed")
+    end
+    script.on_event(defines.events.on_player_trash_inventory_changed, handler)
 end
 
 local function on_load()
@@ -255,11 +260,34 @@ local function on_pre_player_removed(event)
     register_conditional_events()
 end
 
+local function remove_invalid_items(tbl, unselect)
+    local item_config
+    for pi, p in pairs(tbl) do
+        for i = p.max_slot, 1, -1 do
+            item_config = p.config[i]
+            if item_config then
+                if not item_prototype(item_config.name) then
+                    if p.config[i].request > 0 then
+                        p.c_requests = p.c_requests - 1
+                    end
+                    p.config[i] = nil
+                    if p.max_slot == i then
+                        p.max_slot = false
+                    end
+                    if unselect and global.selected[pi] and global.selected[pi] == i then
+                        global.selected[pi] = false
+                    end
+                else
+                    p.max_slot = p.max_slot or i
+                end
+            end
+        end
+    end
+end
+
 local function on_configuration_changed(data)
     --log(serpent.block(data))
-    if not data then
-        return
-    end
+    if not data then return end
     if data.mod_changes and data.mod_changes.AutoTrash then
         local newVersion = data.mod_changes.AutoTrash.new_version
         newVersion = v(newVersion)
@@ -346,7 +374,6 @@ local function on_configuration_changed(data)
                 global["config-tmp"] = nil
                 global["logistics-config-tmp"] = nil
                 saveVar(global, "storage_post")
-                --error("You did good")
             end
         end
 
@@ -356,76 +383,10 @@ local function on_configuration_changed(data)
     init_global()
     init_players()
     on_load()
-    local items = game.item_prototypes
-    local item_config
-    for _, p in pairs(global.config_new) do
-        for i = p.max_slot, 1, -1 do
-            item_config = p.config[i]
-            if item_config then
-                if not items[item_config.name] then
-                    if p.config[i].request > 0 then
-                        p.c_requests = p.c_requests - 1
-                    end
-                    p.config[i] = nil
-                    if i == p.max_slot then
-                        p.max_slot = false
-                    end
-                else
-                    p.max_slot = p.max_slot or i
-                end
-            end
-        end
-    end
-    for pi, p in pairs(global.config_tmp) do
-        for i = p.max_slot, 1, -1 do
-            item_config = p.config[i]
-            if item_config then
-                if not items[item_config.name] then
-                    if p.config[i].request > 0 then
-                        p.c_requests = p.c_requests - 1
-                    end
-                    p.config[i] = nil
-                    if p.max_slot == i then
-                        p.max_slot = false
-                    end
-                    if global.selected[pi] and global.selected[pi] == i then
-                        global.selected[pi] = false
-                    end
-                else
-                    p.max_slot = p.max_slot or i
-                end
-            end
-        end
-    end
-    local found, removed_config
-    for pi, stored in pairs(global.storage_new) do
-        for name, p in pairs(stored) do
-            found = false
-            removed_config = {}
-            for i = p.max_slot, 1, -1 do
-                item_config = p.config[i]
-                if item_config then
-                    if not items[item_config.name] then
-                        log("Removing missing item '" .. item_config.name .. "' from preset '" .. name .. "'")
-                        removed_config[item_config.name] = util.table.deepcopy(item_config)
-                        found = true
-                        if p.max_slot == i then
-                            p.max_slot = false
-                        end
-                        if p.config[i].request > 0 then
-                            p.c_requests = p.c_requests - 1
-                        end
-                        p.config[i] = nil
-                    else
-                        p.max_slot = p.max_slot or i
-                    end
-                end
-            end
-            if found then
-                --TODO create a importable backup for the complete preset
-                saveVar(removed_config, tostring(game.players[pi].name) .. "_preset_backup_" .. name .. "_" .. game.tick)
-            end
-        end
+    remove_invalid_items(global.config_new)
+    remove_invalid_items(global.config_tmp, true)
+    for _, stored in pairs(global.storage_new) do
+        remove_invalid_items(stored)
     end
 end
 
@@ -444,38 +405,28 @@ local trash_blacklist = {
 
 local function on_player_main_inventory_changed(event)
     --log("main inventory changed " .. serpent.block(event))
-    -- if not trash_blacklist then
-    --     trash_blacklist = {}
-    --     for name, proto in pairs(game.item_prototypes) do
-    --         if not proto.stackable then
-    --         log(name .. " " .. proto.type)
-    --         end
-    --     end
-    -- end
     local settings = global.settings[event.player_index]
+    if settings.pause_trash or not settings.trash_unrequested then return end
     local player = game.get_player(event.player_index)
-    if not player.character then return end
+    if not (player.character) then return end
     --that's a bad event to handle unrequested, since adding stuff to the trash filters immediately triggers the next on_main_inventory_changed event
-    -- on_nth_tick might work better
-    if not settings.pause_trash and settings.autotrash_unrequested then
-        local trash_filters = player.auto_trash_filters
-        local contents = player.get_main_inventory().get_contents()
-        local requests = get_requests(player)
-        local protos = game.item_prototypes
-        for name, _ in pairs(contents) do
-            if not requests[name] and not trash_filters[name]  and not trash_blacklist[protos[name].type] then
-                trash_filters[name] = 0
-            end
+    -- on_nth_tick might work better or only registering when some player has trash_unrequested set to true
+    local trash_filters = player.auto_trash_filters
+    local contents = player.get_main_inventory().get_contents()
+    local requests = get_requests(player)
+    for name, _ in pairs(contents) do
+        if not requests[name] and not trash_filters[name] and not trash_blacklist[item_prototype(name).type] then
+            trash_filters[name] = 0
         end
-        player.auto_trash_filters = trash_filters
     end
+    player.auto_trash_filters = trash_filters
 end
 
 local function add_to_trash(player, item)
     log("add to trash " .. game.tick)
     local player_index = player.index
     if trash_blacklist[item] then
-        display_message(player, {"", game.item_prototypes[item].localised_name, " is on the blacklist for trashing"}, true)
+        display_message(player, {"", item_prototype(item).localised_name, " is on the blacklist for trashing"}, true)
         return
     end
     local trash_filters = player.auto_trash_filters
@@ -488,7 +439,7 @@ local function add_to_trash(player, item)
     end
     log("registering trash inventory changed")
     script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
-    player.print({"", "Added ", game.item_prototypes[item].localised_name, " to temporary trash"})
+    player.print({"", "Added ", item_prototype(item).localised_name, " to temporary trash"})
 end
 
 local function on_player_toggled_map_editor(event)

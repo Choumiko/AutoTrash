@@ -81,9 +81,7 @@ local function get_requests(player)
 end
 
 local function pause_requests(player)
-    if not player.character then
-        return
-    end
+    if not player.character then return end
     global.settings[player.index].pause_requests = true
     local character = player.character
     for c = 1, character.request_slot_count do
@@ -92,9 +90,7 @@ local function pause_requests(player)
 end
 
 local function unpause_requests(player)
-    if not player.character then
-        return
-    end
+    if not player.character then return end
     global.settings[player.index].pause_requests = false
     set_requests(player)
 end
@@ -109,6 +105,17 @@ local function in_network(player)
         return true
     end
     return false
+end
+
+item_prototypes = {}--luacheck: allow defined top
+local function item_prototype(name)
+    if item_prototypes[name] then
+        log("cached: " .. name)
+        return item_prototypes[name]
+    end
+    log("uncached: " .. name)
+    item_prototypes[name] = game.item_prototypes[name]
+    return item_prototypes[name]
 end
 
 local function saveVar(var, name)
@@ -222,6 +229,7 @@ local function convert_to_slider(n)
 end
 
 local M = {
+    item_prototype = item_prototype,
     saveVar = saveVar,
     debugDump = debugDump,
     display_message = display_message,

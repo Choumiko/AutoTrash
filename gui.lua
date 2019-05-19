@@ -16,6 +16,7 @@ local get_requests = lib_control.get_requests
 local pause_requests = lib_control.pause_requests
 local unpause_requests = lib_control.unpause_requests
 local in_network = lib_control.in_network
+local item_prototype = lib_control.item_prototype
 local mod_gui = require '__core__/lualib/mod-gui'
 
 local max_value = 4294967295 --2^32-1
@@ -423,7 +424,7 @@ local gui_functions = {
                 for i, flow in pairs(ruleset_grid.children) do
                     if i ~= params.slot and flow.children[1].elem_value == elem_value then
                         log(serpent.line{i=i, params=params, s = global.selected[player_index], old_selected = old_selected} )
-                        display_message(game.get_player(player_index), {"", {"cant-set-duplicate-request", game.item_prototypes[elem_value].localised_name}}, true)
+                        display_message(game.get_player(player_index), {"", {"cant-set-duplicate-request", item_prototype(elem_value).localised_name}}, true)
                         element.elem_value = params.item
                         global.selected[player_index] = i
                         gui_elements.config_scroll.scroll_to_element(flow.parent.children[i], "top-third")
@@ -441,7 +442,7 @@ local gui_functions = {
                     log("changed")
                     global.selected[player_index] = params.slot
                     config_tmp.config[params.slot] = {
-                        name = elem_value, request = game.item_prototypes[elem_value].default_request_amount,
+                        name = elem_value, request = item_prototype(elem_value).default_request_amount,
                         trash = false, slot = params.slot
                     }
                     config_tmp.max_slot = params.slot > config_tmp.max_slot and params.slot or config_tmp.max_slot
@@ -549,18 +550,13 @@ local gui_functions = {
         GUI.update_main_button(player_index)
     end,
 
-    toggle_trash_above_requested = function(event, player_index)
+    toggle_trash_option = function(event, player_index)
         if event.name ~= defines.events.on_gui_checked_state_changed then return end
         local settings = global.settings[player_index]
         settings[event.element.name] = event.element.state
         if not settings.pause_trash then
             set_trash(game.get_player(player_index))
         end
-    end,
-
-    toggle_trash_option = function(event, player_index)
-        if event.name ~= defines.events.on_gui_checked_state_changed then return end
-        global.settings[player_index][event.element.name] = event.element.state
     end,
 
     toggle_trash_network = function(event, player_index)
@@ -1252,7 +1248,7 @@ function GUI.open_logistics_frame(player)
                             caption = {"auto-trash-above-requested"},
                             state = settings[GUI.defines.trash_above_requested]
                         },
-                        {type = "toggle_trash_above_requested"})
+                        {type = "toggle_trash_option"})
 
     GUI.register_action(trash_options.add{
                             type = "checkbox",
