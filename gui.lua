@@ -157,12 +157,15 @@ local gui_functions = {
     main_button = function(event, player_index)
         local element = event.element
         local player = game.get_player(player_index)
+        if not player.character then
+            GUI.close(player, true)
+        end
         if event.button == defines.mouse_button_type.right then
             GUI.close(player)
             GUI.open_quick_presets(player_index, element.parent)
         else
             GUI.close_quick_presets(player_index, element.parent)
-            if player.cursor_stack.valid_for_read then--luacheck: ignore
+            if player.cursor_stack and player.cursor_stack.valid_for_read then--luacheck: ignore
                 -- if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
                 --     add_order(player)
                 -- elseif player.cursor_stack.name ~= "blueprint" then
@@ -213,11 +216,14 @@ local gui_functions = {
         local config_tmp = global.config_tmp[player_index]
         if mode == 1 then
             config_tmp.config = {}
+            config_tmp.max_slot = 0
+            config_tmp.c_requests = 0
             GUI.hide_sliders(player_index)
         elseif mode == 2 then
             for _, config in pairs(config_tmp.config) do
                 config.request = 0
             end
+            config_tmp.c_requests = 0
             GUI.update_sliders(player_index)
         elseif mode == 3 then
             for _, config in pairs(config_tmp.config) do
@@ -269,6 +275,21 @@ local gui_functions = {
         GUI.update_buttons(player_index)
         GUI.mark_dirty(player_index, true)
         GUI.hide_sliders(player_index)
+    end,
+
+    change_death_preset = function(event, player_index, params)
+        local name = params.name
+        if not (event.shift or event.control) then
+            global.death_presets[player_index] = {[name] = true}
+        else
+            local selected_presets = global.death_presets[player_index]
+            if not selected_presets[name] then
+                selected_presets[name] = true
+            else
+                selected_presets[name] = nil
+            end
+            GUI.update_presets(player_index)
+        end
     end,
 
     load_quick_preset = function(event, player_index)
@@ -578,6 +599,7 @@ local gui_functions = {
     export_config = function(event, player_index)
         local player = game.get_player(player_index)
         local stack = player.cursor_stack
+        if not stack then return end
         if stack.valid_for_read and not (stack.name == "blueprint" and not stack.is_blueprint_setup()) then
             player.print("Click with an empty cursor or an empty blueprint")
             return
@@ -619,6 +641,7 @@ local gui_functions = {
     import_config = function(_, player_index)
         local player = game.get_player(player_index)
         local stack = player.cursor_stack
+        if not stack then return end
         if stack and stack.valid_for_read and stack.name == "blueprint" and stack.is_blueprint_setup() then
             global.config_tmp[player_index] = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
             player.print({"string-import-successful", "AutoTrash configuration"})
@@ -654,6 +677,7 @@ local gui_functions = {
         if not (frame and frame.valid) then return end
         if not (textfield and textfield.valid) then return end
         local stack = player.cursor_stack
+        if not stack then return end
         if stack.valid_for_read and not (stack.name == "blueprint" and not stack.is_blueprint_setup()) then
             player.print("Click with an empty cursor or empty blueprint")
             return
@@ -1339,7 +1363,7 @@ function GUI.open_presets_frame(player, left)
     storage_scroll.style.maximal_height = math.ceil(38*10+4)
     local storage_grid = storage_scroll.add{
         type = "table",
-        column_count = 2,
+        column_count = 3,
     }
     gui_elements.storage_grid = storage_grid
 
@@ -1349,7 +1373,7 @@ function GUI.open_presets_frame(player, left)
     GUI.update_presets(player_index)
 end
 
-function GUI.close(player)
+function GUI.close(player, no_reset)
     local player_index = player.index
     local elements = global.gui_elements[player_index]
     local storage_frame = elements.storage_frame
@@ -1373,7 +1397,7 @@ function GUI.close(player)
         elements.reset_button = nil
     end
     global.selected[player_index] = false
-    if player.mod_settings["autotrash_reset_on_close"].value then
+    if not no_reset and player.mod_settings["autotrash_reset_on_close"].value then
         global.config_tmp[player_index] = util.table.deepcopy(global.config_new[player_index])
         global.dirty[player_index] = false
     end
@@ -1385,12 +1409,21 @@ function GUI.update_presets(player_index)
     if not (storage_grid and storage_grid.valid) then return end
     local children = storage_grid.children
     local selected_presets = global.selected_presets[player_index]
-    for i=1, #children, 2 do
-        if selected_presets[children[i].caption] then
+    local death_presets = global.death_presets[player_index]
+    local preset_name, rip
+    for i=1, #children, 3 do
+        preset_name = children[i].caption
+        if selected_presets[preset_name] then
             children[i].style = "at_preset_button_selected"
         else
             children[i].style = "at_preset_button"
         end
+        rip = children[i+2]
+        rip.style = death_presets[preset_name] and "at_preset_button_selected" or "at_preset_button"
+        rip.style.left_padding = 0
+        rip.style.right_padding = 0
+        rip.style.top_padding = 0
+        rip.style.bottom_padding = 0
     end
     local s = table_size(selected_presets)
     if s == 1 then
@@ -1416,8 +1449,23 @@ function GUI.add_preset(player_index, preset_name)
         style = "red_icon_button",
         sprite = "utility/remove"
     }
+
+    local rip = storage_grid.add{
+        type = "button",
+        style = "at_preset_button",
+        caption = "R"
+    }
     GUI.register_action(preset, {type = "load_preset"})
     GUI.register_action(remove, {type = "delete_preset", name = preset_name})
+    GUI.register_action(rip, {type = "change_death_preset", name = preset_name})
+
+    rip.style.width = 28
+    rip.style.height = 28
+    rip.style.left_padding = 0
+    rip.style.right_padding = 0
+    rip.style.top_padding = 0
+    rip.style.bottom_padding = 0
+
 
     remove.style.left_padding = 0
     remove.style.right_padding = 0

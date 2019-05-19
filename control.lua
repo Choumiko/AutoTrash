@@ -4,6 +4,7 @@ local mod_gui = require '__core__/lualib/mod-gui'
 local v = require '__AutoTrash__/semver'
 local lib_control = require '__AutoTrash__/lib_control'
 local GUI = require "__AutoTrash__/gui"
+local presets = require "__AutoTrash__/presets"
 
 local saveVar = lib_control.saveVar
 local debugDump = lib_control.debugDump
@@ -155,6 +156,7 @@ local function init_global()
     global.settings = global.settings or {}
     global.dirty = global.dirty or {}
     global.selected_presets = global.selected_presets or {}
+    global.death_presets = global.death_presets or {}
 
     global.gui_actions = global.gui_actions or {}
     global.gui_elements = global.gui_elements or {}
@@ -175,6 +177,7 @@ local function init_player(player)
     global.settings[index] = global.settings[index] or util.table.deepcopy(default_settings)
     global.dirty[index] = global.dirty[index] or false
     global.selected_presets[index] = global.selected_presets[index] or {}
+    global.death_presets[index] = global.death_presets[index] or {}
 
     global.gui_actions[index] = global.gui_actions[index] or {}
     global.gui_elements[index] = global.gui_elements[index] or {}
@@ -444,6 +447,10 @@ end
 
 local function on_player_toggled_map_editor(event)
     log("toggled map editor " .. serpent.block(event))
+    local player = game.get_player(event.player_index)
+    if not player.character then
+        GUI.close(player, true)
+    end
 end
 
 local function on_pre_player_died(event)
@@ -452,6 +459,26 @@ local function on_pre_player_died(event)
     if player.mod_settings["autotrash_pause_on_death"].value then
         pause_requests(player)
         GUI.update_main_button(player.index)
+        GUI.close(player, true)
+    end
+end
+
+local function on_player_respawned(event)
+    local player_index = event.player_index
+    local selected_presets = global.death_presets[player_index]
+    if table_size(selected_presets) > 0 then
+        local player = game.get_player(player_index)
+        local tmp = {config = {}, max_slot = 0}
+        for key, _ in pairs(selected_presets) do
+            presets.merge(tmp, global.storage_new[player_index][key])
+        end
+        GUI.close(player)
+        global.config_tmp[player_index] = tmp
+        global.config_new[player_index] = util.table.deepcopy(tmp)
+
+        unpause_requests(player)
+        unpause_trash(player)
+        GUI.update_main_button(player_index)
     end
 end
 
@@ -489,6 +516,7 @@ script.on_event(defines.events.on_player_main_inventory_changed, on_player_main_
 script.on_event(defines.events.on_player_toggled_map_editor, on_player_toggled_map_editor)
 script.on_event(defines.events.on_pre_player_removed, on_pre_player_removed)
 script.on_event(defines.events.on_pre_player_died, on_pre_player_died)
+script.on_event(defines.events.on_player_respawned, on_player_respawned)
 script.on_event(defines.events.on_player_changed_position, on_player_changed_position)
 
 local function on_pre_mined_item(event)
