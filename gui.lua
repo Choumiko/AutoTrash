@@ -612,7 +612,17 @@ local gui_functions = {
         local ents, icons = presets.export(global.config_tmp[player_index])
         stack.set_blueprint_entities(ents)
         stack.blueprint_icons = icons
-        if event.shift then return end
+        if table_size(global.selected_presets[player_index]) == 1 then
+            stack.label = "AutoTrash_" .. next(global.selected_presets[player_index])
+        else
+            stack.label = "AutoTrash_configuration"
+        end
+        if event.shift then
+            if player.mod_settings["autotrash_open_library"].value then
+                player.opened = defines.gui_type.blueprint_library
+            end
+            return
+        end
 
         local text = stack.export_stack()
         stack.clear()--the blueprint we spawned in
@@ -646,6 +656,12 @@ local gui_functions = {
             global.config_tmp[player_index] = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
             player.print({"string-import-successful", "AutoTrash configuration"})
             global.selected[player_index] = false
+            if stack.label ~= "Autotrash_configuration" then
+                local textfield = global.gui_elements[player_index].storage_textfield
+                if textfield and textfield.valid then
+                    textfield.text = string.sub(stack.label, 11)
+                end
+            end
             GUI.update_buttons(player_index)
             GUI.hide_sliders(player_index)
             return
@@ -691,6 +707,12 @@ local gui_functions = {
         stack.import_stack(textfield.text)
         global.selected[player_index] = false
         global.config_tmp[player_index] = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
+        if stack.label ~= "Autotrash_configuration" then
+            textfield = global.gui_elements[player_index].storage_textfield
+            if textfield and textfield.valid then
+                textfield.text = string.sub(stack.label, 11)
+            end
+        end
         stack.clear()--the blueprint we spawned in
         player.print({"string-import-successful", "AutoTrash configuration"})
         GUI.update_buttons(player_index)
@@ -1130,7 +1152,7 @@ function GUI.open_logistics_frame(player)
             type = "sprite-button",
             style = "shortcut_bar_button",
             sprite = "utility/downloading",
-            tooltip = "Import from vanilla gui"
+            tooltip = {"autotrash_import_vanilla"}
         },
         {type = "import_from_vanilla"}
     )
@@ -1139,6 +1161,7 @@ function GUI.open_logistics_frame(player)
         type = "sprite-button",
         style = "at_shortcut_bar_button_blue",
         sprite = "utility/export_slot",
+        tooltip = {"autotrash_export_tt"}
     }
     GUI.register_action(export_btn, {type = "export_config"})
 
@@ -1146,6 +1169,7 @@ function GUI.open_logistics_frame(player)
         type = "sprite-button",
         style = "at_shortcut_bar_button_blue",
         sprite = "utility/import_slot",
+        tooltip = {"autotrash_import_tt"}
     }
     GUI.register_action(import_btn, {type = "import_config"})
 
@@ -1429,7 +1453,7 @@ function GUI.add_preset(player_index, preset_name)
 
     local remove = storage_grid.add{
         type = "sprite-button",
-        style = "red_icon_button",
+        style = "at_delete_preset",
         sprite = "utility/remove"
     }
 

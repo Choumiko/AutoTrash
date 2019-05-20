@@ -29,13 +29,22 @@ data:extend({
         order = "d"
     },
     {
+        type = "bool-setting",
+        name = prefix .. "open_library",
+        setting_type = "runtime-per-user",
+        default_value = false,
+        order = "e",
+        localised_name = {"autotrash_open_library_name", {"gui-blueprint-library.title"}},
+        localised_description = {"autotrash_open_library", {"gui-blueprint-library.title"}}
+    },
+    {
         type = "int-setting",
         name = prefix .. "threshold",
         setting_type = "runtime-per-user",
         default_value = 0,
         minimum_value = 0,
         maximum_value = 4294967295,--2^32-1
-        order = "e",
+        order = "f",
         localised_description = {"autotrash_threshold", {"auto-trash-above-requested"}}
     },
     {

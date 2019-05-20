@@ -82,8 +82,8 @@ function presets.export(preset)
     local index_offset, index
     for cc = 1, combinators do
         pos_x = cc - 1
-        start = pos_x * item_slot_count + 1
-        index_offset = start + 1
+        index_offset = pos_x * item_slot_count
+        start = index_offset + 1
         request_cc[cc] = {entity_number = cc, name = "constant-combinator", position = {x = pos_x, y = 0}, control_behavior = {filters = {}}}
         trash_cc[cc] = {entity_number = cc + half_cc, name = "constant-combinator", position = {x = pos_x, y = 4}, control_behavior = {filters = {}}}
         request_items = request_cc[cc].control_behavior.filters
