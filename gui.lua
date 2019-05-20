@@ -288,8 +288,8 @@ local gui_functions = {
             else
                 selected_presets[name] = nil
             end
-            GUI.update_presets(player_index)
         end
+        GUI.update_presets(player_index)
     end,
 
     load_quick_preset = function(event, player_index)
@@ -1100,7 +1100,7 @@ function GUI.open_logistics_frame(player)
         type = "scroll-pane",
         vertical_scroll_policy = "auto-and-reserve-space"
     }
-    scroll_pane.style.maximal_height = 38 * player.mod_settings["autotrash_gui_max_rows"].value + 6
+    scroll_pane.style.maximal_height = 38 * player.mod_settings["autotrash_gui_max_rows"].value + 4
     gui_elements.config_scroll = scroll_pane
 
     local button_flow = config_flow_h.add{
@@ -1110,13 +1110,9 @@ function GUI.open_logistics_frame(player)
     }
     local checkmark = button_flow.add{
         type = "sprite-button",
-        style = "shortcut_bar_button_green",
+        style = "at_shortcut_bar_button_green",
         sprite = "utility/check_mark_white"
     }
-    checkmark.style.top_padding = 4
-    checkmark.style.right_padding = 4
-    checkmark.style.bottom_padding = 4
-    checkmark.style.left_padding = 4
 
     GUI.register_action(checkmark, {type = "apply_changes"})
 
@@ -1141,25 +1137,16 @@ function GUI.open_logistics_frame(player)
 
     local export_btn = button_flow.add{
         type = "sprite-button",
-        style = "shortcut_bar_button_blue",
+        style = "at_shortcut_bar_button_blue",
         sprite = "utility/export_slot",
     }
-    export_btn.style.top_padding = 4
-    export_btn.style.right_padding = 4
-    export_btn.style.bottom_padding = 4
-    export_btn.style.left_padding = 4
     GUI.register_action(export_btn, {type = "export_config"})
 
     local import_btn = button_flow.add{
         type = "sprite-button",
-        style = "shortcut_bar_button_blue",
+        style = "at_shortcut_bar_button_blue",
         sprite = "utility/import_slot",
     }
-
-    import_btn.style.top_padding = 4
-    import_btn.style.right_padding = 4
-    import_btn.style.bottom_padding = 4
-    import_btn.style.left_padding = 4
     GUI.register_action(import_btn, {type = "import_config"})
 
     local slider_vertical_flow = config_flow_v.add{
@@ -1419,11 +1406,7 @@ function GUI.update_presets(player_index)
             children[i].style = "at_preset_button"
         end
         rip = children[i+2]
-        rip.style = death_presets[preset_name] and "at_preset_button_selected" or "at_preset_button"
-        rip.style.left_padding = 0
-        rip.style.right_padding = 0
-        rip.style.top_padding = 0
-        rip.style.bottom_padding = 0
+        rip.style = death_presets[preset_name] and "at_preset_button_small_selected" or "at_preset_button_small"
     end
     local s = table_size(selected_presets)
     if s == 1 then
@@ -1451,26 +1434,14 @@ function GUI.add_preset(player_index, preset_name)
     }
 
     local rip = storage_grid.add{
-        type = "button",
-        style = "at_preset_button",
-        caption = "R"
+        type = "sprite-button",
+        style = "at_preset_button_small",
+        sprite = "autotrash_rip",
+        tooltip = {"autotrash_tooltip_rip"}
     }
     GUI.register_action(preset, {type = "load_preset"})
     GUI.register_action(remove, {type = "delete_preset", name = preset_name})
     GUI.register_action(rip, {type = "change_death_preset", name = preset_name})
-
-    rip.style.width = 28
-    rip.style.height = 28
-    rip.style.left_padding = 0
-    rip.style.right_padding = 0
-    rip.style.top_padding = 0
-    rip.style.bottom_padding = 0
-
-
-    remove.style.left_padding = 0
-    remove.style.right_padding = 0
-    remove.style.top_padding = 0
-    remove.style.bottom_padding = 0
 end
 
 return GUI
