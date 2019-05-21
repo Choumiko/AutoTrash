@@ -23,7 +23,7 @@ local max_value = 4294967295 --2^32-1
 
 local function tonumber_max(n)
     n = tonumber(n)
-    return n > max_value and max_value or n
+    return (n and n > max_value) and max_value or n
 end
 
 local function combine_from_vanilla(player_index)
@@ -32,7 +32,6 @@ local function combine_from_vanilla(player_index)
     local tmp = {config = {}, max_slot = 0}
     local requests, max_slot, c_requests = get_requests(player)
     local trash = player.auto_trash_filters
-    log(serpent.block(trash))
 
     for name, config in pairs(requests) do
         config.trash = false
@@ -66,8 +65,6 @@ local function combine_from_vanilla(player_index)
     end
     tmp.max_slot = max_slot
     tmp.c_requests = c_requests
-    saveVar(tmp, "combined")
-    log(serpent.block(tmp))
     return tmp
 end
 
@@ -110,7 +107,7 @@ local GUI = {--luacheck: allow defined top
 
 function GUI.clear_button(player_index, params, config_tmp)
     if config_tmp.config[params.slot].request > 0 then
-        config_tmp.c_requests = config_tmp.c_requests - 1
+        config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
     end
     config_tmp.config[params.slot] = nil
     if params.slot == config_tmp.max_slot then
@@ -129,14 +126,10 @@ function GUI.clear_button(player_index, params, config_tmp)
     local columns = game.get_player(player_index).mod_settings["autotrash_gui_columns"].value
     local count = #ruleset_grid.children
     local max_buttons = config_tmp.max_slot + columns + 1
-    local flow
     if count >= max_buttons then
-        log("Destroying")
         for i = count, max_buttons, -1 do
-            flow = ruleset_grid.children[i]
             assert(not config_tmp.config[i], "Should be empty")
-            GUI.deregister_action(flow)
-            flow.destroy()
+            GUI.deregister_action(ruleset_grid.children[i], true)
         end
     end
     GUI.mark_dirty(player_index)
@@ -147,7 +140,6 @@ function GUI.extend_buttons(player_index, max_slot)
     local ruleset_grid = gui_elements.config_scroll.children[1]
     local count = #ruleset_grid.children
     if max_slot >= count then
-        log("more buttons")
         local last = GUI.create_buttons(game.get_player(player_index), count+1)
         gui_elements.config_scroll.scroll_to_element(ruleset_grid.children[last].children[1], "top-third")
     end
@@ -313,8 +305,7 @@ local gui_functions = {
             end
             display_message(player, "Preset '" .. tostring(name) .. "' loaded", "success")
         end
-        GUI.deregister_action(element)
-        element.destroy()
+        GUI.deregister_action(element, true)
     end,
 
     save_preset = function(_, player_index)
@@ -344,17 +335,15 @@ local gui_functions = {
     end,
 
     delete_preset = function(event, player_index, params)
-        local storage_grid = event.element.parent
+        local element = event.element
+        local storage_grid = element.parent
         local name = params.name
-        local btn1 = storage_grid[name]
-        local btn2 = event.element
 
         global.selected_presets[player_index][name] = nil
         global.storage_new[player_index][name] = nil
-        GUI.deregister_action(btn1)
-        GUI.deregister_action(btn2)
-        btn1.destroy()
-        btn2.destroy()
+        GUI.deregister_action(storage_grid[name], true)
+        GUI.deregister_action(element, true)
+        GUI.deregister_action(params.rip_button, true)
         GUI.update_presets(player_index)
     end,
 
@@ -383,8 +372,6 @@ local gui_functions = {
     end,
 
     config_button_changed = function(event, player_index, params)
-        --log(serpent.line(params))
-        --log(serpent.line(event))
         local old_selected = global.selected[player_index]
         local config_tmp = global.config_tmp[player_index]
         local element = event.element
@@ -392,12 +379,9 @@ local gui_functions = {
         if event.name == defines.events.on_gui_click then
             if event.button == defines.mouse_button_type.right then
                 if not elem_value then return end
-                log("Clear button")
-                log(serpent.block(params))
                 GUI.clear_button(player_index, params, config_tmp)
                 GUI.destroy_create_button(player_index, element.parent, params.slot, old_selected)
             elseif event.button == defines.mouse_button_type.left then
-                log("Select button: " .. params.slot .. " old: " .. tostring(old_selected))
                 local flow = element.parent
                 if event.shift then
                     local player = game.get_player(player_index)
@@ -405,15 +389,12 @@ local gui_functions = {
                     if not cursor_ghost and not player.cursor_stack.valid_for_read and elem_value then
                         global.selected[player_index] = params.slot
                         player.cursor_ghost = elem_value
-                        log("Pickup config")
                         GUI.destroy_create_button(player_index, flow, params.slot, params.slot)
                         GUI.destroy_create_button(player_index, flow.parent.children[old_selected], old_selected, params.slot)
                         GUI.update_sliders(player_index)
                         return
                     elseif cursor_ghost and cursor_ghost.name == config_tmp.config[old_selected].name then
-                        log("Drop config")
                         if elem_value then--always true, even when shift clicking an empty button with a ghost, since it gets set before on_click
-                            log(elem_value)
                             local tmp = util.table.deepcopy(config_tmp.config[params.slot])
                             config_tmp.config[params.slot] = util.table.deepcopy(config_tmp.config[old_selected])
                             config_tmp.config[old_selected] = tmp
@@ -438,13 +419,11 @@ local gui_functions = {
             if game.get_player(player_index).cursor_ghost then return end--dragging to an empty slot, on_gui_click raised later
             if elem_value then
                 if elem_value == params.item then return end--changed to same item
-                log("New item")
                 local gui_elements = global.gui_elements[player_index]
                 local ruleset_grid = gui_elements.config_scroll.children[1]
                 local found
                 for i, flow in pairs(ruleset_grid.children) do
                     if i ~= params.slot and flow.children[1].elem_value == elem_value then
-                        log(serpent.line{i=i, params=params, s = global.selected[player_index], old_selected = old_selected} )
                         display_message(game.get_player(player_index), {"", {"cant-set-duplicate-request", item_prototype(elem_value).localised_name}}, true)
                         element.elem_value = params.item
                         global.selected[player_index] = i
@@ -460,7 +439,6 @@ local gui_functions = {
                     end
                 end
                 if not found then
-                    log("changed")
                     global.selected[player_index] = params.slot
                     config_tmp.config[params.slot] = {
                         name = elem_value, request = item_prototype(elem_value).default_request_amount,
@@ -477,7 +455,6 @@ local gui_functions = {
                     GUI.extend_buttons(player_index, config_tmp.max_slot)
                 end
             elseif params.item then
-                log("Clear button2")
                 GUI.clear_button(player_index, params, config_tmp)
                 GUI.hide_sliders(player_index)
                 GUI.update_button(player_index, params.slot, false, element)
@@ -486,8 +463,6 @@ local gui_functions = {
             log("Unhandled event: " .. GUI.get_event_name(event.name))
             return
         end
-        log("max_slot: " .. config_tmp.max_slot)
-        log("c_requests: " .. config_tmp.c_requests)
     end,
 
     request_amount_changed = function(event, player_index, _)
@@ -509,15 +484,13 @@ local gui_functions = {
             config_tmp.c_requests = config_tmp.c_requests + 1
         end
         if item_config.request > 0 and number == 0 then
-            config_tmp.c_requests = config_tmp.c_requests - 1
-            assert(config_tmp.c_requests >= 0, "Negative number of requests")--TODO: remove
+            config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
         end
         item_config.request = number
         --prevent trash being set to a lower value than request to prevent infinite robo loop
         if item_config.trash and number > item_config.trash then
             item_config.trash = number
         end
-        log(config_tmp.c_requests)
         GUI.mark_dirty(player_index)
         GUI.update_button(player_index, selected, selected)
         GUI.update_sliders(player_index)
@@ -539,13 +512,12 @@ local gui_functions = {
             end
             if number and item_config.request > number then
                 if item_config.request > 0 and number == 0 then
-                    config_tmp.c_requests = config_tmp.c_requests - 1
+                    config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
                 end
                 item_config.request = number
             end
         end
         item_config.trash = number
-        log(config_tmp.c_requests)
         GUI.mark_dirty(player_index)
         GUI.update_button(player_index, selected, selected)
         GUI.update_sliders(player_index)
@@ -626,8 +598,6 @@ local gui_functions = {
 
         local text = stack.export_stack()
         stack.clear()--the blueprint we spawned in
-        log(text)
-        log(global.config_tmp[player_index].max_slot)
         local gui = player.gui.center
         local frame = gui.add{type = "frame", caption = {"gui.export-to-string"}, direction = "vertical"}
         local textfield = frame.add{type = "text-box"}
@@ -700,8 +670,7 @@ local gui_functions = {
         end
         if not stack.set_stack{name = "blueprint", count = 1} then
             player.print({"", {"error-while-importing-string"}, " Could not set stack"})
-            GUI.deregister_action(frame)
-            frame.destroy()
+            GUI.deregister_action(frame, true)
             return
         end
         stack.import_stack(textfield.text)
@@ -717,19 +686,16 @@ local gui_functions = {
         player.print({"string-import-successful", "AutoTrash configuration"})
         GUI.update_buttons(player_index)
         GUI.hide_sliders(player_index)
-        GUI.deregister_action(frame)
-        frame.destroy()
+        GUI.deregister_action(frame, true)
     end,
 
     import_export_close = function(_, _, params)
-        local frame = params.frame
-        if not (frame and frame.valid) then return end
-        GUI.deregister_action(frame)
-        frame.destroy()
+        GUI.deregister_action(params.frame, true)
     end,
 }
 
-function GUI.deregister_action(element)
+function GUI.deregister_action(element, destroy)
+    if not (element and element.valid) then return end
     local player_gui_actions = global.gui_actions[element.player_index]
     if not player_gui_actions then
         return
@@ -737,6 +703,9 @@ function GUI.deregister_action(element)
     player_gui_actions[element.index] = nil
     for k, child in pairs(element.children) do
         GUI.deregister_action(child)
+    end
+    if destroy then
+        element.destroy()
     end
 end
 
@@ -754,7 +723,6 @@ function GUI.register_action(element, params)
         player_gui_actions = gui_actions[player_index]
     end
     player_gui_actions[element.index] = params
-    --log(serpent.block(global.gui_actions[player_index]))
 end
 
 function GUI.get_event_name(i)
@@ -787,8 +755,8 @@ function GUI.generic_event(event)
     profile_outer.stop()
     -- log{"", "Inner: ", profile_inner}
     -- log{"", "Outer: ", profile_outer}
-    log("Selected: " .. tostring(global.selected[player_index]))
-    log("Registered gui actions:" .. table_size(player_gui_actions))
+    --log("Selected: " .. tostring(global.selected[player_index]))
+    --log("Registered gui actions:" .. table_size(player_gui_actions))
     if not status then
         -- local s, elem
         -- for name, elem in pairs(global.gui_elements[player_index]) do
@@ -809,13 +777,10 @@ end
 
 function GUI.init(player)
     local button_flow = mod_gui.get_button_flow(player)
-    if button_flow and button_flow[GUI.defines.main_button_flow] and button_flow[GUI.defines.main_button_flow].valid then
-        return
-    end
+    local main_flow = button_flow[GUI.defines.main_button_flow]
+    if main_flow and main_flow.valid then return end
     local main_button = global.gui_elements[player.index].main_button
-    if main_button and main_button.valid then
-        return
-    end
+    if main_button and main_button.valid then return end
     log("init gui")
 
     if player.force.technologies["character-logistic-slots-1"].researched
@@ -859,20 +824,18 @@ function GUI.update_settings(player_index)
     local frame = global.gui_elements[player_index].trash_options
     if not (frame and frame.valid) then return end
     local settings = global.settings[player_index]
-    frame[GUI.defines.trash_unrequested].state = settings.trash_unrequested
-    frame[GUI.defines.trash_above_requested].state = settings.trash_above_requested
-    frame[GUI.defines.trash_network].state = settings.trash_network
-    frame[GUI.defines.pause_trash].state = settings.pause_trash
-    frame[GUI.defines.pause_requests].state = settings.pause_requests
-    frame[GUI.defines.network_button].caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+    local def = GUI.defines
+    frame[def.trash_unrequested].state = settings.trash_unrequested
+    frame[def.trash_above_requested].state = settings.trash_above_requested
+    frame[def.trash_network].state = settings.trash_network
+    frame[def.pause_trash].state = settings.pause_trash
+    frame[def.pause_requests].state = settings.pause_requests
+    frame[def.network_button].caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
 end
 
 function GUI.delete(player_index)
     for _, element in pairs(global.gui_elements[player_index]) do
-        if element and element.valid then
-            GUI.deregister_action(element)
-            element.destroy()
-        end
+        GUI.deregister_action(element, true)
     end
     global.gui_elements[player_index] = {}
 end
@@ -910,16 +873,16 @@ function GUI.update_sliders(player_index)
         child.visible = visible
     end
     if visible then
-        slider_flow[GUI.defines.config_request][GUI.defines.config_slider].slider_value = convert_to_slider(item_config.request)
-        slider_flow[GUI.defines.config_request][GUI.defines.config_slider_text].text = format_request(item_config) or 0
-        slider_flow[GUI.defines.config_trash][GUI.defines.config_slider].slider_value = item_config.trash and convert_to_slider(item_config.trash) or 42
-        slider_flow[GUI.defines.config_trash][GUI.defines.config_slider_text].text = format_trash(item_config) or "∞"
+        local def = GUI.defines
+        slider_flow[def.config_request][def.config_slider].slider_value = convert_to_slider(item_config.request)
+        slider_flow[def.config_request][def.config_slider_text].text = format_request(item_config) or 0
+        slider_flow[def.config_trash][def.config_slider].slider_value = item_config.trash and convert_to_slider(item_config.trash) or 42
+        slider_flow[def.config_trash][def.config_slider_text].text = format_trash(item_config) or "∞"
     end
 end
 
 function GUI.destroy_create_button(player_index, flow, i, selected)
-        if not i then return end
-        if not (flow and flow.valid) then return end
+        if not i or not (flow and flow.valid) then return end
         GUI.deregister_action(flow)
         flow.clear()
         local button = GUI.create_button(player_index, flow, i, selected)
@@ -949,19 +912,15 @@ function GUI.update_button(player_index, i, selected, button)
     GUI.register_action(button, {type = "config_button_changed", slot = i, item = button.elem_value})
 end
 
-function GUI.update_buttons(player_index, old_selected)
+function GUI.update_buttons(player_index)
     local scroll_pane = global.gui_elements[player_index].config_scroll
     if not (scroll_pane and scroll_pane.valid) then return end
     local ruleset_grid = scroll_pane.children[1]
     if not (ruleset_grid and ruleset_grid.valid) then return end
 
     local selected = global.selected[player_index]
-    local button
-    local start = old_selected or 1
-    log("update buttons, start: " .. start)
-    for i = start, #ruleset_grid.children do
-        button = ruleset_grid.children[i].children[1]
-        GUI.update_button(player_index, i, selected, button)
+    for i, child in pairs(ruleset_grid.children) do
+        GUI.update_button(player_index, i, selected, child.children[1])
     end
 end
 
@@ -1008,8 +967,7 @@ function GUI.create_buttons(player, old_selected)
     if not (scroll_pane and scroll_pane.valid) then return end
     local ruleset_grid = scroll_pane.children[1]
     if ruleset_grid and ruleset_grid.valid and not old_selected then
-        GUI.deregister_action(ruleset_grid)
-        ruleset_grid.destroy()
+        GUI.deregister_action(ruleset_grid, true)
     end
     local columns = player.mod_settings["autotrash_gui_columns"].value
     local config_tmp = global.config_tmp[player_index]
@@ -1023,7 +981,6 @@ function GUI.create_buttons(player, old_selected)
         slots = slots + columns
     end
 
-    log("Creating " .. slots .. " slots")
     local selected = global.selected[player_index]
     local start
     if not old_selected then
@@ -1037,14 +994,10 @@ function GUI.create_buttons(player, old_selected)
         start = old_selected
         local children = ruleset_grid.children
         for i = start, slots do
-            if children[i] then
-                GUI.deregister_action(children[i])
-                children[i].destroy()
-            end
+            GUI.deregister_action(children[i], true)
         end
     end
-    --local flowt = {type = "flow", direction = "horizontal"}
-    log("start: " .. start .. " slots: " .. slots)
+
     local create_button = GUI.create_button
     for i = start, slots do
         create_button(player_index, ruleset_grid.add{type = "flow", direction = "horizontal", name = i}, i, selected)
@@ -1054,18 +1007,17 @@ end
 
 function GUI.open_quick_presets(player_index)
     local button_flow = global.gui_elements[player_index].main_button.parent
-    if not (button_flow and button_flow.valid) then
-        return
-    end
-    if button_flow[GUI.defines.quick_presets] and button_flow[GUI.defines.quick_presets].valid then
-        GUI.deregister_action(button_flow[GUI.defines.quick_presets])
-        button_flow[GUI.defines.quick_presets].destroy()
+    if not (button_flow and button_flow.valid) then return end
+
+    local quick_name = GUI.defines.quick_presets
+    if button_flow[quick_name] and button_flow[quick_name].valid then
+        GUI.deregister_action(button_flow[quick_name], true)
         return
     end
 
     local quick_presets = button_flow.add{
         type = "list-box",
-        name = GUI.defines.quick_presets
+        name = quick_name
     }
 
     local i = 1
@@ -1080,14 +1032,8 @@ end
 
 function GUI.close_quick_presets(player_index)
     local button_flow = global.gui_elements[player_index].main_button.parent
-    if not button_flow or not button_flow.valid then
-        return
-    end
-    if button_flow[GUI.defines.quick_presets] and button_flow[GUI.defines.quick_presets].valid then
-        GUI.deregister_action(button_flow[GUI.defines.quick_presets])
-        button_flow[GUI.defines.quick_presets].destroy()
-        return
-    end
+    if not button_flow or not button_flow.valid then return end
+    GUI.deregister_action(button_flow[GUI.defines.quick_presets], true)
 end
 
 function GUI.open_logistics_frame(player)
@@ -1095,6 +1041,7 @@ function GUI.open_logistics_frame(player)
     hide_yarm(player_index)
     local left = mod_gui.get_frame_flow(player)
     local gui_elements = global.gui_elements[player_index]
+    local gui_defines = GUI.defines
     global.selected[player_index] = false
 
     local frame = left.add{
@@ -1114,7 +1061,7 @@ function GUI.open_logistics_frame(player)
 
     local config_flow_h = config_flow_v.add{
         type = "flow",
-        name = GUI.defines.config_flow_h,
+        name = gui_defines.config_flow_h,
         direction = "horizontal"
     }
 
@@ -1148,14 +1095,14 @@ function GUI.open_logistics_frame(player)
     gui_elements.reset_button = reset_button
     GUI.register_action(reset_button, {type = "reset_changes"})
 
-    GUI.register_action(button_flow.add{
-            type = "sprite-button",
-            style = "shortcut_bar_button",
-            sprite = "utility/downloading",
-            tooltip = {"autotrash_import_vanilla"}
-        },
-        {type = "import_from_vanilla"}
-    )
+    -- GUI.register_action(button_flow.add{
+    --         type = "sprite-button",
+    --         style = "shortcut_bar_button",
+    --         sprite = "utility/downloading",
+    --         tooltip = {"autotrash_import_vanilla"}
+    --     },
+    --     {type = "import_from_vanilla"}
+    -- )
 
     local export_btn = button_flow.add{
         type = "sprite-button",
@@ -1186,14 +1133,14 @@ function GUI.open_logistics_frame(player)
     }
     local slider_flow_request = slider_vertical_flow.add{
         type = "flow",
-        name = GUI.defines.config_request,
+        name = gui_defines.config_request,
         direction = "horizontal",
     }
     slider_flow_request.style.vertical_align = "center"
 
     local request_slider = slider_flow_request.add{
         type = "slider",
-        name = GUI.defines.config_slider,
+        name = gui_defines.config_slider,
         minimum_value = 0,
         maximum_value = 41,
     }
@@ -1201,7 +1148,7 @@ function GUI.open_logistics_frame(player)
 
     local request_textfield = slider_flow_request.add{
         type = "textfield",
-        name = GUI.defines.config_slider_text,
+        name = gui_defines.config_slider_text,
         style = "slider_value_textfield",
     }
     GUI.register_action(request_textfield, {type = "request_amount_changed"})
@@ -1212,14 +1159,14 @@ function GUI.open_logistics_frame(player)
     }
     local slider_flow_trash = slider_vertical_flow.add{
         type = "flow",
-        name = GUI.defines.config_trash,
+        name = gui_defines.config_trash,
         direction = "horizontal",
     }
     slider_flow_trash.style.vertical_align = "center"
 
     local trash_slider = slider_flow_trash.add{
         type = "slider",
-        name = GUI.defines.config_slider,
+        name = gui_defines.config_slider,
         minimum_value = 0,
         maximum_value = 42,
     }
@@ -1227,7 +1174,7 @@ function GUI.open_logistics_frame(player)
 
     local trash_textfield = slider_flow_trash.add{
         type = "textfield",
-        name = GUI.defines.config_slider_text,
+        name = gui_defines.config_slider_text,
         style = "slider_value_textfield",
     }
     GUI.register_action(trash_textfield, {type = "trash_amount_changed"})
@@ -1279,31 +1226,31 @@ function GUI.open_logistics_frame(player)
 
     GUI.register_action(trash_options.add{
                             type = "checkbox",
-                            name = GUI.defines.trash_above_requested,
+                            name = gui_defines.trash_above_requested,
                             caption = {"auto-trash-above-requested"},
-                            state = settings[GUI.defines.trash_above_requested]
+                            state = settings[gui_defines.trash_above_requested]
                         },
                         {type = "toggle_trash_option"})
 
     GUI.register_action(trash_options.add{
                             type = "checkbox",
-                            name = GUI.defines.trash_unrequested,
+                            name = gui_defines.trash_unrequested,
                             caption = {"auto-trash-unrequested"},
-                            state = settings[GUI.defines.trash_unrequested]
+                            state = settings[gui_defines.trash_unrequested]
                         },
                         {type = "toggle_trash_option"})
 
     GUI.register_action(trash_options.add{
                             type = "checkbox",
-                            name = GUI.defines.trash_network,
+                            name = gui_defines.trash_network,
                             caption = {"auto-trash-in-main-network"},
-                            state = settings[GUI.defines.trash_network]
+                            state = settings[gui_defines.trash_network]
                         },
                         {type = "toggle_trash_network"})
 
     GUI.register_action(trash_options.add{
                             type = "checkbox",
-                            name = GUI.defines.pause_trash,
+                            name = gui_defines.pause_trash,
                             caption = {"auto-trash-config-button-pause"},
                             tooltip = {"auto-trash-tooltip-pause"},
                             state = settings.pause_trash
@@ -1312,7 +1259,7 @@ function GUI.open_logistics_frame(player)
 
     GUI.register_action(trash_options.add{
                             type = "checkbox",
-                            name = GUI.defines.pause_requests,
+                            name = gui_defines.pause_requests,
                             caption = {"auto-trash-config-button-pause-requests"},
                             tooltip = {"auto-trash-tooltip-pause-requests"},
                             state = settings.pause_requests
@@ -1321,7 +1268,7 @@ function GUI.open_logistics_frame(player)
 
     GUI.register_action(trash_options.add{
                 type = "button",
-                name = GUI.defines.network_button,
+                name = gui_defines.network_button,
                 caption = global.mainNetwork[player_index] and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
                 },
                 {type = "set_main_network"}
@@ -1391,15 +1338,13 @@ function GUI.close(player, no_reset)
     local frame = elements.config_frame
 
     if storage_frame and storage_frame.valid then
-        GUI.deregister_action(storage_frame)
-        storage_frame.destroy()
+        GUI.deregister_action(storage_frame, true)
         elements.storage_frame = nil
         elements.storage_textfield = nil
         elements.storage_grid = nil
     end
     if frame and frame.valid then
-        GUI.deregister_action(frame)
-        frame.destroy()
+        GUI.deregister_action(frame, true)
         elements.config_frame = nil
         elements.config_scroll = nil
         elements.slider_flow = nil
@@ -1464,7 +1409,7 @@ function GUI.add_preset(player_index, preset_name)
         tooltip = {"autotrash_tooltip_rip"}
     }
     GUI.register_action(preset, {type = "load_preset"})
-    GUI.register_action(remove, {type = "delete_preset", name = preset_name})
+    GUI.register_action(remove, {type = "delete_preset", name = preset_name, rip_button = rip})
     GUI.register_action(rip, {type = "change_death_preset", name = preset_name})
 end
 

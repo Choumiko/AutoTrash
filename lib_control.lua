@@ -62,14 +62,15 @@ local function set_requests(player)
 end
 
 local function get_requests(player)
-    if not player.character then
+    local character = player.character
+    if not character then
         return {}
     end
     local requests = {}
     local count = 0
-    local get_request_slot = player.character.get_request_slot
+    local get_request_slot = character.get_request_slot
     local t, max_slot
-    for c = player.character.request_slot_count, 1, -1 do
+    for c = character.request_slot_count, 1, -1 do
         t = get_request_slot(c)
         if t then
             max_slot = not max_slot and c or max_slot
@@ -81,9 +82,9 @@ local function get_requests(player)
 end
 
 local function pause_requests(player)
-    if not player.character then return end
-    global.settings[player.index].pause_requests = true
     local character = player.character
+    if not character then return end
+    global.settings[player.index].pause_requests = true
     for c = 1, character.request_slot_count do
         character.clear_request_slot(c)
     end
@@ -101,7 +102,7 @@ local function in_network(player)
     end
     local currentNetwork = player.character.logistic_network
     local entity = global.mainNetwork[player.index]
-    if currentNetwork and entity and entity.valid and currentNetwork == entity.logistic_network then
+    if currentNetwork and currentNetwork.valid and entity and entity.valid and currentNetwork == entity.logistic_network then
         return true
     end
     return false
@@ -110,10 +111,10 @@ end
 item_prototypes = {}--luacheck: allow defined top
 local function item_prototype(name)
     if item_prototypes[name] then
-        log("cached: " .. name)
+        --log("cached: " .. name)
         return item_prototypes[name]
     end
-    log("uncached: " .. name)
+    --log("uncached: " .. name)
     item_prototypes[name] = game.item_prototypes[name]
     return item_prototypes[name]
 end

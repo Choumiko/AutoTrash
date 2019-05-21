@@ -51,7 +51,6 @@ local function update_item_config(stored)
         if tmp.config[i].request > 0 then
             c = c + 1
         end
-        --log(serpent.line(tmp[name].config[i]))
     end
     tmp.c_requests = c
     tmp.max_slot = max_slot
@@ -75,7 +74,6 @@ local function convert_logistics(stored, stored_trash)
             end
             config.trash = (config.request > trash.count) and config.request or trash.count
             tmp.config[config.slot] = config
-            --log(serpent.line(config))
         else
             no_slot[#no_slot+1] = {
                 name = trash.name,
@@ -242,12 +240,10 @@ local function register_conditional_events()
 end
 
 local function on_load()
-    log("on_load")
     register_conditional_events()
 end
 
 local function on_init()
-    log("on_init")
     init_global()
     on_load()
 end
@@ -346,11 +342,9 @@ local function on_configuration_changed(data)
                         end
                     end
                     if settings.pause_requests and global.storage[pi].requests and #global.storage[pi].requests > 0 then
-                        log("paused")
                         cleanup_table(global.storage[pi].requests, "paused requests")
                         paused_requests = global.storage[pi].requests
                     else
-                        log("unpaused")
                         paused_requests = global["logistics-config"][pi]
                     end
 
@@ -407,7 +401,6 @@ local trash_blacklist = {
 }
 
 local function on_player_main_inventory_changed(event)
-    --log("main inventory changed " .. serpent.block(event))
     local settings = global.settings[event.player_index]
     if settings.pause_trash or not settings.trash_unrequested then return end
     local player = game.get_player(event.player_index)
@@ -426,7 +419,6 @@ local function on_player_main_inventory_changed(event)
 end
 
 local function add_to_trash(player, item)
-    log("add to trash " .. game.tick)
     local player_index = player.index
     if trash_blacklist[item] then
         display_message(player, {"", item_prototype(item).localised_name, " is on the blacklist for trashing"}, true)
@@ -446,7 +438,6 @@ local function add_to_trash(player, item)
 end
 
 local function on_player_toggled_map_editor(event)
-    log("toggled map editor " .. serpent.block(event))
     local player = game.get_player(event.player_index)
     if not player.character then
         GUI.close(player, true)
@@ -454,7 +445,6 @@ local function on_player_toggled_map_editor(event)
 end
 
 local function on_pre_player_died(event)
-    log("pre player died " .. serpent.block(event))
     local player = game.get_player(event.player_index)
     if player.mod_settings["autotrash_pause_on_death"].value then
         pause_requests(player)
@@ -694,8 +684,8 @@ local at_commands = {
 }
 
 commands.add_command("reload_mods", "", at_commands.reload)
-commands.add_command("at_hide", "", at_commands.hide)
-commands.add_command("at_show", "", at_commands.show)
+commands.add_command("at_hide", "Hide the AutoTrash button", at_commands.hide)
+commands.add_command("at_show", "Show the AutoTrash button", at_commands.show)
 
 --/c remote.call("at","saveVar")
 remote.add_interface("at",
