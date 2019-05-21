@@ -1069,7 +1069,7 @@ function GUI.open_logistics_frame(player)
         type = "scroll-pane",
         vertical_scroll_policy = "auto-and-reserve-space"
     }
-    scroll_pane.style.maximal_height = 38 * player.mod_settings["autotrash_gui_max_rows"].value + 4
+    scroll_pane.style.maximal_height = 38 * player.mod_settings["autotrash_gui_max_rows"].value + 6
     gui_elements.config_scroll = scroll_pane
 
     local button_flow = config_flow_h.add{

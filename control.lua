@@ -34,35 +34,49 @@ local function cleanup_table(tbl, tbl_name)
     end
 end
 
-local function update_item_config(stored)
+local function update_item_config(stored, player)
     local tmp = {config = {}, c_requests = 0}
     local by_name = {}
     local max_slot = 0
     local c = 0
-    for i, p in pairs(stored) do
-        tmp.config[i] = {
-            name = p.name,
-            request = p.count and p.count or 0,
-            trash = false,
-            slot = i
-        }
-        by_name[p.name] = tmp.config[i]
-        max_slot = max_slot < i and i or max_slot
-        if tmp.config[i].request > 0 then
-            c = c + 1
+    local status, err = pcall(function()
+        for i, p in pairs(stored) do
+            if p.name and item_prototype(p.name) then
+                tmp.config[i] = {
+                    name = p.name,
+                    request = p.count and p.count or 0,
+                    trash = false,
+                    slot = i
+                }
+                by_name[p.name] = tmp.config[i]
+                max_slot = max_slot < i and i or max_slot
+                if tmp.config[i].request > 0 then
+                    c = c + 1
+                end
+            else
+                debugDump("Removing unknown item: " .. tostring(p.name) .. "(slot: " .. i ..")", player, true)
+            end
         end
+    end)
+    if not status then
+        debugDump("Error updating item configuration:", player, true)
+        debugDump(err, player, true)
+        tmp = {config = {}, c_requests = 0}
+        by_name = {}
+        max_slot = 0
+        c = 0
     end
     tmp.c_requests = c
     tmp.max_slot = max_slot
     return tmp, max_slot, by_name
 end
 
-local function convert_logistics(stored, stored_trash)
+local function convert_logistics(stored, stored_trash, player)
     log("Merging Request and Trash slots")
     local config, no_slot
 
     log("Processing requests")
-    local tmp, max_slot, by_name = update_item_config(stored)
+    local tmp, max_slot, by_name = update_item_config(stored, player)
 
     no_slot = {}
     log("Merging trash")
@@ -96,11 +110,10 @@ local function convert_logistics(stored, stored_trash)
             end
         end
     end
-    saveVar(tmp, "new_merge")
     return tmp
 end
 
-local function convert_storage(storage)
+local function convert_storage(storage, player)
     if not storage or not storage.store then
         return {}
     end
@@ -108,7 +121,7 @@ local function convert_storage(storage)
     local tmp = {}
     for name, stored in pairs(storage.store) do
         log("Converting: " .. name)
-        tmp[name] = update_item_config(stored)
+        tmp[name] = update_item_config(stored, player)
     end
     return tmp
 end
@@ -310,6 +323,7 @@ local function on_configuration_changed(data)
                 saveVar(global, "storage_pre")
                 global.needs_import = {}
                 local settings, paused_requests
+                local status, err
                 for pi, player in pairs(game.players) do
                     log("Updating data for player " .. player.name .. ", index: " .. pi)
                     GUI.close(player)
@@ -332,30 +346,50 @@ local function on_configuration_changed(data)
                     settings.auto_trash_unrequested = nil
                     settings.auto_trash_in_main_network = nil
 
-                    log("Cleaning tables")
-                    cleanup_table(global.config[pi], "trash table")
-                    cleanup_table(global["logistics-config"][pi], "requests table")
+                    status, err = pcall(function()
+                        cleanup_table(global.config[pi], "trash table")
+                        cleanup_table(global["logistics-config"][pi], "requests table")
+                    end)
+                    if not status then
+                        debugDump("Error cleaning config tables:", player, true)
+                        debugDump(err, player, true)
+                    end
+
                     log("Cleaning storage")
-                    if global.storage[pi].store then
-                        for _, stored in pairs(global.storage[pi].store) do
-                            cleanup_table(stored, _)
+                    status, err = pcall(function()
+                        if global.storage[pi].store then
+                            for _, stored in pairs(global.storage[pi].store) do
+                                cleanup_table(stored, _)
+                            end
                         end
-                    end
-                    if settings.pause_requests and global.storage[pi].requests and #global.storage[pi].requests > 0 then
-                        cleanup_table(global.storage[pi].requests, "paused requests")
-                        paused_requests = global.storage[pi].requests
-                    else
-                        paused_requests = global["logistics-config"][pi]
+                        if settings.pause_requests and global.storage[pi].requests and #global.storage[pi].requests > 0 then
+                            cleanup_table(global.storage[pi].requests, "paused requests")
+                            paused_requests = global.storage[pi].requests
+                        else
+                            paused_requests = global["logistics-config"][pi]
+                        end
+                    end)
+                    if not status then
+                        debugDump("Error cleaning storage tables:", player, true)
+                        debugDump(err, player, true)
                     end
 
-                    global.config_new[pi] = convert_logistics(paused_requests, global.config[pi])
-                    global.config_tmp[pi] = util.table.deepcopy(global.config_new[pi])
-
+                    status, err = pcall(function()
+                        global.config_new[pi] = convert_logistics(paused_requests, global.config[pi], player)
+                        global.config_tmp[pi] = util.table.deepcopy(global.config_new[pi])
+                    end)
+                    if not status then
+                        debugDump("Error converting configuration:", player, true)
+                        debugDump(err, player, true)
+                        global.config_new[pi] = nil
+                        global.config_tmp[pi] = nil
+                        init_player(player)
+                    end
                     global.temporaryRequests[pi] = {}
                     global.temporaryTrash[pi] = {}
 
                     log("Converting storage")
-                    global.storage_new[pi] = convert_storage(global.storage[pi])
+                    global.storage_new[pi] = convert_storage(global.storage[pi], player)
                     GUI.update_main_button(pi)
                     GUI.open_logistics_frame(player)
                 end
@@ -687,7 +721,6 @@ commands.add_command("reload_mods", "", at_commands.reload)
 commands.add_command("at_hide", "Hide the AutoTrash button", at_commands.hide)
 commands.add_command("at_show", "Show the AutoTrash button", at_commands.show)
 
---/c remote.call("at","saveVar")
 remote.add_interface("at",
     {
         saveVar = function(name)
