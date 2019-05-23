@@ -313,7 +313,7 @@ local function on_configuration_changed(data)
             init_global()
             init_players()
 
-            if oldVersion < v'4.0.6' then
+            if oldVersion < v'4.1.0' then
                 -- just in case someone removed offline players
                 for pi, _ in pairs(global.config) do
                     if not game.get_player(pi) then
