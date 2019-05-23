@@ -29,7 +29,7 @@ local function init_global()
     global.settings = global.settings or {}
     global.guiData = global.guiData or {}
 
-    global.defines_player_trash = game.active_mods["base"] < "0.17.35" and defines.inventory.player_trash or defines.inventory.character_corpse
+    global.defines_player_trash = game.active_mods["base"] < "0.17.35" and defines.inventory.player_trash or defines.inventory.character_trash--luacheck: ignore
 end
 
 local function init_player(player)
