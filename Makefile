@@ -48,9 +48,9 @@ verify:
 remove_mod:
 	if [ -L factorio_mods ];\
 	then \
-		for name in factorio_mods/$(PACKAGE_NAME)*; do \
+		for name in factorio_mods/$(OUTPUT_NAME)*; do \
 			echo "removing $$name"; \
-			rm -rf $$name; \
+			# rm -rf $$name; \
 		done \
 	fi;
 
