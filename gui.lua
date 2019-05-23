@@ -106,6 +106,8 @@ local GUI = {--luacheck: allow defined top
 }
 
 function GUI.clear_button(player_index, params, config_tmp)
+    local player = game.get_player(player_index)
+    if not (player and player.character) then return end
     if config_tmp.config[params.slot].request > 0 then
         config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
     end
@@ -126,6 +128,8 @@ function GUI.clear_button(player_index, params, config_tmp)
     local columns = game.get_player(player_index).mod_settings["autotrash_gui_columns"].value
     local count = #ruleset_grid.children
     local max_buttons = config_tmp.max_slot + columns + 1
+    local request_slots = player.character.request_slot_count + 1
+    max_buttons = max_buttons > request_slots and max_buttons or request_slots
     if count >= max_buttons then
         for i = count, max_buttons, -1 do
             assert(not config_tmp.config[i], "Should be empty")
