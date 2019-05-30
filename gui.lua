@@ -236,6 +236,52 @@ local gui_functions = {
         global.settings[player_index].clear_option = event.element.selected_index
     end,
 
+    quick_actions = function(event, player_index)
+        if event.name ~= defines.events.on_gui_selection_state_changed then return end
+        local element = event.element
+        local index = element.selected_index
+        if index == 1 then return end
+
+        local config_tmp = global.config_tmp[player_index]
+        if index == 2 then
+            for _, config in pairs(config_tmp.config) do
+                config.request = 0
+            end
+            config_tmp.c_requests = 0
+            GUI.update_sliders(player_index)
+        elseif index == 3 then
+            for _, config in pairs(config_tmp.config) do
+                config.trash = false
+            end
+            GUI.update_sliders(player_index)
+        elseif index == 4 then
+            config_tmp.config = {}
+            config_tmp.max_slot = 0
+            config_tmp.c_requests = 0
+            GUI.hide_sliders(player_index)
+        elseif index == 5 then
+            for _, config in pairs(config_tmp.config) do
+                if config.request > 0 then
+                    config.trash = config.request
+                end
+            end
+            GUI.update_sliders(player_index)
+        elseif index == 6 then
+            local c = 0
+            for _, config in pairs(config_tmp.config) do
+                if config.trash then
+                    config.request = config.trash
+                    c = config.request > 0 and c + 1 or c
+                end
+            end
+            config_tmp.c_requests = c
+        end
+        element.selected_index = 1
+
+        GUI.mark_dirty(player_index)
+        GUI.update_buttons(player_index)
+    end,
+
     load_preset = function(event, player_index)
         local element = event.element
         local name = element.caption
@@ -747,35 +793,29 @@ function GUI.generic_event(event)
     local action = player_gui_actions[gui.index]
     if not action then return end
 
-    log(GUI.get_event_name(event.name))
-    log(serpent.line(action))
     local profile_inner = game.create_profiler()
-    local profile_outer = game.create_profiler()
     local status, err = pcall(function()
         profile_inner.reset()
         gui_functions[action.type](event, player_index, action)
         profile_inner.stop()
     end)
-    profile_outer.stop()
     -- log{"", "Inner: ", profile_inner}
-    -- log{"", "Outer: ", profile_outer}
     --log("Selected: " .. tostring(global.selected[player_index]))
     --log("Registered gui actions:" .. table_size(player_gui_actions))
     if not status then
-        -- local s, elem
-        -- for name, elem in pairs(global.gui_elements[player_index]) do
-        --     s = name .. ": "
-        --     if elem and elem.valid then
-        --         s = s .. "valid"
-        --     elseif elem and not elem.valid then
-        --         s = s .. "invalid"
-        --     elseif not elem then
-        --         s = s .. "nil"
-        --     end
-        --     log(s)
-        -- end
+        log("Error running event: " .. tostring(GUI.get_event_name(event.name)))
+        log("Event: " .. serpent.line(event))
+        log("Action: " ..serpent.line(action and action.type))
         debugDump(err, game.get_player(player_index), true)
-        log(debug.traceback())
+        local s
+        for name, elem in pairs(global.gui_elements[player_index]) do
+            s = name .. ": "
+            if elem and not elem.valid then
+                log(s .. "invalid")
+            elseif not elem then
+                log(s .. "nil")
+            end
+        end
     end
 end
 
@@ -867,9 +907,11 @@ end
 function GUI.update_sliders(player_index)
     local slider_flow = global.gui_elements[player_index].slider_flow
     if not (slider_flow and slider_flow.valid) then return end
+    local selected = global.selected[player_index]
+    if not selected then GUI.hide_sliders(player_index) return end
 
-    local item_config = global.config_tmp[player_index].config[global.selected[player_index]]
-    if not global.selected[player_index] or not item_config then
+    local item_config = global.config_tmp[player_index].config[selected]
+    if not item_config then
         error("Update sliders without a selected item")
     end
     local visible = item_config and true or false
@@ -1187,36 +1229,21 @@ function GUI.open_logistics_frame(player)
 
     GUI.create_buttons(player)
 
-    --TODO add a dropdown for quick actions, that apply to each item e.g.
-    --Set trash to requested amount
-    --Set trash to stack size
-    --Set requests to stack size
-    --in/decrease by 1 stack size
-
-    local settings = global.settings[player_index]
-    local button_grid = config_flow_v.add{
-        type = "table",
-        column_count = 2,
-        name = "auto-trash-button-grid"
-    }
-
-    local clear_button = button_grid.add{
-        type = "button",
-        caption = {"gui.clear"}
-    }
-
-    local clear_option = button_grid.add{
+    local quick_actions = config_flow_v.add{
         type = "drop-down",
         items = {
-            [1] = "Both",
-            [2] = "Requests",
-            [3] = "Trash"
+            [1] = "Quick actions",
+            [2] = "Clear requests",
+            [3] = "Clear trash",
+            [4] = "Clear both",
+            [5] = "Set trash to requests",
+            [6] = "Set requests to trash"
         },
-        selected_index = settings.clear_option
+        selected_index = 1
     }
-    gui_elements.clear_option = clear_option
-    GUI.register_action(clear_button, {type = "clear_config"})
-    GUI.register_action(clear_option, {type = "clear_option_changed"})
+    quick_actions.style.minimal_width = 216
+
+    GUI.register_action(quick_actions, {type = "quick_actions"})
 
     local trash_options = frame.add{
         type = "frame",
@@ -1227,6 +1254,8 @@ function GUI.open_logistics_frame(player)
     trash_options.style.use_header_filler = false
     trash_options.style.horizontally_stretchable = true
     trash_options.style.font = "default-bold"
+
+    local settings = global.settings[player_index]
 
     GUI.register_action(trash_options.add{
                             type = "checkbox",
