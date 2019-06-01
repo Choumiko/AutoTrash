@@ -207,6 +207,27 @@ local gui_functions = {
         end
     end,
 
+    request_blueprint = function(event, player_index)
+        if event.name ~= defines.events.on_gui_click then return end
+        local player = game.get_player(player_index)
+        local cursor_stack = player.cursor_stack
+        if not (cursor_stack and cursor_stack.valid_for_read) then
+            log("Empty cursor")
+            return
+        end
+        if not (cursor_stack.is_blueprint or cursor_stack.is_blueprint_book) then
+            log("No bp item")
+            return
+        end
+        local bp = cursor_stack.is_blueprint and cursor_stack or cursor_stack.get_inventory(defines.inventory.item_main)[cursor_stack.active_index]
+        if not bp.is_blueprint_setup() then
+            log("Not setup")
+            return
+        end
+        log("Adding temp requests")
+        log(serpent.line(bp.cost_to_build))
+    end,
+
     clear_config = function(_, player_index)
         local mode = global.settings[player_index].clear_option
         local config_tmp = global.config_tmp[player_index]
@@ -428,7 +449,12 @@ local gui_functions = {
         local elem_value = element.elem_value
         if event.name == defines.events.on_gui_click then
             if event.button == defines.mouse_button_type.right then
-                if not elem_value then return end
+                if not elem_value then
+                    global.selected[player_index] = false
+                    GUI.update_button(player_index, old_selected)
+                    GUI.hide_sliders(player_index)
+                    return
+                end
                 GUI.clear_button(player_index, params, config_tmp)
                 GUI.destroy_create_button(player_index, element.parent, params.slot, old_selected)
             elseif event.button == defines.mouse_button_type.left then
@@ -609,7 +635,7 @@ local gui_functions = {
             game.get_player(player_index).print("No main network set")
             element.state = false
         else
-            global.settings[player_index].autotrash_network = element.state
+            global.settings[player_index].trash_network = element.state
             local player = game.get_player(player_index)
             if element.state and in_network(player) then
                 unpause_trash(player)
@@ -958,6 +984,51 @@ function GUI.update_button(player_index, i, selected, button)
     GUI.register_action(button, {type = "config_button_changed", slot = i, item = button.elem_value})
 end
 
+function GUI.update_button_styles(player, player_index)
+    local character = player.character
+
+    local scroll_pane = global.gui_elements[player_index].config_scroll
+    if not (scroll_pane and scroll_pane.valid) then return end
+    local ruleset_grid = scroll_pane.children[1]
+    if not (ruleset_grid and ruleset_grid.valid) then return end
+
+    local selected = global.selected[player_index]
+    local button, diff, item, n, c
+    local network = character.logistic_network
+    local config = global.config_tmp[player_index]
+    local req = character.get_logistic_point(defines.logistic_member_index.character_requester)
+    if not network or not req or config.c_requests == 0 then
+        for _, child in pairs(ruleset_grid.children) do
+            button = child.children[1]
+            if button and button.valid then
+                button.style = "at_button_slot"
+            end
+        end
+        return
+    end
+    config = config.config
+    local on_the_way = req.targeted_items_deliver
+    local available = network.get_contents()
+    local item_count = player.get_item_count
+    for i, child in pairs(ruleset_grid.children) do
+        item = config[i]
+        if item and item.request > 0 and i ~= selected then
+            n, c = item.name, item.request
+            button = child.children[1]
+            if button and button.valid then
+                diff = c - item_count(n)
+                if diff <= 0 then
+                    button.style = "at_button_slot"
+                else
+                    diff = diff - (on_the_way[n] or 0) - (available[n] or 0)
+                    button.style = diff <= 0 and "at_button_slot_items_on_the_way"  or "at_button_slot_items_not_available"
+                    --TODO: additional style when on_the_way > 0 and available == 0? (slow production)
+                end
+            end
+        end
+    end
+end
+
 function GUI.update_buttons(player_index)
     local scroll_pane = global.gui_elements[player_index].config_scroll
     if not (scroll_pane and scroll_pane.valid) then return end
@@ -1143,11 +1214,11 @@ function GUI.open_logistics_frame(player)
 
     -- GUI.register_action(button_flow.add{
     --         type = "sprite-button",
-    --         style = "shortcut_bar_button",
-    --         sprite = "utility/downloading",
-    --         tooltip = {"autotrash_import_vanilla"}
+    --         style = "at_shortcut_bar_button",
+    --         sprite = "item/blueprint",
+    --         tooltip = {"autotrash_request_blueprint"}
     --     },
-    --     {type = "import_from_vanilla"}
+    --     {type = "request_blueprint"}
     -- )
 
     local export_btn = button_flow.add{

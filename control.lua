@@ -162,6 +162,7 @@ local function init_global()
     global["storage_new"] = global["storage_new"] or {}
 
     global.mainNetwork = global.mainNetwork or {}
+    global.current_network = global.current_network or {}
     global.temporaryTrash = global.temporaryTrash or {}
     global.temporaryRequests = global.temporaryRequests or {}
     global.settings = global.settings or {}
@@ -173,6 +174,14 @@ local function init_global()
     global.gui_elements = global.gui_elements or {}
 end
 
+local function on_nth_tick()
+    for i, p in pairs(game.players) do
+        if p.character then
+            GUI.update_button_styles(p, i)
+        end
+    end
+end
+
 local function init_player(player)
     local index = player.index
     global.config[index] = global.config[index] or {}
@@ -180,7 +189,8 @@ local function init_player(player)
     global.config_tmp[index] = global.config_tmp[index] or {config = {}, c_requests = 0, max_slot = 0}
     global.selected[index] = global.selected[index] or false
 
-    global.mainNetwork[index] = false
+    global.mainNetwork[index] = global.mainNetwork[index] or false
+    global.current_network[index] = global.current_network[index] or false
     global.storage[index] = global.storage[index] or {}
     global.storage_new[index] = global.storage_new[index] or {}
     global.temporaryRequests[index] = global.temporaryRequests[index] or {}
@@ -325,73 +335,80 @@ local function on_configuration_changed(data)
                 local settings, paused_requests
                 local status, err
                 for pi, player in pairs(game.players) do
-                    log("Updating data for player " .. player.name .. ", index: " .. pi)
-                    GUI.close(player)
-                    global.needs_import[pi] = true
-                    settings = global.settings[pi]
-                    settings.pause_trash = not global.active[pi]
-                    settings.pause_requests = not global["logistics-active"][pi]
-                    if remote.interfaces.YARM then
-                        settings.YARM_active_filter = remote.call("YARM", "get_current_filter", pi)
-                    end
-                    settings.clear_option = settings.clear_option or 1
-                    settings.trash_above_requested = settings.auto_trash_above_requested or false
-                    settings.trash_unrequested = settings.auto_trash_unrequested or false
-                    settings.trash_network = settings.auto_trash_in_main_network or false
+                    if global.active then --TODO: remove
+                        log("Updating data for player " .. player.name .. ", index: " .. pi)
+                        GUI.close(player)
+                        global.needs_import[pi] = true
+                        settings = global.settings[pi]
+                        settings.pause_trash = not global.active[pi]
+                        settings.pause_requests = not global["logistics-active"][pi]
+                        if remote.interfaces.YARM then
+                            settings.YARM_active_filter = remote.call("YARM", "get_current_filter", pi)
+                        end
+                        settings.clear_option = settings.clear_option or 1
+                        settings.trash_above_requested = settings.auto_trash_above_requested or false
+                        settings.trash_unrequested = settings.auto_trash_unrequested or false
+                        settings.trash_network = settings.auto_trash_in_main_network or false
 
-                    settings.YARM_old_expando = nil
-                    settings.options_extended = nil
+                        settings.YARM_old_expando = nil
+                        settings.options_extended = nil
 
-                    settings.auto_trash_above_requested = nil
-                    settings.auto_trash_unrequested = nil
-                    settings.auto_trash_in_main_network = nil
+                        settings.auto_trash_above_requested = nil
+                        settings.auto_trash_unrequested = nil
+                        settings.auto_trash_in_main_network = nil
 
-                    status, err = pcall(function()
-                        cleanup_table(global.config[pi], "trash table")
-                        cleanup_table(global["logistics-config"][pi], "requests table")
-                    end)
-                    if not status then
-                        debugDump("Error cleaning config tables:", player, true)
-                        debugDump(err, player, true)
-                    end
+                        status, err = pcall(function()
+                            cleanup_table(global.config[pi], "trash table")
+                            cleanup_table(global["logistics-config"][pi], "requests table")
+                        end)
+                        if not status then
+                            debugDump("Error cleaning config tables:", player, true)
+                            debugDump(err, player, true)
+                        end
 
-                    log("Cleaning storage")
-                    status, err = pcall(function()
-                        if global.storage[pi].store then
-                            for _, stored in pairs(global.storage[pi].store) do
-                                cleanup_table(stored, _)
+                        log("Cleaning storage")
+                        status, err = pcall(function()
+                            if global.storage[pi].store then
+                                for _, stored in pairs(global.storage[pi].store) do
+                                    cleanup_table(stored, _)
+                                end
                             end
+                            if settings.pause_requests and global.storage[pi].requests and #global.storage[pi].requests > 0 then
+                                cleanup_table(global.storage[pi].requests, "paused requests")
+                                paused_requests = global.storage[pi].requests
+                            else
+                                paused_requests = global["logistics-config"][pi]
+                            end
+                        end)
+                        if not status then
+                            debugDump("Error cleaning storage tables:", player, true)
+                            debugDump(err, player, true)
                         end
-                        if settings.pause_requests and global.storage[pi].requests and #global.storage[pi].requests > 0 then
-                            cleanup_table(global.storage[pi].requests, "paused requests")
-                            paused_requests = global.storage[pi].requests
-                        else
-                            paused_requests = global["logistics-config"][pi]
+
+                        status, err = pcall(function()
+                            global.config_new[pi] = convert_logistics(paused_requests, global.config[pi], player)
+                            global.config_tmp[pi] = util.table.deepcopy(global.config_new[pi])
+                        end)
+                        if not status then
+                            debugDump("Error converting configuration:", player, true)
+                            debugDump(err, player, true)
+                            global.config_new[pi] = nil
+                            global.config_tmp[pi] = nil
+                            init_player(player)
                         end
-                    end)
-                    if not status then
-                        debugDump("Error cleaning storage tables:", player, true)
-                        debugDump(err, player, true)
-                    end
+                        global.temporaryRequests[pi] = {}
+                        global.temporaryTrash[pi] = {}
 
-                    status, err = pcall(function()
-                        global.config_new[pi] = convert_logistics(paused_requests, global.config[pi], player)
-                        global.config_tmp[pi] = util.table.deepcopy(global.config_new[pi])
-                    end)
-                    if not status then
-                        debugDump("Error converting configuration:", player, true)
-                        debugDump(err, player, true)
-                        global.config_new[pi] = nil
-                        global.config_tmp[pi] = nil
-                        init_player(player)
+                        log("Converting storage")
+                        global.storage_new[pi] = convert_storage(global.storage[pi], player)
+                        GUI.update_main_button(pi)
+                        GUI.open_logistics_frame(player)
                     end
-                    global.temporaryRequests[pi] = {}
-                    global.temporaryTrash[pi] = {}
-
-                    log("Converting storage")
-                    global.storage_new[pi] = convert_storage(global.storage[pi], player)
-                    GUI.update_main_button(pi)
-                    GUI.open_logistics_frame(player)
+                end
+                if oldVersion < v'4.1.1' then
+                    for pi, player in pairs(game.players) do
+                        global.current_network[pi] = player.character and player.character.logistic_network or false
+                    end
                 end
 
                 global.config = nil
@@ -459,7 +476,7 @@ local function add_to_trash(player, item)
         return
     end
     local trash_filters = player.auto_trash_filters
-    global.temporaryTrash[player_index][item] = trash_filters[item] or -1 ---1: wasn't set, remove when cleaning temporaryTrash
+    global.temporaryTrash[player_index][item] = trash_filters[item] or -1 -- -1: wasn't set, remove when cleaning temporaryTrash
     if not trash_filters[item] then
         local requests = requested_items(player)
         trash_filters[item] = requests[item] or 0
@@ -507,26 +524,33 @@ local function on_player_respawned(event)
 end
 
 local function on_player_changed_position(event)
-    if not global.settings[event.player_index].autotrash_network then
+    local player_index = event.player_index
+    local player = game.get_player(player_index)
+    if not player.character then return end
+    if player.character.logistic_network ~= global.current_network[player_index] then
+        log("Network changed")
+        local p = game.create_profiler()
+        GUI.update_button_styles(player, player_index)
+        log({"", p})
+        global.current_network[player_index] = player.character.logistic_network
+    end
+    if not global.settings[player_index].trash_network then
         return
     end
-    local player = game.get_player(event.player_index)
-    if player.character then
-        local is_in_network = in_network(player)
-        local paused = global.settings[event.player_index].pause_trash
-        if not is_in_network and not paused then
-            pause_trash(player)
-            GUI.update_main_button(player.index)
-            if player.mod_settings["autotrash_display_messages"].value then
-                display_message(player, "AutoTrash paused")
-            end
-            return
-        elseif is_in_network and paused then
-            unpause_trash(player)
-            GUI.update_main_button(player.index)
-            if player.mod_settings["autotrash_display_messages"].value then
-                display_message(player, "AutoTrash unpaused")
-            end
+    local is_in_network = in_network(player)
+    local paused = global.settings[event.player_index].pause_trash
+    if not is_in_network and not paused then
+        pause_trash(player)
+        GUI.update_main_button(player_index)
+        if player.mod_settings["autotrash_display_messages"].value then
+            display_message(player, "AutoTrash paused")
+        end
+        return
+    elseif is_in_network and paused then
+        unpause_trash(player)
+        GUI.update_main_button(player_index)
+        if player.mod_settings["autotrash_display_messages"].value then
+            display_message(player, "AutoTrash unpaused")
         end
     end
 end
@@ -542,7 +566,7 @@ script.on_event(defines.events.on_pre_player_removed, on_pre_player_removed)
 script.on_event(defines.events.on_pre_player_died, on_pre_player_died)
 script.on_event(defines.events.on_player_respawned, on_player_respawned)
 script.on_event(defines.events.on_player_changed_position, on_player_changed_position)
-
+script.on_nth_tick(121, on_nth_tick)
 local function on_pre_mined_item(event)
     local status, err = pcall(function()
         if event.entity.type == "roboport" then
@@ -575,6 +599,14 @@ end
 script.on_event(defines.events.on_pre_player_mined_item, on_pre_mined_item)
 script.on_event(defines.events.on_robot_pre_mined, on_pre_mined_item)
 script.on_event(defines.events.on_entity_died, on_pre_mined_item)
+
+--[[
+Temporary requests:
+- after the request is added: (.request and .trash increased accordingly)
+    - keep track of the item counts in the inventory + cursor (on_put_item event? cursor_stack may be put back into inventory resulting in a false increase otherwise)
+    - if count decreases: reduce request/trash amount by the diff (we assume the item is used to build the ordered blueprint)
+    - if count increases:
+]]--
 
 local function add_order(player)--luacheck: ignore
     local entities = player.cursor_stack.get_blueprint_entities()
@@ -740,9 +772,20 @@ remote.add_interface("at",
             --     end
 
             -- end
-            local req = game.player.character.get_logistic_point(defines.logistic_member_index.character_requester) --requests of the player
-            log(serpent.block(req.targeted_items_deliver))-- items on the way
-            log(serpent.block(game.player.character.logistic_network.get_contents())) --network the player is in
+            for _, player in pairs(game.players) do
+                if player.character then
+                    local req = player.character.get_logistic_point(defines.logistic_member_index.character_requester) --requests of the player
+                    if req then
+                    log("requests: " .. serpent.block(req.filters))
+
+                    log("on the way: " .. serpent.block(req.targeted_items_deliver))-- items on the way
+                    local network = player.character.logistic_network
+                    log("available: " .. serpent.block(network and network.get_contents())) --network the player is in
+                    log("robots (t/a): " .. tostring(network and network.all_logistic_robots) .. "/" .. tostring(network and network.available_logistic_robots))
+                    end
+                end
+            end
+            GUI.update_button_styles(game.player, game.player.index)
             --log(serpent.block(req.filters))
 
         end,

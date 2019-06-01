@@ -12,6 +12,29 @@
 --   }}
 
 local styles = data.raw["gui-style"].default
+
+local function yellowbuttongraphicalset()
+    return
+    {
+        border = 1,
+        filename = "__core__/graphics/gui.png",
+        position = {111, 72},
+        size = 36,
+        scale = 1
+    }
+end
+
+local function redbuttongraphicalset()
+    return
+    {
+        border = 1,
+        filename = "__core__/graphics/gui.png",
+        position = {111, 36},
+        size = 36,
+        scale = 1
+    }
+end
+
 styles["at_request_label_bottom"] = {
     type = "label_style",
     parent = "count_label",
@@ -53,7 +76,18 @@ styles["at_button_slot_selected"] = {
     -- selected_hovered_graphical_set = default.selected_hovered_graphical_set,
     -- selected_clicked_graphical_set = orangebuttongraphcialset(),--luacheck:ignore
 }
-log(serpent.block(styles["at_button_slot_selected"]))
+
+styles["at_button_slot_items_on_the_way"] = {
+    type = "button_style",
+    parent = "logistic_button_selected_slot",
+    default_graphical_set = yellowbuttongraphicalset(),
+}
+
+styles["at_button_slot_items_not_available"] = {
+    type = "button_style",
+    parent = "logistic_button_selected_slot",
+    default_graphical_set = redbuttongraphicalset(),
+}
 
 styles["at_button_slot_locked"] = {
     type = "button_style",
@@ -109,6 +143,12 @@ styles["at_delete_preset"] = {
     type = "button_style",
     parent = "red_icon_button",
     padding = 0
+}
+
+styles["at_shortcut_bar_button"] = {
+    type = "button_style",
+    parent = "shortcut_bar_button",
+    padding = 4
 }
 
 styles["at_shortcut_bar_button_green"] = {

@@ -97,12 +97,12 @@ local function unpause_requests(player)
 end
 
 local function in_network(player)
-    if not global.settings[player.index].autotrash_network then
+    if not global.settings[player.index].trash_network then
         return true
     end
     local currentNetwork = player.character.logistic_network
     local entity = global.mainNetwork[player.index]
-    if currentNetwork and currentNetwork.valid and entity and entity.valid and currentNetwork == entity.logistic_network then
+    if currentNetwork and entity and currentNetwork.valid and entity.valid and currentNetwork == entity.logistic_network then
         return true
     end
     return false
