@@ -5,16 +5,12 @@ local display_message = lib_control.display_message
 local format_number = lib_control.format_number
 local format_request = lib_control.format_request
 local format_trash = lib_control.format_trash
-local debugDump = lib_control.debugDump
 local convert_to_slider = lib_control.convert_to_slider
 local convert_from_slider = lib_control.convert_from_slider
 local set_trash = lib_control.set_trash
 local pause_trash = lib_control.pause_trash
 local unpause_trash = lib_control.unpause_trash
 local set_requests = lib_control.set_requests
-local get_requests = lib_control.get_requests
-local pause_requests = lib_control.pause_requests
-local unpause_requests = lib_control.unpause_requests
 local in_network = lib_control.in_network
 local item_prototype = lib_control.item_prototype
 local mod_gui = require '__core__/lualib/mod-gui'
@@ -30,7 +26,7 @@ local function combine_from_vanilla(player_index)
     local player = game.get_player(player_index)
     if not player.character then return end
     local tmp = {config = {}, max_slot = 0}
-    local requests, max_slot, c_requests = get_requests(player)
+    local requests, max_slot, c_requests = lib_control.get_requests(player)
     local trash = player.auto_trash_filters
 
     for name, config in pairs(requests) do
@@ -423,11 +419,7 @@ local gui_functions = {
         if global.mainNetwork[player_index] then
             global.mainNetwork[player_index] = false
         else
-            local network = player.character and player.character.logistic_network or false
-            if network then
-                local cell = network.find_cell_closest_to(player.position)
-                global.mainNetwork[player_index] = cell and cell.owner or false
-            end
+            global.mainNetwork[player_index] = lib_control.get_network_entity(player)
             if not global.mainNetwork[player_index] then
                 display_message(player, {"auto-trash-not-in-network"}, true)
             end
@@ -612,9 +604,9 @@ local gui_functions = {
     toggle_pause_requests = function(event, player_index)
         if event.name ~= defines.events.on_gui_checked_state_changed then return end
         if event.element.state then
-            pause_requests(game.get_player(player_index))
+            lib_control.pause_requests(game.get_player(player_index))
         else
-            unpause_requests(game.get_player(player_index))
+            lib_control.unpause_requests(game.get_player(player_index))
         end
         GUI.update_main_button(player_index)
     end,
@@ -832,7 +824,7 @@ function GUI.generic_event(event)
         log("Error running event: " .. tostring(GUI.get_event_name(event.name)))
         log("Event: " .. serpent.line(event))
         log("Action: " ..serpent.line(action and action.type))
-        debugDump(err, game.get_player(player_index), true)
+        lib_control.debugDump(err, game.get_player(player_index), true)
         local s
         for name, elem in pairs(global.gui_elements[player_index]) do
             s = name .. ": "
@@ -998,10 +990,10 @@ function GUI.update_button_styles(player, player_index)
     local config = global.config_tmp[player_index]
     local req = character.get_logistic_point(defines.logistic_member_index.character_requester)
     if not network or not req or config.c_requests == 0 then
-        for _, child in pairs(ruleset_grid.children) do
+        for i, child in pairs(ruleset_grid.children) do
             button = child.children[1]
             if button and button.valid then
-                button.style = "at_button_slot"
+               button.style = (i == selected) and "at_button_slot_selected" or "at_button_slot"
             end
         end
         return

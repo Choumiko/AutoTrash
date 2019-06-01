@@ -96,6 +96,14 @@ local function unpause_requests(player)
     set_requests(player)
 end
 
+local function get_network_entity(player)
+    local network = player.character and player.character.logistic_network or false
+    if network then
+        local cell = network and network.find_cell_closest_to(player.position)
+        return cell and cell.owner
+    end
+end
+
 local function in_network(player)
     if not global.settings[player.index].trash_network then
         return true
@@ -246,6 +254,7 @@ local M = {
     get_requests = get_requests,
     pause_requests = pause_requests,
     unpause_requests = unpause_requests,
+    get_network_entity = get_network_entity,
     in_network = in_network
 }
 

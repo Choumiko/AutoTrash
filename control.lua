@@ -10,11 +10,9 @@ local saveVar = lib_control.saveVar
 local debugDump = lib_control.debugDump
 local display_message = lib_control.display_message
 local get_requests = lib_control.get_requests
-local pause_requests = lib_control.pause_requests
-local set_trash = lib_control.set_trash
 local pause_trash = lib_control.pause_trash
 local unpause_trash = lib_control.unpause_trash
-local unpause_requests = lib_control.unpause_requests
+local get_network_entity = lib_control.get_network_entity
 local in_network = lib_control.in_network
 local item_prototype = lib_control.item_prototype
 
@@ -190,7 +188,7 @@ local function init_player(player)
     global.selected[index] = global.selected[index] or false
 
     global.mainNetwork[index] = global.mainNetwork[index] or false
-    global.current_network[index] = global.current_network[index] or false
+    global.current_network[index] = global.current_network[index] or nil
     global.storage[index] = global.storage[index] or {}
     global.storage_new[index] = global.storage_new[index] or {}
     global.temporaryRequests[index] = global.temporaryRequests[index] or {}
@@ -405,11 +403,6 @@ local function on_configuration_changed(data)
                         GUI.open_logistics_frame(player)
                     end
                 end
-                if oldVersion < v'4.1.1' then
-                    for pi, player in pairs(game.players) do
-                        global.current_network[pi] = player.character and player.character.logistic_network or false
-                    end
-                end
 
                 global.config = nil
                 global["logistics-config"] = nil
@@ -422,6 +415,11 @@ local function on_configuration_changed(data)
                 global["config-tmp"] = nil
                 global["logistics-config-tmp"] = nil
                 saveVar(global, "storage_post")
+            end
+            if oldVersion < v'4.1.1' then
+                for pi, player in pairs(game.players) do
+                    global.current_network[pi] = get_network_entity(player)
+                end
             end
         end
 
@@ -498,7 +496,7 @@ end
 local function on_pre_player_died(event)
     local player = game.get_player(event.player_index)
     if player.mod_settings["autotrash_pause_on_death"].value then
-        pause_requests(player)
+        lib_control.pause_requests(player)
         GUI.update_main_button(player.index)
         GUI.close(player, true)
     end
@@ -517,7 +515,7 @@ local function on_player_respawned(event)
         global.config_tmp[player_index] = tmp
         global.config_new[player_index] = util.table.deepcopy(tmp)
 
-        unpause_requests(player)
+        lib_control.unpause_requests(player)
         unpause_trash(player)
         GUI.update_main_button(player_index)
     end
@@ -527,12 +525,11 @@ local function on_player_changed_position(event)
     local player_index = event.player_index
     local player = game.get_player(player_index)
     if not player.character then return end
-    if player.character.logistic_network ~= global.current_network[player_index] then
+    local current = global.current_network[player_index] and global.current_network[player_index].logistic_network
+    if player.character.logistic_network ~= current then
         log("Network changed")
-        local p = game.create_profiler()
         GUI.update_button_styles(player, player_index)
-        log({"", p})
-        global.current_network[player_index] = player.character.logistic_network
+        global.current_network[player_index] = get_network_entity(player)
     end
     if not global.settings[player_index].trash_network then
         return
@@ -567,28 +564,36 @@ script.on_event(defines.events.on_pre_player_died, on_pre_player_died)
 script.on_event(defines.events.on_player_respawned, on_player_respawned)
 script.on_event(defines.events.on_player_changed_position, on_player_changed_position)
 script.on_nth_tick(121, on_nth_tick)
+
+local function update_network(event, network_tbl, main)
+    local newEntity = false
+    for player_index, entity in pairs(network_tbl) do
+        if entity == event.entity then
+            --get another roboport from the network
+            if newEntity == false and entity.logistic_network and entity.logistic_network.valid then
+                for _, cell in pairs(entity.logistic_network.cells) do
+                    newEntity = nil
+                    if cell.owner ~= entity and cell.owner.valid then
+                        newEntity = cell.owner
+                        break
+                    end
+                end
+            end
+            if main and not newEntity and network_tbl[player_index] then
+                local player = game.get_player(player_index)
+                player.print("Autotrash main network has been unset")
+            end
+            network_tbl[player_index] = newEntity
+            GUI.update_settings(player_index)
+        end
+    end
+end
+
 local function on_pre_mined_item(event)
     local status, err = pcall(function()
         if event.entity.type == "roboport" then
-            for player_index, entity in pairs(global.mainNetwork) do
-                if entity == event.entity then
-                    --get another roboport from the network
-                    local newEntity = false
-                    if entity.logistic_network and entity.logistic_network.valid then
-                        for _, cell in pairs(entity.logistic_network.cells) do
-                            if cell.owner ~= entity and cell.owner.valid then
-                                newEntity = cell.owner
-                                break
-                            end
-                        end
-                    end
-                    if not newEntity and global.mainNetwork[player_index] then
-                        game.get_player(player_index).print("Autotrash main network has been unset")
-                    end
-                    global.mainNetwork[player_index] = newEntity
-                    GUI.update_settings(player_index)
-                end
-            end
+            update_network(event, global.mainNetwork, true)
+            update_network(event, global.current_network)
         end
     end)
     if not status then
@@ -635,9 +640,9 @@ end
 
 local function toggle_autotrash_pause_requests(player)
     if global.settings[player.index].pause_requests then
-        unpause_requests(player)
+        lib_control.unpause_requests(player)
     else
-        pause_requests(player)
+        lib_control.pause_requests(player)
     end
     GUI.update_main_button(player.index)
     GUI.close(player)
@@ -664,13 +669,13 @@ local function on_runtime_mod_setting_changed(event)
         if player_index then
             local settings = global.settings[player_index]
             if not settings.pause_trash and settings.trash_above_requested then
-                set_trash(player)
+                lib_control.set_trash(player)
             end
         else
             local settings = global.settings
             for pi, p in pairs(game.players) do
                 if not settings[pi].pause_trash and settings[pi].trash_above_requested then
-                    set_trash(p)
+                    lib_control.set_trash(p)
                 end
             end
         end
