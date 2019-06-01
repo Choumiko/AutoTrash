@@ -322,6 +322,8 @@ local function on_configuration_changed(data)
             init_players()
 
             if oldVersion < v'4.1.0' then
+                global.defines_player_trash = nil
+                local status_main, err_main = pcall(function()
                 -- just in case someone removed offline players
                 for pi, _ in pairs(global.config) do
                     if not game.get_player(pi) then
@@ -330,10 +332,11 @@ local function on_configuration_changed(data)
                 end
                 saveVar(global, "storage_pre")
                 global.needs_import = {}
-                local settings, paused_requests
+                local settings, paused_requests, status_i, err_i
                 local status, err
                 for pi, player in pairs(game.players) do
-                    if global.active then --TODO: remove
+                    status_i, err_i = pcall(function()
+                        if global.active then --TODO: remove
                         log("Updating data for player " .. player.name .. ", index: " .. pi)
                         GUI.close(player)
                         global.needs_import[pi] = true
@@ -401,6 +404,23 @@ local function on_configuration_changed(data)
                         global.storage_new[pi] = convert_storage(global.storage[pi], player)
                         GUI.update_main_button(pi)
                         GUI.open_logistics_frame(player)
+                        end
+                    end)
+                    if not status_i then
+                        debugDump("Error updating:", false, true)
+                        debugDump(err_i, false, true)
+                        debugDump("Resetting AutoTrash configuration for player " .. player.name, false, true)
+                        local keep = {version = true, gui_actions = true, gui_elements = true}
+                        for name, _ in pairs(global) do
+                            if not keep[name] then
+                                global[name][pi] = nil
+                            end
+                        end
+                        register_conditional_events()
+                        init_player(player)
+                        GUI.update_main_button(pi)
+                        GUI.close(player)
+                        GUI.open_logistics_frame(player)
                     end
                 end
 
@@ -415,6 +435,26 @@ local function on_configuration_changed(data)
                 global["config-tmp"] = nil
                 global["logistics-config-tmp"] = nil
                 saveVar(global, "storage_post")
+                end)
+                if not status_main then
+                    debugDump("Error updating:", false, true)
+                    debugDump(err_main, false, true)
+                    debugDump("Resetting AutoTrash configuration for all players", false, true)
+                    local keep = {version = true, gui_actions = true, gui_elements = true}
+                    for name, _ in pairs(global) do
+                        if not keep[name] then
+                            global[name] = nil
+                        end
+                    end
+                    init_global()
+                    for pi, player in pairs(game.players) do
+                        init_player(player)
+                        GUI.update_main_button(pi)
+                        GUI.close(player)
+                        GUI.open_logistics_frame(player)
+                    end
+                    register_conditional_events()
+                end
             end
             if oldVersion < v'4.1.1' then
                 for pi, player in pairs(game.players) do
