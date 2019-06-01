@@ -35,6 +35,17 @@ local function redbuttongraphicalset()
     }
 end
 
+local function bluebuttongraphicalset()
+    return
+    {
+        border = 1,
+        filename = "__core__/graphics/gui.png",
+        position = {221, 36},
+        size = 36,
+        scale = 1
+    }
+end
+
 styles["at_request_label_bottom"] = {
     type = "label_style",
     parent = "count_label",
@@ -87,6 +98,12 @@ styles["at_button_slot_items_not_available"] = {
     type = "button_style",
     parent = "logistic_button_selected_slot",
     default_graphical_set = redbuttongraphicalset(),
+}
+
+styles["at_button_slot_items_not_enough"] = {
+    type = "button_style",
+    parent = "logistic_button_selected_slot",
+    default_graphical_set = bluebuttongraphicalset(),
 }
 
 styles["at_button_slot_locked"] = {

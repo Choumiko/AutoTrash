@@ -977,13 +977,11 @@ function GUI.update_button(player_index, i, selected, button)
 end
 
 function GUI.update_button_styles(player, player_index)
-    local character = player.character
-
     local scroll_pane = global.gui_elements[player_index].config_scroll
     if not (scroll_pane and scroll_pane.valid) then return end
     local ruleset_grid = scroll_pane.children[1]
     if not (ruleset_grid and ruleset_grid.valid) then return end
-
+    local character = player.character
     local selected = global.selected[player_index]
     local button, diff, item, n, c
     local network = character.logistic_network
@@ -1015,6 +1013,9 @@ function GUI.update_button_styles(player, player_index)
                     diff = diff - (on_the_way[n] or 0) - (available[n] or 0)
                     button.style = diff <= 0 and "at_button_slot_items_on_the_way"  or "at_button_slot_items_not_available"
                     --TODO: additional style when on_the_way > 0 and available == 0? (slow production)
+                    if diff > 0 and (on_the_way[n] and not available[n]) then
+                        button.style = "at_button_slot_items_not_enough"
+                    end
                 end
             end
         end

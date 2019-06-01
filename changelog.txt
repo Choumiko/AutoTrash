@@ -1,8 +1,24 @@
 ---------------------------------------------------------------------------------------------------
-Version: 4.1.0
+Version: 4.1.1
 Date: ??. ??. 2019
   Features:
-    - all the things!
+    - Combined logistic requests and trash configuration into one window
+    - Click and drop: Hold shift when clicking a configured item, then shift click another button to swap the buttons
+    - It is now possible to load multiple presets at once. If more than one preset contains an item the maximum request/trash amount is chosen
+    - Right click the main button to quickly load and apply a preset
+    - Different colors for indicating the status of an order:
+        - grey: All items are delivered
+        - red: Not enough items available in the network
+        - yellow: Items are on the way
+        - blue: Some items are on the way but the order can't be fulfilled
+    - Added buttons to automatically load stored presets when respawning
+    - Added buttons to import/export the configuration. Holding shift when clicking the export button creates a blueprint with constant combinators containing the configuration
+    - Added multiple mod settings:
+        - Pause requests after respawning
+        - Reset configuration when closing the gui without applying the changes
+        - Close gui when applying the changes
+        - Overwrite presets
+        - Adjust the number of rows/columns to be displayed
 ---------------------------------------------------------------------------------------------------
 Version: 4.0.6
 Date: 23. 05. 2019
