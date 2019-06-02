@@ -394,15 +394,12 @@ local gui_functions = {
     end,
 
     delete_preset = function(event, player_index, params)
-        local element = event.element
-        local storage_grid = element.parent
+        local preset_flow = event.element.parent
         local name = params.name
 
         global.selected_presets[player_index][name] = nil
         global.storage_new[player_index][name] = nil
-        GUI.deregister_action(storage_grid[name], true)
-        GUI.deregister_action(element, true)
-        GUI.deregister_action(params.rip_button, true)
+        GUI.deregister_action(preset_flow, true)
         GUI.update_presets(player_index)
     end,
 
@@ -1383,13 +1380,13 @@ function GUI.open_presets_frame(player, left)
         caption = {"auto-trash-storage-frame-title"},
         direction = "vertical"
     }
-    storage_frame.style.minimal_width = 200
+    storage_frame.style.width = 340
     gui_elements.storage_frame = storage_frame
 
 
     local storage_frame_buttons = storage_frame.add{
-        type = "table",
-        column_count = 2,
+        type = "flow",
+        direction = "horizontal",
         name = "auto-trash-logistics-storage-buttons"
     }
     storage_frame_buttons.style.horizontally_stretchable = true
@@ -1399,8 +1396,6 @@ function GUI.open_presets_frame(player, left)
         text = ""
     }
     save_as.style.horizontally_stretchable = true
-    save_as.style.width = 0
-    save_as.style.minimal_width = 200
 
     local save_button = storage_frame_buttons.add{
         type = "button",
@@ -1417,10 +1412,11 @@ function GUI.open_presets_frame(player, left)
 
     storage_scroll.style.maximal_height = math.ceil(38*10+4)
     local storage_grid = storage_scroll.add{
-        type = "table",
-        column_count = 3,
+        type = "flow",
+        direction = "vertical"
     }
     gui_elements.storage_grid = storage_grid
+    storage_grid.style.horizontally_stretchable = true
 
     for key, _ in pairs(global.storage_new[player_index]) do
         GUI.add_preset(player_index, key)
@@ -1463,21 +1459,22 @@ function GUI.update_presets(player_index)
     local children = storage_grid.children
     local selected_presets = global.selected_presets[player_index]
     local death_presets = global.death_presets[player_index]
-    local preset_name, rip
-    for i=1, #children, 3 do
-        preset_name = children[i].caption
+    local preset_name, rip, preset
+    for i=1, #children do
+        preset = children[i].children[1]
+        preset_name = preset.caption
         if selected_presets[preset_name] then
-            children[i].style = "at_preset_button_selected"
+            preset.style = "at_preset_button_selected"
         else
-            children[i].style = "at_preset_button"
+            preset.style = "at_preset_button"
         end
-        rip = children[i+2]
+        rip = children[i].children[2]
         rip.style = death_presets[preset_name] and "at_preset_button_small_selected" or "at_preset_button_small"
     end
     local s = table_size(selected_presets)
     if s == 1 then
         global.gui_elements[player_index].storage_textfield.text = next(selected_presets)
-    elseif s > 1 then
+    elseif s > 1 or s == 0 then
         global.gui_elements[player_index].storage_textfield.text = ""
     end
 end
@@ -1486,25 +1483,31 @@ function GUI.add_preset(player_index, preset_name)
     local storage_grid = global.gui_elements[player_index].storage_grid
     if not (storage_grid and storage_grid.valid) then return end
 
-    local preset = storage_grid.add{
+    local preset_flow = storage_grid.add{
+        type = "flow",
+        direction = "horizontal"
+    }
+
+    local preset = preset_flow.add{
         type = "button",
         caption = preset_name,
         name = preset_name
     }
-    preset.style.maximal_width = 500
+    preset.style.width = 200
 
-    local remove = storage_grid.add{
-        type = "sprite-button",
-        style = "at_delete_preset",
-        sprite = "utility/remove"
-    }
-
-    local rip = storage_grid.add{
+    local rip = preset_flow.add{
         type = "sprite-button",
         style = "at_preset_button_small",
         sprite = "autotrash_rip",
         tooltip = {"autotrash_tooltip_rip"}
     }
+
+    local remove = preset_flow.add{
+        type = "sprite-button",
+        style = "at_delete_preset",
+        sprite = "utility/remove"
+    }
+
     GUI.register_action(preset, {type = "load_preset"})
     GUI.register_action(remove, {type = "delete_preset", name = preset_name, rip_button = rip})
     GUI.register_action(rip, {type = "change_death_preset", name = preset_name})

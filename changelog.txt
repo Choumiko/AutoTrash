@@ -4,7 +4,7 @@ Date: ??. ??. 2019
   Features:
     - Combined logistic requests and trash configuration into one window
     - Click and drop: Hold shift when clicking a configured item, then shift click another button to swap the buttons
-    - It is now possible to load multiple presets at once. If more than one preset contains an item the maximum request/trash amount is chosen
+    - It is now possible to load multiple presets at once. If more than one preset contains an item, the maximum request/trash amount is chosen
     - Right click the main button to quickly load and apply a preset
     - Different colors for indicating the status of an order:
         - grey: All items are delivered
