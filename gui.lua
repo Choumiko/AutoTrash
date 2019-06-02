@@ -22,10 +22,9 @@ local function tonumber_max(n)
     return (n and n > max_value) and max_value or n
 end
 
-local function combine_from_vanilla(player_index)
-    local player = game.get_player(player_index)
+local function combine_from_vanilla(player)
     if not player.character then return end
-    local tmp = {config = {}, max_slot = 0}
+    local tmp = {config = {}, max_slot = 0, c_requests = 0}
     local requests, max_slot, c_requests = lib_control.get_requests(player)
     local trash = player.auto_trash_filters
 
@@ -101,9 +100,7 @@ local GUI = {--luacheck: allow defined top
     },
 }
 
-function GUI.clear_button(player_index, params, config_tmp)
-    local player = game.get_player(player_index)
-    if not (player and player.character) then return end
+function GUI.clear_button(player, player_index, params, config_tmp)
     if config_tmp.config[params.slot].request > 0 then
         config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
     end
@@ -121,7 +118,7 @@ function GUI.clear_button(player_index, params, config_tmp)
     end
     local gui_elements = global.gui_elements[player_index]
     local ruleset_grid = gui_elements.config_scroll.children[1]
-    local columns = game.get_player(player_index).mod_settings["autotrash_gui_columns"].value
+    local columns = player.mod_settings["autotrash_gui_columns"].value
     local count = #ruleset_grid.children
     local max_buttons = config_tmp.max_slot + columns + 1
     local request_slots = player.character.request_slot_count + 1
@@ -135,28 +132,24 @@ function GUI.clear_button(player_index, params, config_tmp)
     GUI.mark_dirty(player_index)
 end
 
-function GUI.extend_buttons(player_index, max_slot)
+function GUI.extend_buttons(player, player_index, max_slot)
     local gui_elements = global.gui_elements[player_index]
     local ruleset_grid = gui_elements.config_scroll.children[1]
     local count = #ruleset_grid.children
     if max_slot >= count then
-        local last = GUI.create_buttons(game.get_player(player_index), count+1)
+        local last = GUI.create_buttons(player, count+1)
         gui_elements.config_scroll.scroll_to_element(ruleset_grid.children[last].children[1], "top-third")
     end
 end
 
 local gui_functions = {
     main_button = function(event, player_index)
-        local element = event.element
-        local player = game.get_player(player_index)
-        if not player.character then
-            GUI.close(player, true)
-        end
+        local player = event.player
         if event.button == defines.mouse_button_type.right then
             GUI.close(player)
-            GUI.open_quick_presets(player_index, element.parent)
+            GUI.open_quick_presets(player_index)
         else
-            GUI.close_quick_presets(player_index, element.parent)
+            GUI.close_quick_presets(player_index)
             if player.cursor_stack and player.cursor_stack.valid_for_read then--luacheck: ignore
                 -- if player.cursor_stack.name == "blueprint" and player.cursor_stack.is_blueprint_setup() then
                 --     add_order(player)
@@ -171,11 +164,10 @@ local gui_functions = {
                 end
             end
         end
-        return
     end,
 
-    apply_changes = function(_, player_index)
-        local player = game.get_player(player_index)
+    apply_changes = function(event, player_index)
+        local player = event.player
         global.config_new[player_index] = util.table.deepcopy(global.config_tmp[player_index])
         global.dirty[player_index] = false
         global.gui_elements[player_index].reset_button.enabled = false
@@ -203,9 +195,9 @@ local gui_functions = {
         end
     end,
 
-    request_blueprint = function(event, player_index)
+    request_blueprint = function(event)
         if event.name ~= defines.events.on_gui_click then return end
-        local player = game.get_player(player_index)
+        local player = event.player
         local cursor_stack = player.cursor_stack
         if not (cursor_stack and cursor_stack.valid_for_read) then
             log("Empty cursor")
@@ -316,7 +308,7 @@ local gui_functions = {
             else
                 selected_presets[name] = nil
             end
-            local tmp = {config = {}, max_slot = 0}
+            local tmp = {config = {}, max_slot = 0, c_requests = 0}
             for key, _ in pairs(selected_presets) do
                presets.merge(tmp, global.storage_new[player_index][key])
             end
@@ -328,7 +320,7 @@ local gui_functions = {
         local ruleset_grid = gui_elements.config_scroll.children[1]
         local count = #ruleset_grid.children
         if config_tmp.max_slot >= count then
-            local last = GUI.create_buttons(game.get_player(player_index), count+1)
+            local last = GUI.create_buttons(event.player, count+1)
             gui_elements.config_scroll.scroll_to_element(ruleset_grid.children[last].children[1], "top-third")
         end
         GUI.update_buttons(player_index)
@@ -358,7 +350,7 @@ local gui_functions = {
         local stored_preset = global.storage_new[player_index][name]
         local settings = global.settings[player_index]
         if stored_preset then
-            local player = game.get_player(player_index)
+            local player = event.player
             global.selected_presets[player_index] = {[name] = true}
             global.config_new[player_index] = util.table.deepcopy(stored_preset)
             global.config_tmp[player_index] = util.table.deepcopy(stored_preset)
@@ -375,16 +367,16 @@ local gui_functions = {
         GUI.deregister_action(element, true)
     end,
 
-    save_preset = function(_, player_index)
+    save_preset = function(event, player_index)
         local textfield = global.gui_elements[player_index].storage_textfield
         local name = textfield.text
         if name == "" then
-            display_message(game.get_player(player_index), {"auto-trash-storage-name-not-set"}, true)
+            display_message(event.player, {"auto-trash-storage-name-not-set"}, true)
             textfield.focus()
             return
         end
         if global.storage_new[player_index][name] then
-            local player = game.get_player(player_index)
+            local player = event.player
             if not player.mod_settings["autotrash_overwrite"].value then
                 display_message(player, {"auto-trash-storage-name-in-use"}, true)
                 textfield.focus()
@@ -414,8 +406,8 @@ local gui_functions = {
         GUI.update_presets(player_index)
     end,
 
-    set_main_network = function(_, player_index)
-        local player = game.get_player(player_index)
+    set_main_network = function(event, player_index)
+        local player = event.player
         if global.mainNetwork[player_index] then
             global.mainNetwork[player_index] = false
         else
@@ -427,8 +419,8 @@ local gui_functions = {
         GUI.update_settings(player_index)
     end,
 
-    import_from_vanilla = function(_, player_index)
-        global.config_tmp[player_index] = combine_from_vanilla(player_index)
+    import_from_vanilla = function(event, player_index)
+        global.config_tmp[player_index] = combine_from_vanilla(event.player)
         GUI.mark_dirty(player_index)
         GUI.hide_sliders(player_index)
         GUI.update_buttons(player_index)
@@ -439,6 +431,7 @@ local gui_functions = {
         local config_tmp = global.config_tmp[player_index]
         local element = event.element
         local elem_value = element.elem_value
+        local player = event.player
         if event.name == defines.events.on_gui_click then
             if event.button == defines.mouse_button_type.right then
                 if not elem_value then
@@ -447,12 +440,11 @@ local gui_functions = {
                     GUI.hide_sliders(player_index)
                     return
                 end
-                GUI.clear_button(player_index, params, config_tmp)
+                GUI.clear_button(player, player_index, params, config_tmp)
                 GUI.destroy_create_button(player_index, element.parent, params.slot, old_selected)
             elseif event.button == defines.mouse_button_type.left then
                 local flow = element.parent
                 if event.shift then
-                    local player = game.get_player(player_index)
                     local cursor_ghost = player.cursor_ghost
                     if not cursor_ghost and not player.cursor_stack.valid_for_read and elem_value then
                         global.selected[player_index] = params.slot
@@ -469,7 +461,7 @@ local gui_functions = {
                             player.cursor_ghost = nil
                             global.selected[player_index] = params.slot
                             config_tmp.max_slot = params.slot > config_tmp.max_slot and params.slot or config_tmp.max_slot
-                            GUI.extend_buttons(player_index, config_tmp.max_slot)
+                            GUI.extend_buttons(player, player_index, config_tmp.max_slot)
                             GUI.destroy_create_button(player_index, flow, params.slot, params.slot)
                             GUI.destroy_create_button(player_index, flow.parent.children[old_selected], old_selected, params.slot)
                             GUI.update_sliders(player_index)
@@ -484,7 +476,7 @@ local gui_functions = {
                 GUI.update_sliders(player_index)
             end
         elseif event.name == defines.events.on_gui_elem_changed then
-            if game.get_player(player_index).cursor_ghost then return end--dragging to an empty slot, on_gui_click raised later
+            if event.player.cursor_ghost then return end--dragging to an empty slot, on_gui_click raised later
             if elem_value then
                 if elem_value == params.item then return end--changed to same item
                 local gui_elements = global.gui_elements[player_index]
@@ -492,7 +484,7 @@ local gui_functions = {
                 local found
                 for i, flow in pairs(ruleset_grid.children) do
                     if i ~= params.slot and flow.children[1].elem_value == elem_value then
-                        display_message(game.get_player(player_index), {"", {"cant-set-duplicate-request", item_prototype(elem_value).localised_name}}, true)
+                        display_message(event.player, {"", {"cant-set-duplicate-request", item_prototype(elem_value).localised_name}}, true)
                         element.elem_value = params.item
                         global.selected[player_index] = i
                         gui_elements.config_scroll.scroll_to_element(flow.parent.children[i], "top-third")
@@ -520,10 +512,10 @@ local gui_functions = {
                     GUI.update_sliders(player_index)
                     GUI.update_button(player_index, params.slot, params.slot, element)
                     GUI.update_button(player_index, old_selected, params.slot)
-                    GUI.extend_buttons(player_index, config_tmp.max_slot)
+                    GUI.extend_buttons(player, player_index, config_tmp.max_slot)
                 end
             elseif params.item then
-                GUI.clear_button(player_index, params, config_tmp)
+                GUI.clear_button(player, player_index, params, config_tmp)
                 GUI.hide_sliders(player_index)
                 GUI.update_button(player_index, params.slot, false, element)
             end
@@ -594,9 +586,9 @@ local gui_functions = {
     toggle_pause_trash = function(event, player_index)
         if event.name ~= defines.events.on_gui_checked_state_changed then return end
         if event.element.state then
-            pause_trash(game.get_player(player_index))
+            pause_trash(event.player)
         else
-            unpause_trash(game.get_player(player_index))
+            unpause_trash(event.player)
         end
         GUI.update_main_button(player_index)
     end,
@@ -604,9 +596,9 @@ local gui_functions = {
     toggle_pause_requests = function(event, player_index)
         if event.name ~= defines.events.on_gui_checked_state_changed then return end
         if event.element.state then
-            lib_control.pause_requests(game.get_player(player_index))
+            lib_control.pause_requests(event.player)
         else
-            lib_control.unpause_requests(game.get_player(player_index))
+            lib_control.unpause_requests(event.player)
         end
         GUI.update_main_button(player_index)
     end,
@@ -616,19 +608,19 @@ local gui_functions = {
         local settings = global.settings[player_index]
         settings[event.element.name] = event.element.state
         if not settings.pause_trash then
-            set_trash(game.get_player(player_index))
+            set_trash(event.player)
         end
     end,
 
     toggle_trash_network = function(event, player_index)
         if event.name ~= defines.events.on_gui_checked_state_changed then return end
         local element = event.element
+        local player = event.player
         if element.state and not global.mainNetwork[player_index] then
-            game.get_player(player_index).print("No main network set")
+            player.print("No main network set")
             element.state = false
         else
             global.settings[player_index].trash_network = element.state
-            local player = game.get_player(player_index)
             if element.state and in_network(player) then
                 unpause_trash(player)
                 GUI.update_main_button(player_index)
@@ -637,7 +629,7 @@ local gui_functions = {
     end,
 
     export_config = function(event, player_index)
-        local player = game.get_player(player_index)
+        local player = event.player
         local stack = player.cursor_stack
         if not stack then return end
         if stack.valid_for_read and not (stack.name == "blueprint" and not stack.is_blueprint_setup()) then
@@ -686,8 +678,8 @@ local gui_functions = {
         )
     end,
 
-    import_config = function(_, player_index)
-        local player = game.get_player(player_index)
+    import_config = function(event, player_index)
+        local player = event.player
         local stack = player.cursor_stack
         if not stack then return end
         if stack and stack.valid_for_read and stack.name == "blueprint" and stack.is_blueprint_setup() then
@@ -725,8 +717,8 @@ local gui_functions = {
         )
     end,
 
-    import_confirm = function(_, player_index, params)
-        local player = game.get_player(player_index)
+    import_confirm = function(event, player_index, params)
+        local player = event.player
         local frame, textfield = params.frame, params.textfield
         if not (frame and frame.valid) then return end
         if not (textfield and textfield.valid) then return end
@@ -814,6 +806,14 @@ function GUI.generic_event(event)
     local profile_inner = game.create_profiler()
     local status, err = pcall(function()
         profile_inner.reset()
+        local player = game.get_player(player_index)
+        if not player.character then
+            GUI.close(player, true)
+            GUI.close_quick_presets(player_index)
+            --TODO: display message
+            return
+        end
+        event.player = player
         gui_functions[action.type](event, player_index, action)
         profile_inner.stop()
     end)
@@ -824,6 +824,7 @@ function GUI.generic_event(event)
         log("Error running event: " .. tostring(GUI.get_event_name(event.name)))
         log("Event: " .. serpent.line(event))
         log("Action: " ..serpent.line(action and action.type))
+        log(serpent.block(global.config_tmp[player_index], {name = "config_tmp", comment = false}))
         lib_control.debugDump(err, game.get_player(player_index), true)
         local s
         for name, elem in pairs(global.gui_elements[player_index]) do
@@ -1012,7 +1013,6 @@ function GUI.update_button_styles(player, player_index)
                 else
                     diff = diff - (on_the_way[n] or 0) - (available[n] or 0)
                     button.style = diff <= 0 and "at_button_slot_items_on_the_way"  or "at_button_slot_items_not_available"
-                    --TODO: additional style when on_the_way > 0 and available == 0? (slow production)
                     if diff > 0 and (on_the_way[n] and not available[n]) then
                         button.style = "at_button_slot_items_not_enough"
                     end
@@ -1142,7 +1142,7 @@ end
 
 function GUI.close_quick_presets(player_index)
     local button_flow = global.gui_elements[player_index].main_button.parent
-    if not button_flow or not button_flow.valid then return end
+    if not (button_flow and button_flow.valid) then return end
     GUI.deregister_action(button_flow[GUI.defines.quick_presets], true)
 end
 

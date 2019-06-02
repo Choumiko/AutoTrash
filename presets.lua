@@ -21,6 +21,7 @@ function presets.merge(current, preset)
     local no_slot = {}
     local tmp
     local max_slot = current.max_slot
+    local c_requests = current.c_requests
 
     for j, result_config in pairs(result) do
         tmp = result_config
@@ -31,6 +32,7 @@ function presets.merge(current, preset)
                 tmp.trash = (tmp.trash and tmp.trash < tmp.request) and tmp.request or tmp.trash
                 b.config[i] = nil
                 max_slot = max_slot > tmp.slot and max_slot or tmp.slot
+                c_requests = tmp.request > 0 and c_requests + 1 or c_requests
                 break
             end
         end
@@ -44,6 +46,7 @@ function presets.merge(current, preset)
             no_slot[#no_slot + 1] = config
         end
         max_slot = max_slot > config.slot and max_slot or config.slot
+        c_requests = config.request > 0 and c_requests + 1 or c_requests
     end
 
     local start = 1
@@ -61,7 +64,8 @@ function presets.merge(current, preset)
     end
     --log(serpent.block(result, {name="test"}))
     current.max_slot = max_slot
-    return current, max_slot
+    current.c_requests = c_requests
+    return current, max_slot, c_requests
 end
 
 local ceil = math.ceil

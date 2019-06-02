@@ -173,11 +173,13 @@ local function init_global()
 end
 
 local function on_nth_tick()
+    --local pr = game.create_profiler()
     for i, p in pairs(game.players) do
         if p.character then
             GUI.update_button_styles(p, i)
         end
     end
+    --log{"", pr}
 end
 
 local function init_player(player)
@@ -508,6 +510,7 @@ local function on_player_main_inventory_changed(event)
 end
 
 local function add_to_trash(player, item)
+    if not player.character then return end
     local player_index = player.index
     if trash_blacklist[item] then
         display_message(player, {"", item_prototype(item).localised_name, " is on the blacklist for trashing"}, true)
@@ -530,6 +533,7 @@ local function on_player_toggled_map_editor(event)
     local player = game.get_player(event.player_index)
     if not player.character then
         GUI.close(player, true)
+        GUI.close_quick_presets(event.player_index)
     end
 end
 
@@ -539,6 +543,7 @@ local function on_pre_player_died(event)
         lib_control.pause_requests(player)
         GUI.update_main_button(player.index)
         GUI.close(player, true)
+        GUI.close_quick_presets(event.player_index)
     end
 end
 
@@ -547,7 +552,7 @@ local function on_player_respawned(event)
     local selected_presets = global.death_presets[player_index]
     if table_size(selected_presets) > 0 then
         local player = game.get_player(player_index)
-        local tmp = {config = {}, max_slot = 0}
+        local tmp = {config = {}, max_slot = 0, c_requests = 0}
         for key, _ in pairs(selected_presets) do
             presets.merge(tmp, global.storage_new[player_index][key])
         end
@@ -697,11 +702,21 @@ local function on_runtime_mod_setting_changed(event)
     local player = game.get_player(event.player_index)
     if gui_settings[event.setting] then
         if player_index then
-            GUI.create_buttons(player)
+            if player.character then
+                GUI.create_buttons(player)
+            else
+                GUI.close(player, true)
+                GUI.close_quick_presets(player_index)
+            end
         else
             --update all guis, value was changed by script
-            for _, p in pairs(game.players) do
-                GUI.create_buttons(p)
+            for pi, p in pairs(game.players) do
+                if p.character then
+                    GUI.create_buttons(p)
+                else
+                    GUI.close(p, true)
+                    GUI.close_quick_presets(pi)
+                end
             end
         end
     end
@@ -719,7 +734,6 @@ local function on_runtime_mod_setting_changed(event)
                 end
             end
         end
-
     end
 end
 
