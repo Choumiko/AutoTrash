@@ -85,7 +85,6 @@ local GUI = {--luacheck: allow defined top
         main_button_flow = "autotrash_main_flow",
         quick_presets = "at_quick_presets",
 
-
         trash_above_requested = "trash_above_requested",
         trash_unrequested = "trash_unrequested",
         trash_network = "trash_network",
@@ -125,7 +124,7 @@ function GUI.clear_button(player, player_index, params, config_tmp)
     max_buttons = max_buttons > request_slots and max_buttons or request_slots
     if count >= max_buttons then
         for i = count, max_buttons, -1 do
-            assert(not config_tmp.config[i], "Should be empty")
+            assert(not config_tmp.config[i], "Should be empty")-- TODO: remove
             GUI.deregister_action(ruleset_grid.children[i], true)
         end
     end
@@ -844,7 +843,8 @@ function GUI.init(player)
     log("init gui")
 
     if player.force.technologies["character-logistic-slots-1"].researched
-    or player.force.technologies["character-logistic-trash-slots-1"].researched then
+    or player.force.technologies["character-logistic-trash-slots-1"].researched
+    or (player.character and (#player.character.get_inventory(defines.inventory.character_trash) > 0 or player.character.request_slot_count > 0)) then
         local flow = button_flow.add{
             type = "flow",
             name = GUI.defines.main_button_flow,
@@ -1004,7 +1004,7 @@ function GUI.update_button_styles(player, player_index)
             n, c = item.name, item.request
             button = child.children[1]
             if button and button.valid then
-                diff = c - item_count(n)
+                diff = c - item_count(n)--TODO: should probably use get_contents() for the different inventories and add them up (main, cursor_stack, armor, gun, ammo)
                 if diff <= 0 then
                     button.style = "at_button_slot"
                 else
