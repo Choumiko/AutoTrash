@@ -137,7 +137,7 @@ function GUI.extend_buttons(player, player_index, max_slot)
     local count = #ruleset_grid.children
     if max_slot >= count then
         local last = GUI.create_buttons(player, count+1)
-        gui_elements.config_scroll.scroll_to_element(ruleset_grid.children[last].children[1], "top-third")
+        gui_elements.config_scroll.scroll_to_element(ruleset_grid.children[last], "top-third")
     end
 end
 
@@ -320,7 +320,7 @@ local gui_functions = {
         local count = #ruleset_grid.children
         if config_tmp.max_slot >= count then
             local last = GUI.create_buttons(event.player, count+1)
-            gui_elements.config_scroll.scroll_to_element(ruleset_grid.children[last].children[1], "top-third")
+            gui_elements.config_scroll.scroll_to_element(ruleset_grid.children[last], "top-third")
         end
         GUI.update_buttons(player_index)
         GUI.mark_dirty(player_index, true)
@@ -437,16 +437,15 @@ local gui_functions = {
                     return
                 end
                 GUI.clear_button(player, player_index, params, config_tmp)
-                GUI.destroy_create_button(player_index, element.parent, params.slot, old_selected)
+                GUI.update_button(player_index, params.slot, old_selected, element)
             elseif event.button == defines.mouse_button_type.left then
-                local flow = element.parent
                 if event.shift then
                     local cursor_ghost = player.cursor_ghost
                     if not cursor_ghost and not player.cursor_stack.valid_for_read and elem_value then
                         global.selected[player_index] = params.slot
                         player.cursor_ghost = elem_value
-                        GUI.destroy_create_button(player_index, flow, params.slot, params.slot)
-                        GUI.destroy_create_button(player_index, flow.parent.children[old_selected], old_selected, params.slot)
+                        GUI.update_button(player_index, params.slot, old_selected, element)
+                        GUI.update_button(player_index, old_selected, params.slot)
                         GUI.update_sliders(player_index)
                         return
                     elseif cursor_ghost and cursor_ghost.name == config_tmp.config[old_selected].name then
@@ -458,8 +457,8 @@ local gui_functions = {
                             global.selected[player_index] = params.slot
                             config_tmp.max_slot = params.slot > config_tmp.max_slot and params.slot or config_tmp.max_slot
                             GUI.extend_buttons(player, player_index, config_tmp.max_slot)
-                            GUI.destroy_create_button(player_index, flow, params.slot, params.slot)
-                            GUI.destroy_create_button(player_index, flow.parent.children[old_selected], old_selected, params.slot)
+                            GUI.update_button(player_index, params.slot, params.slot, element)
+                            GUI.update_button(player_index, old_selected, params.slot)
                             GUI.update_sliders(player_index)
                             return
                         end
@@ -467,8 +466,8 @@ local gui_functions = {
                 end
                 if not elem_value or old_selected == params.slot then return end--empty button
                 global.selected[player_index] = params.slot
-                GUI.destroy_create_button(player_index, flow, params.slot, params.slot)
-                GUI.destroy_create_button(player_index, flow.parent.children[old_selected], old_selected, params.slot)
+                GUI.update_button(player_index, params.slot, params.slot, element)
+                GUI.update_button(player_index, old_selected, params.slot)
                 GUI.update_sliders(player_index)
             end
         elseif event.name == defines.events.on_gui_elem_changed then
@@ -478,16 +477,16 @@ local gui_functions = {
                 local gui_elements = global.gui_elements[player_index]
                 local ruleset_grid = gui_elements.config_scroll.children[1]
                 local found
-                for i, flow in pairs(ruleset_grid.children) do
-                    if i ~= params.slot and flow.children[1].elem_value == elem_value then
+                for i, button in pairs(ruleset_grid.children) do
+                    if i ~= params.slot and button.elem_value == elem_value then
                         display_message(event.player, {"", {"cant-set-duplicate-request", item_prototype(elem_value).localised_name}}, true)
                         element.elem_value = params.item
                         global.selected[player_index] = i
-                        gui_elements.config_scroll.scroll_to_element(flow.parent.children[i], "top-third")
-                        GUI.destroy_create_button(player_index, flow, params.slot, i)
-                        GUI.destroy_create_button(player_index, flow, i, i)
+                        gui_elements.config_scroll.scroll_to_element(button.parent.children[i], "top-third")
+                        GUI.update_button(player_index, params.slot, i)
+                        GUI.update_button(player_index, i, i)
                         if old_selected and old_selected ~= i and old_selected ~= params.slot then
-                            GUI.destroy_create_button(player_index, flow.parent.children[old_selected], old_selected, params.slot)
+                            GUI.update_button(player_index, old_selected, params.slot)
                         end
                         GUI.update_sliders(player_index)
                         found = true
@@ -943,21 +942,12 @@ function GUI.update_sliders(player_index)
     end
 end
 
-function GUI.destroy_create_button(player_index, flow, i, selected)
-        if not i or not (flow and flow.valid) then return end
-        GUI.deregister_action(flow)
-        flow.clear()
-        local button = GUI.create_button(player_index, flow, i, selected)
-        GUI.register_action(button, {type = "config_button_changed", slot = i, item = button.elem_value})
-        return button
-end
-
 function GUI.update_button(player_index, i, selected, button)
     if not (button and button.valid) then
         local config_grid = global.gui_elements[player_index].config_scroll.children[1]
         if not (config_grid and config_grid.valid) then return end
         if not (i and config_grid.children[i] and config_grid.children[i].valid) then return end
-        button = config_grid.children[i].children[1]
+        button = config_grid.children[i]
     end
     local req = global.config_tmp[player_index].config[i]
     button.locked = req and i ~= selected
@@ -981,13 +971,12 @@ function GUI.update_button_styles(player, player_index)
     if not (ruleset_grid and ruleset_grid.valid) then return end
     local character = player.character
     local selected = global.selected[player_index]
-    local button, diff, item, n, c
+    local diff, item, n, c
     local network = character.logistic_network
     local config = global.config_tmp[player_index]
     local req = character.get_logistic_point(defines.logistic_member_index.character_requester)
     if not network or not req or config.c_requests == 0 then
-        for i, child in pairs(ruleset_grid.children) do
-            button = child.children[1]
+        for i, button in pairs(ruleset_grid.children) do
             if button and button.valid then
                button.style = (i == selected) and "at_button_slot_selected" or "at_button_slot"
             end
@@ -998,11 +987,10 @@ function GUI.update_button_styles(player, player_index)
     local on_the_way = req.targeted_items_deliver
     local available = network.get_contents()
     local item_count = player.get_item_count
-    for i, child in pairs(ruleset_grid.children) do
+    for i, button in pairs(ruleset_grid.children) do
         item = config[i]
         if item and item.request > 0 and i ~= selected then
             n, c = item.name, item.request
-            button = child.children[1]
             if button and button.valid then
                 diff = c - item_count(n)--TODO: should probably use get_contents() for the different inventories and add them up (main, cursor_stack, armor, gun, ammo)
                 if diff <= 0 then
@@ -1026,54 +1014,17 @@ function GUI.update_buttons(player_index)
     if not (ruleset_grid and ruleset_grid.valid) then return end
 
     local selected = global.selected[player_index]
-    for i, child in pairs(ruleset_grid.children) do
-        GUI.update_button(player_index, i, selected, child.children[1])
+    for i, button in pairs(ruleset_grid.children) do
+        GUI.update_button(player_index, i, selected, button)
     end
 end
 
-function GUI.create_button(player_index, flow, i, selected)
-        local req = global.config_tmp[player_index].config[i]
-        local elem_value = req and req.name or nil
-        local button = flow.add{
-            type = "choose-elem-button",
-            elem_type = "item",
-            style = "at_button_slot"
-        }
-
-        local lbl_top = button.add{
-            type = "label",
-            style = "at_request_label_top",
-            ignored_by_interaction = true,
-            caption = ""
-        }
-        local lbl_bottom = button.add{
-            type = "label",
-            style = "at_request_label_bottom",
-            ignored_by_interaction = true,
-            caption = ""
-        }
-        if elem_value then
-            button.elem_value = elem_value
-            lbl_top.caption = format_number(format_request(req), true)
-            lbl_bottom.caption = format_number(format_trash(req), true)
-            --disable popup gui, keeps on_click active
-            button.locked = not (i == selected)
-        end
-        if (i == selected) then
-            button.style = "at_button_slot_selected"
-        end
-
-        GUI.register_action(button, {type = "config_button_changed", slot = i, item = button.elem_value})
-        return button
-end
-
---creates/updates the choose-elem-buttons (update because i do something wierd with locked = true)
-function GUI.create_buttons(player, old_selected)
+function GUI.create_buttons(player, start)
     local player_index = player.index
     local scroll_pane = global.gui_elements[player_index].config_scroll
     if not (scroll_pane and scroll_pane.valid) then return end
     local ruleset_grid = scroll_pane.children[1]
-    if ruleset_grid and ruleset_grid.valid and not old_selected then
+    if ruleset_grid and ruleset_grid.valid and not start then
         GUI.deregister_action(ruleset_grid, true)
     end
     local columns = player.mod_settings["autotrash_gui_columns"].value
@@ -1089,8 +1040,7 @@ function GUI.create_buttons(player, old_selected)
     end
 
     local selected = global.selected[player_index]
-    local start
-    if not old_selected then
+    if not start then
         ruleset_grid = scroll_pane.add{
             type = "table",
             column_count = columns,
@@ -1098,16 +1048,32 @@ function GUI.create_buttons(player, old_selected)
         }
         start = 1
     else
-        start = old_selected
-        local children = ruleset_grid.children
         for i = start, slots do
-            GUI.deregister_action(children[i], true)
+            GUI.deregister_action(ruleset_grid.children[i], true)
         end
     end
 
-    local create_button = GUI.create_button
+    local button
     for i = start, slots do
-        create_button(player_index, ruleset_grid.add{type = "flow", direction = "horizontal", name = i}, i, selected)
+        button = ruleset_grid.add{
+            type = "choose-elem-button",
+            elem_type = "item",
+            style = "at_button_slot"
+        }
+
+        button.add{
+            type = "label",
+            style = "at_request_label_top",
+            ignored_by_interaction = true,
+            caption = ""
+        }
+        button.add{
+            type = "label",
+            style = "at_request_label_bottom",
+            ignored_by_interaction = true,
+            caption = ""
+        }
+        GUI.update_button(player_index, i, selected, button)
     end
     return slots
 end
