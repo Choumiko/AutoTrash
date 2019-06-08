@@ -189,7 +189,7 @@ local gui_functions = {
             global.selected_presets[player_index] = {}
             global.dirty[player_index] = false
             GUI.hide_sliders(player_index)
-            GUI.update_buttons(player_index)
+            GUI.update_buttons(event.player, player_index)
             GUI.update_presets(player_index)
         end
     end,
@@ -215,7 +215,7 @@ local gui_functions = {
         log(serpent.line(bp.cost_to_build))
     end,
 
-    clear_config = function(_, player_index)
+    clear_config = function(event, player_index)
         local mode = global.settings[player_index].clear_option
         local config_tmp = global.config_tmp[player_index]
         if mode == 1 then
@@ -236,7 +236,7 @@ local gui_functions = {
             GUI.update_sliders(player_index)
         end
         GUI.mark_dirty(player_index)
-        GUI.update_buttons(player_index)
+        GUI.update_buttons(event.player, player_index)
     end,
 
     clear_option_changed = function(event, player_index)
@@ -287,7 +287,7 @@ local gui_functions = {
         element.selected_index = 1
 
         GUI.mark_dirty(player_index)
-        GUI.update_buttons(player_index)
+        GUI.update_buttons(event.player, player_index)
     end,
 
     load_preset = function(event, player_index)
@@ -322,7 +322,7 @@ local gui_functions = {
             local last = GUI.create_buttons(event.player, count+1)
             gui_elements.config_scroll.scroll_to_element(ruleset_grid.children[last], "top-third")
         end
-        GUI.update_buttons(player_index)
+        GUI.update_buttons(event.player, player_index)
         GUI.mark_dirty(player_index, true)
         GUI.hide_sliders(player_index)
     end,
@@ -419,7 +419,7 @@ local gui_functions = {
         global.config_tmp[player_index] = combine_from_vanilla(event.player)
         GUI.mark_dirty(player_index)
         GUI.hide_sliders(player_index)
-        GUI.update_buttons(player_index)
+        GUI.update_buttons(event.player, player_index)
     end,
 
     config_button_changed = function(event, player_index, params)
@@ -446,6 +446,7 @@ local gui_functions = {
                         player.cursor_ghost = elem_value
                         GUI.update_button(player_index, params.slot, old_selected, element)
                         GUI.update_button(player_index, old_selected, params.slot)
+                        GUI.update_button_styles(player, player_index)
                         GUI.update_sliders(player_index)
                         return
                     elseif cursor_ghost and cursor_ghost.name == config_tmp.config[old_selected].name then
@@ -459,6 +460,7 @@ local gui_functions = {
                             GUI.extend_buttons(player, player_index, config_tmp.max_slot)
                             GUI.update_button(player_index, params.slot, params.slot, element)
                             GUI.update_button(player_index, old_selected, params.slot)
+                            GUI.update_button_styles(player, player_index)
                             GUI.update_sliders(player_index)
                             return
                         end
@@ -468,6 +470,7 @@ local gui_functions = {
                 global.selected[player_index] = params.slot
                 GUI.update_button(player_index, params.slot, params.slot, element)
                 GUI.update_button(player_index, old_selected, params.slot)
+                GUI.update_button_styles(player, player_index)
                 GUI.update_sliders(player_index)
             end
         elseif event.name == defines.events.on_gui_elem_changed then
@@ -488,6 +491,7 @@ local gui_functions = {
                         if old_selected and old_selected ~= i and old_selected ~= params.slot then
                             GUI.update_button(player_index, old_selected, params.slot)
                         end
+                        GUI.update_button_styles(player, player_index)
                         GUI.update_sliders(player_index)
                         found = true
                         break
@@ -508,6 +512,7 @@ local gui_functions = {
                     GUI.update_button(player_index, params.slot, params.slot, element)
                     GUI.update_button(player_index, old_selected, params.slot)
                     GUI.extend_buttons(player, player_index, config_tmp.max_slot)
+                    GUI.update_button_styles(player, player_index)
                 end
             elseif params.item then
                 GUI.clear_button(player, player_index, params, config_tmp)
@@ -687,7 +692,7 @@ local gui_functions = {
                     textfield.text = string.sub(stack.label, 11)
                 end
             end
-            GUI.update_buttons(player_index)
+            GUI.update_buttons(player, player_index)
             GUI.hide_sliders(player_index)
             return
         end
@@ -739,7 +744,7 @@ local gui_functions = {
         end
         stack.clear()--the blueprint we spawned in
         player.print({"string-import-successful", "AutoTrash configuration"})
-        GUI.update_buttons(player_index)
+        GUI.update_buttons(player, player_index)
         GUI.hide_sliders(player_index)
         GUI.deregister_action(frame, true)
     end,
@@ -971,11 +976,10 @@ function GUI.update_button_styles(player, player_index)
     if not (ruleset_grid and ruleset_grid.valid) then return end
     local character = player.character
     local selected = global.selected[player_index]
-    local diff, item, n, c
     local network = character.logistic_network
     local config = global.config_tmp[player_index]
     local req = character.get_logistic_point(defines.logistic_member_index.character_requester)
-    if not network or not req or config.c_requests == 0 then
+    if not (network and req and config.c_requests > 0) then
         for i, button in pairs(ruleset_grid.children) do
             if button and button.valid then
                button.style = (i == selected) and "at_button_slot_selected" or "at_button_slot"
@@ -983,6 +987,7 @@ function GUI.update_button_styles(player, player_index)
         end
         return
     end
+    local diff, item, n, c
     config = config.config
     local on_the_way = req.targeted_items_deliver
     local available = network.get_contents()
@@ -998,7 +1003,8 @@ function GUI.update_button_styles(player, player_index)
                 else
                     diff = diff - (on_the_way[n] or 0) - (available[n] or 0)
                     button.style = diff <= 0 and "at_button_slot_items_on_the_way"  or "at_button_slot_items_not_available"
-                    if diff > 0 and (on_the_way[n] and not available[n]) then
+                    --if diff > 0 and (on_the_way[n] and not available[n]) then
+                    if item.name == "locomotive" then
                         button.style = "at_button_slot_items_not_enough"
                     end
                 end
@@ -1007,7 +1013,7 @@ function GUI.update_button_styles(player, player_index)
     end
 end
 
-function GUI.update_buttons(player_index)
+function GUI.update_buttons(player, player_index)
     local scroll_pane = global.gui_elements[player_index].config_scroll
     if not (scroll_pane and scroll_pane.valid) then return end
     local ruleset_grid = scroll_pane.children[1]
@@ -1017,6 +1023,7 @@ function GUI.update_buttons(player_index)
     for i, button in pairs(ruleset_grid.children) do
         GUI.update_button(player_index, i, selected, button)
     end
+    GUI.update_button_styles(player, player_index)
 end
 
 function GUI.create_buttons(player, start)
@@ -1346,7 +1353,7 @@ function GUI.open_presets_frame(player, left)
         caption = {"auto-trash-storage-frame-title"},
         direction = "vertical"
     }
-    storage_frame.style.width = 340
+    --storage_frame.style.width = 340
     gui_elements.storage_frame = storage_frame
 
 
@@ -1362,12 +1369,14 @@ function GUI.open_presets_frame(player, left)
         text = ""
     }
     save_as.style.horizontally_stretchable = true
+    save_as.style.width = 150
 
     local save_button = storage_frame_buttons.add{
         type = "button",
-        caption = {"gui-save-game.save-as"},
+        caption = {"gui-save-game.save"},
         style = "at_small_button"
     }
+    save_button.style.width = 60
 
     gui_elements.storage_textfield = save_as
     GUI.register_action(save_button, {type = "save_preset"})
@@ -1459,7 +1468,8 @@ function GUI.add_preset(player_index, preset_name)
         caption = preset_name,
         name = preset_name
     }
-    preset.style.width = 200
+    preset.style.width = 150
+    --preset.style.horizontal_align = "left"
 
     local rip = preset_flow.add{
         type = "sprite-button",
