@@ -116,7 +116,7 @@ function GUI.clear_button(player, player_index, params, config_tmp)
         config_tmp.max_slot = 0
     end
     local gui_elements = global.gui_elements[player_index]
-    local ruleset_grid = gui_elements.config_scroll.children[1]
+    local ruleset_grid = gui_elements.ruleset_grid
     local columns = player.mod_settings["autotrash_gui_columns"].value
     local count = #ruleset_grid.children
     local max_buttons = config_tmp.max_slot + columns + 1
@@ -133,7 +133,7 @@ end
 
 function GUI.extend_buttons(player, player_index, max_slot)
     local gui_elements = global.gui_elements[player_index]
-    local ruleset_grid = gui_elements.config_scroll.children[1]
+    local ruleset_grid = gui_elements.ruleset_grid
     local count = #ruleset_grid.children
     if max_slot >= count then
         local last = GUI.create_buttons(player, count+1)
@@ -316,7 +316,7 @@ local gui_functions = {
             GUI.update_presets(player_index)
         end
         global.config_tmp[player_index] = config_tmp
-        local ruleset_grid = gui_elements.config_scroll.children[1]
+        local ruleset_grid = gui_elements.ruleset_grid
         local count = #ruleset_grid.children
         if config_tmp.max_slot >= count then
             local last = GUI.create_buttons(event.player, count+1)
@@ -446,7 +446,7 @@ local gui_functions = {
                         player.cursor_ghost = elem_value
                         GUI.update_button(player_index, params.slot, old_selected, element)
                         GUI.update_button(player_index, old_selected, params.slot)
-                        GUI.update_button_styles(player, player_index)
+                        GUI.update_button_styles(player, player_index)--TODO: only update changed buttons
                         GUI.update_sliders(player_index)
                         return
                     elseif cursor_ghost and cursor_ghost.name == config_tmp.config[old_selected].name then
@@ -460,7 +460,7 @@ local gui_functions = {
                             GUI.extend_buttons(player, player_index, config_tmp.max_slot)
                             GUI.update_button(player_index, params.slot, params.slot, element)
                             GUI.update_button(player_index, old_selected, params.slot)
-                            GUI.update_button_styles(player, player_index)
+                            GUI.update_button_styles(player, player_index)--TODO: only update changed buttons
                             GUI.update_sliders(player_index)
                             return
                         end
@@ -470,7 +470,7 @@ local gui_functions = {
                 global.selected[player_index] = params.slot
                 GUI.update_button(player_index, params.slot, params.slot, element)
                 GUI.update_button(player_index, old_selected, params.slot)
-                GUI.update_button_styles(player, player_index)
+                GUI.update_button_styles(player, player_index)--TODO: only update changed buttons
                 GUI.update_sliders(player_index)
             end
         elseif event.name == defines.events.on_gui_elem_changed then
@@ -478,7 +478,7 @@ local gui_functions = {
             if elem_value then
                 if elem_value == params.item then return end--changed to same item
                 local gui_elements = global.gui_elements[player_index]
-                local ruleset_grid = gui_elements.config_scroll.children[1]
+                local ruleset_grid = gui_elements.ruleset_grid
                 local found
                 for i, button in pairs(ruleset_grid.children) do
                     if i ~= params.slot and button.elem_value == elem_value then
@@ -491,7 +491,7 @@ local gui_functions = {
                         if old_selected and old_selected ~= i and old_selected ~= params.slot then
                             GUI.update_button(player_index, old_selected, params.slot)
                         end
-                        GUI.update_button_styles(player, player_index)
+                        GUI.update_button_styles(player, player_index)--TODO: only update changed buttons
                         GUI.update_sliders(player_index)
                         found = true
                         break
@@ -512,7 +512,7 @@ local gui_functions = {
                     GUI.update_button(player_index, params.slot, params.slot, element)
                     GUI.update_button(player_index, old_selected, params.slot)
                     GUI.extend_buttons(player, player_index, config_tmp.max_slot)
-                    GUI.update_button_styles(player, player_index)
+                    GUI.update_button_styles(player, player_index)--TODO: only update changed buttons
                 end
             elseif params.item then
                 GUI.clear_button(player, player_index, params, config_tmp)
@@ -810,7 +810,7 @@ function GUI.generic_event(event)
         if not player.character then
             GUI.close(player, true)
             GUI.close_quick_presets(player_index)
-            --TODO: display message
+            player.print({"autotrash_no_character"})
             return
         end
         event.player = player
@@ -949,7 +949,7 @@ end
 
 function GUI.update_button(player_index, i, selected, button)
     if not (button and button.valid) then
-        local config_grid = global.gui_elements[player_index].config_scroll.children[1]
+        local config_grid = global.gui_elements[player_index].ruleset_grid
         if not (config_grid and config_grid.valid) then return end
         if not (i and config_grid.children[i] and config_grid.children[i].valid) then return end
         button = config_grid.children[i]
@@ -969,61 +969,82 @@ function GUI.update_button(player_index, i, selected, button)
     GUI.register_action(button, {type = "config_button_changed", slot = i, item = button.elem_value})
 end
 
-function GUI.update_button_styles(player, player_index)
-    local scroll_pane = global.gui_elements[player_index].config_scroll
-    if not (scroll_pane and scroll_pane.valid) then return end
-    local ruleset_grid = scroll_pane.children[1]
-    if not (ruleset_grid and ruleset_grid.valid) then return end
+local function get_network_data(player)
     local character = player.character
-    local selected = global.selected[player_index]
     local network = character.logistic_network
+    local requester = character.get_logistic_point(defines.logistic_member_index.character_requester)
+    if not (network and requester) then
+        return
+    end
+    local on_the_way = requester.targeted_items_deliver
+    local available = network.get_contents()
+    local item_count = player.get_main_inventory().get_contents()
+    local cursor_stack = player.cursor_stack
+    cursor_stack = (cursor_stack and cursor_stack.valid_for_read) and {[cursor_stack.name] = cursor_stack.count} or {}
+    local get_inventory, inventory = player.get_inventory, defines.inventory
+    local armor = get_inventory(inventory.character_armor).get_contents()
+    local gun = get_inventory(inventory.character_guns).get_contents()
+    local ammo = get_inventory(inventory.character_ammo).get_contents()
+
+    return available, on_the_way, item_count, cursor_stack, armor, gun, ammo
+end
+
+function GUI.get_button_style(i, selected, config, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+    local item = config and config.config[i]
+    if not (available and on_the_way and item and item.request > 0) then
+        return (i == selected) and "at_button_slot_selected" or "at_button_slot"
+    end
+    if i == selected then
+        return "at_button_slot_selected"
+    end
+    local n, c = item.name, item.request
+    local diff = c - (item_count[n] or 0) + (armor[n] or 0) + (gun[n] or 0) + (ammo[n] or 0) + (cursor_stack[n] or 0)
+
+    if diff <= 0 then
+        return "at_button_slot"
+    else
+        diff = diff - (on_the_way[n] or 0) - (available[n] or 0)
+        if diff <= 0 then
+            return "at_button_slot_items_on_the_way"
+        elseif (on_the_way[n] and not available[n]) then
+        --item.name == "locomotive" then
+            return "at_button_slot_items_not_enough"
+        end
+        return "at_button_slot_items_not_available"
+    end
+end
+
+function GUI.update_button_styles(player, player_index)
+    local ruleset_grid = global.gui_elements[player_index].ruleset_grid
+    if not (ruleset_grid and ruleset_grid.valid) then return end
+    local selected = global.selected[player_index]
     local config = global.config_tmp[player_index]
-    local req = character.get_logistic_point(defines.logistic_member_index.character_requester)
-    if not (network and req and config.c_requests > 0) then
+    local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
+
+    if not (available and on_the_way and config.c_requests > 0) then
         for i, button in pairs(ruleset_grid.children) do
-            if button and button.valid then
-               button.style = (i == selected) and "at_button_slot_selected" or "at_button_slot"
-            end
+            button.style = (i == selected) and "at_button_slot_selected" or "at_button_slot"
         end
         return
     end
-    local diff, item, n, c
-    config = config.config
-    local on_the_way = req.targeted_items_deliver
-    local available = network.get_contents()
-    local item_count = player.get_item_count
+
     for i, button in pairs(ruleset_grid.children) do
-        item = config[i]
-        if item and item.request > 0 and i ~= selected then
-            n, c = item.name, item.request
-            if button and button.valid then
-                diff = c - item_count(n)--TODO: should probably use get_contents() for the different inventories and add them up (main, cursor_stack, armor, gun, ammo)
-                if diff <= 0 then
-                    button.style = "at_button_slot"
-                else
-                    diff = diff - (on_the_way[n] or 0) - (available[n] or 0)
-                    button.style = diff <= 0 and "at_button_slot_items_on_the_way"  or "at_button_slot_items_not_available"
-                    --if diff > 0 and (on_the_way[n] and not available[n]) then
-                    if item.name == "locomotive" then
-                        button.style = "at_button_slot_items_not_enough"
-                    end
-                end
-            end
-        end
+        button.style = GUI.get_button_style(i, selected, config, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
     end
 end
 
 function GUI.update_buttons(player, player_index)
-    local scroll_pane = global.gui_elements[player_index].config_scroll
-    if not (scroll_pane and scroll_pane.valid) then return end
-    local ruleset_grid = scroll_pane.children[1]
+    local ruleset_grid = global.gui_elements[player_index].ruleset_grid
     if not (ruleset_grid and ruleset_grid.valid) then return end
 
     local selected = global.selected[player_index]
+    local config = global.config_tmp[player_index]
+    local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
+
     for i, button in pairs(ruleset_grid.children) do
         GUI.update_button(player_index, i, selected, button)
+        button.style = GUI.get_button_style(i, selected, config, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
     end
-    GUI.update_button_styles(player, player_index)
 end
 
 function GUI.create_buttons(player, start)
@@ -1033,6 +1054,7 @@ function GUI.create_buttons(player, start)
     local ruleset_grid = scroll_pane.children[1]
     if ruleset_grid and ruleset_grid.valid and not start then
         GUI.deregister_action(ruleset_grid, true)
+        global.gui_elements[player_index].ruleset_grid = nil
     end
     local columns = player.mod_settings["autotrash_gui_columns"].value
     local config_tmp = global.config_tmp[player_index]
@@ -1059,7 +1081,8 @@ function GUI.create_buttons(player, start)
             GUI.deregister_action(ruleset_grid.children[i], true)
         end
     end
-
+    global.gui_elements[player_index].ruleset_grid = ruleset_grid
+    local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
     local button
     for i = start, slots do
         button = ruleset_grid.add{
@@ -1081,6 +1104,7 @@ function GUI.create_buttons(player, start)
             caption = ""
         }
         GUI.update_button(player_index, i, selected, button)
+        button.style = GUI.get_button_style(i, selected, config_tmp, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
     end
     return slots
 end
@@ -1415,6 +1439,7 @@ function GUI.close(player, no_reset)
         GUI.deregister_action(frame, true)
         elements.config_frame = nil
         elements.config_scroll = nil
+        elements.ruleset_grid = nil
         elements.slider_flow = nil
         elements.trash_options = nil
         elements.clear_option = nil

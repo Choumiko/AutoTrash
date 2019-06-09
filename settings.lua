@@ -1,6 +1,18 @@
 local prefix = "autotrash_"
 data:extend({
     {
+        type = "int-setting",
+        name = prefix .. "update_rate",
+        setting_type = "runtime-global",
+        default_value = 120,
+        minimum_value = 1,
+        order = "a"
+    },
+})
+
+--per user
+data:extend({
+    {
         type = "bool-setting",
         name = prefix .. "pause_on_death",
         setting_type = "runtime-per-user",

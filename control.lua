@@ -173,13 +173,18 @@ local function init_global()
 end
 
 local function on_nth_tick()
-    --local pr = game.create_profiler()
     for i, p in pairs(game.players) do
         if p.character then
-            GUI.update_button_styles(p, i)
+            --local pr = game.create_profiler()
+            --for _ = 1, 200 do
+                GUI.update_button_styles(p, i)
+            --end
+            --pr.stop()
+            --pr.divide(200)
+            --log{"","avg ", pr}
         end
     end
-    --log{"", pr}
+
 end
 
 local function init_player(player)
@@ -260,6 +265,8 @@ local function register_conditional_events()
         log("not registering on_player_trash_inventory_changed")
     end
     script.on_event(defines.events.on_player_trash_inventory_changed, handler)
+    script.on_nth_tick({}, nil)
+    script.on_nth_tick(settings.global["autotrash_update_rate"].value + 1, on_nth_tick)
 end
 
 local function on_load()
@@ -608,7 +615,6 @@ script.on_event(defines.events.on_pre_player_removed, on_pre_player_removed)
 script.on_event(defines.events.on_pre_player_died, on_pre_player_died)
 script.on_event(defines.events.on_player_respawned, on_player_respawned)
 script.on_event(defines.events.on_player_changed_position, on_player_changed_position)
-script.on_nth_tick(121, on_nth_tick)
 
 local function update_network(event, network_tbl, main)
     local newEntity = false
@@ -734,6 +740,9 @@ local function on_runtime_mod_setting_changed(event)
                 end
             end
         end
+    end
+    if event.setting == "autotrash_update_rate" then
+        register_conditional_events()
     end
 end
 
