@@ -144,9 +144,24 @@ end
 local gui_functions = {
     main_button = function(event, player_index)
         local player = event.player
+        local gui_elements = global.gui_elements[player_index]
         if event.button == defines.mouse_button_type.right then
-            GUI.close(player)
-            GUI.open_quick_presets(player_index)
+            if not (event.control) then
+                GUI.close(player)
+                GUI.open_quick_presets(player_index)
+            else
+                if gui_elements.status_flow then
+                    GUI.close_status_flow(player_index)
+                else
+                    if gui_elements.config_frame then
+                        GUI.close(player, true)
+                        GUI.open_status_flow(player, player_index)
+                        GUI.open_logistics_frame(player, player_index)
+                    else
+                        GUI.open_status_flow(player, player_index)
+                    end
+                end
+            end
         else
             GUI.close_quick_presets(player_index)
             if player.cursor_stack and player.cursor_stack.valid_for_read then--luacheck: ignore
@@ -156,10 +171,10 @@ local gui_functions = {
                 --     add_to_trash(player, player.cursor_stack.name)
                 -- end
             else
-                if global.gui_elements[player_index].config_frame then
+                if gui_elements.config_frame then
                     GUI.close(player)
                 else
-                    GUI.open_logistics_frame(player)
+                    GUI.open_logistics_frame(player, player_index)
                 end
             end
         end
@@ -168,6 +183,11 @@ local gui_functions = {
     apply_changes = function(event, player_index)
         local player = event.player
         global.config_new[player_index] = util.table.deepcopy(global.config_tmp[player_index])
+        local status_flow = global.gui_elements[player_index].status_flow
+        if status_flow and status_flow.valid then
+            status_flow.clear()
+            GUI.update_status_flow(player, player_index)
+        end
         global.dirty[player_index] = false
         global.gui_elements[player_index].reset_button.enabled = false
         if player.mod_settings["autotrash_close_on_apply"].value then
@@ -352,6 +372,11 @@ local gui_functions = {
             local player = event.player
             global.selected_presets[player_index] = {[name] = true}
             global.config_new[player_index] = util.table.deepcopy(stored_preset)
+            local status_flow = global.gui_elements[player_index].status_flow
+            if status_flow and status_flow.valid then
+                status_flow.clear()
+                GUI.update_status_flow(player, player_index)
+            end
             global.config_tmp[player_index] = util.table.deepcopy(stored_preset)
             global.selected[player_index] = false
             global.dirty[player_index] = false
@@ -1006,8 +1031,8 @@ function GUI.get_button_style(i, selected, config, available, on_the_way, item_c
         diff = diff - (on_the_way[n] or 0) - (available[n] or 0)
         if diff <= 0 then
             return "at_button_slot_items_on_the_way"
-        elseif (on_the_way[n] and not available[n]) then
-        --item.name == "locomotive" then
+        elseif --(on_the_way[n] and not available[n]) then
+        item.name == "locomotive" then
             return "at_button_slot_items_not_enough"
         end
         return "at_button_slot_items_not_available"
@@ -1021,7 +1046,7 @@ function GUI.update_button_styles(player, player_index)
     local config = global.config_tmp[player_index]
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
 
-    if not (available and on_the_way and config.c_requests > 0) then
+    if not (available and on_the_way and config.c_requests > 0 and not global.settings[player_index].pause_requests) then
         for i, button in pairs(ruleset_grid.children) do
             button.style = (i == selected) and "at_button_slot_selected" or "at_button_slot"
         end
@@ -1140,8 +1165,107 @@ function GUI.close_quick_presets(player_index)
     GUI.deregister_action(button_flow[GUI.defines.quick_presets], true)
 end
 
-function GUI.open_logistics_frame(player)
-    local player_index = player.index
+function GUI.update_status_flow(player, player_index)
+    local status_flow = global.gui_elements[player_index].status_flow
+    if not (status_flow and status_flow.valid) then
+        return
+    end
+
+    local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
+    status_flow.clear()
+    if not available or global.settings[player_index].pause_requests then
+        return
+    end
+    local config_tmp = global.config_new[player_index]
+    local style
+    -- local button
+    local c = 0
+    local max_count = player.mod_settings["autotrash_status_count"].value
+    local character = player.character
+    local get_request_slot = character.get_request_slot--luacheck: ignore
+    local item--luacheck: ignore
+    for i = 1, character.request_slot_count do
+        item = get_request_slot(i)
+        if item and item.count > 0 then
+    --TODO: looping over config_tmp is slightly faster
+    -- for i, item in pairs(config_tmp.config) do--luacheck: ignore
+    --     if item and item.request > 0 then
+            if c >= max_count then break end
+            -- button = status_flow[item.name]
+            style = GUI.get_button_style(i, false, config_tmp, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+            if style ~= "at_button_slot" then
+                -- if not button then
+                    status_flow.add{
+                        type = "sprite-button",
+                        style = style,
+                        ignored_by_interaction = true,
+                        name = item.name
+                    }.sprite = "item/" .. item.name
+                -- else
+                --     button.style = style
+                -- end
+                c = c + 1
+            -- else
+            --     if button then
+            --         button.destroy()
+            --     end
+            end
+        end
+    end
+end
+
+function GUI.open_status_flow(player, player_index)
+    local left = mod_gui.get_frame_flow(player)
+    local gui_elements = global.gui_elements[player_index]
+
+    local status_flow = gui_elements.status_flow
+    if status_flow and status_flow.valid then
+        GUI.deregister_action(status_flow, true)
+        gui_elements.status_flow = nil
+    end
+
+    status_flow = left.add{
+        type = "table",
+        --direction = "vertical",
+        column_count = player.mod_settings["autotrash_status_columns"].value
+    }
+    gui_elements.status_flow = status_flow
+    status_flow.style.horizontal_spacing = 0
+    status_flow.style.vertical_spacing = 0
+
+    local config_tmp = global.config_new[player_index]
+    local style
+    local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
+    for i, item in pairs(config_tmp.config) do
+        if item and item.request > 0 then
+            style = GUI.get_button_style(i, false, config_tmp, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+            if style ~= "at_button_slot" then
+                status_flow.add{
+                    type = "sprite-button",
+                    style = style,
+                    ignored_by_interaction = true,
+                    name = item.name
+                }.sprite = "item/" .. item.name
+            else
+                if status_flow.children[item.name] then
+                    status_flow.children[item.name].destroy()
+                end
+            end
+        end
+    end
+end
+
+function GUI.close_status_flow(player_index)
+    local gui_elements = global.gui_elements[player_index]
+
+    local status_flow = gui_elements.status_flow
+    if status_flow and status_flow.valid then
+        GUI.deregister_action(status_flow, true)
+    end
+    gui_elements.status_flow = nil
+end
+
+function GUI.open_logistics_frame(player, player_index)
     hide_yarm(player_index)
     local left = mod_gui.get_frame_flow(player)
     local gui_elements = global.gui_elements[player_index]

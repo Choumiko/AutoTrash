@@ -172,19 +172,25 @@ local function init_global()
     global.gui_elements = global.gui_elements or {}
 end
 
-local function on_nth_tick()
+local function on_nth_tick(event)--luacheck: ignore
     for i, p in pairs(game.players) do
         if p.character then
-            --local pr = game.create_profiler()
-            --for _ = 1, 200 do
+            local pr = game.create_profiler()
+            for _ = 1, 100 do
                 GUI.update_button_styles(p, i)
-            --end
-            --pr.stop()
-            --pr.divide(200)
-            --log{"","avg ", pr}
+            end
+            pr.stop()
+            pr.divide(100)
+            log{"", " button avg: ", pr}
+            pr.reset()
+            for _ = 1, 100 do
+                GUI.update_status_flow(p, i)
+            end
+            pr.stop()
+            pr.divide(100)
+            log{"", " flow avg: ", pr}
         end
     end
-
 end
 
 local function init_player(player)
@@ -265,7 +271,7 @@ local function register_conditional_events()
         log("not registering on_player_trash_inventory_changed")
     end
     script.on_event(defines.events.on_player_trash_inventory_changed, handler)
-    script.on_nth_tick({}, nil)
+    script.on_nth_tick(nil)
     script.on_nth_tick(settings.global["autotrash_update_rate"].value + 1, on_nth_tick)
 end
 
@@ -545,12 +551,14 @@ local function on_player_toggled_map_editor(event)
 end
 
 local function on_pre_player_died(event)
-    local player = game.get_player(event.player_index)
+    local player_index = event.player_index
+    local player = game.get_player(player_index)
     if player.mod_settings["autotrash_pause_on_death"].value then
         lib_control.pause_requests(player)
-        GUI.update_main_button(player.index)
+        GUI.update_status_flow(player, player_index)
+        GUI.update_main_button(player_index)
         GUI.close(player, true)
-        GUI.close_quick_presets(event.player_index)
+        GUI.close_quick_presets(player_index)
     end
 end
 
@@ -568,6 +576,7 @@ local function on_player_respawned(event)
         global.config_new[player_index] = util.table.deepcopy(tmp)
 
         lib_control.unpause_requests(player)
+        GUI.update_status_flow(player, player_index)
         unpause_trash(player)
         GUI.update_main_button(player_index)
     end
@@ -695,6 +704,7 @@ local function toggle_autotrash_pause_requests(player)
     else
         lib_control.pause_requests(player)
     end
+    GUI.update_status_flow(player, player.index)
     GUI.update_main_button(player.index)
     GUI.close(player)
 end
@@ -743,6 +753,20 @@ local function on_runtime_mod_setting_changed(event)
     end
     if event.setting == "autotrash_update_rate" then
         register_conditional_events()
+    end
+    if event.setting == "autotrash_status_count" then
+        GUI.update_status_flow(player, player_index)
+    end
+    if event.setting == "autotrash_status_columns" then
+        if global.gui_elements[player_index].status_flow then
+            if global.gui_elements[player_index].config_frame then
+                GUI.close(player, true)
+                GUI.open_status_flow(player, player_index)
+                GUI.open_logistics_frame(player, player_index)
+            else
+                GUI.open_status_flow(player, player_index)
+            end
+        end
     end
 end
 

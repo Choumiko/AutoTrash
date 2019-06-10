@@ -71,13 +71,29 @@ data:extend({
         setting_type = "runtime-per-user",
         default_value = 6,
         minimum_value = 1,
-        order = "x"
+        order = "v"
     },
     {
         type = "int-setting",
         name = prefix .. "gui_max_rows",
         setting_type = "runtime-per-user",
         default_value = 6,
+        minimum_value = 1,
+        order = "w"
+    },
+    {
+        type = "int-setting",
+        name = prefix .. "status_count",
+        setting_type = "runtime-per-user",
+        default_value = 10,
+        minimum_value = 1,
+        order = "x"
+    },
+    {
+        type = "int-setting",
+        name = prefix .. "status_columns",
+        setting_type = "runtime-per-user",
+        default_value = 1,
         minimum_value = 1,
         order = "y"
     },
