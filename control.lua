@@ -173,22 +173,32 @@ local function init_global()
 end
 
 local function on_nth_tick(event)--luacheck: ignore
+    local foo
     for i, p in pairs(game.players) do
         if p.character then
+            local inner = game.create_profiler()
+            inner.reset()
+            inner.stop()
             local pr = game.create_profiler()
             for _ = 1, 100 do
-                GUI.update_button_styles(p, i)
+                foo = GUI.update_button_styles(p, i)
             end
             pr.stop()
             pr.divide(100)
-            log{"", " button avg: ", pr}
+            if foo then
+                log{"", " button avg: ", pr}
+            end
             pr.reset()
             for _ = 1, 100 do
-                GUI.update_status_flow(p, i)
+                foo = GUI.update_status_flow(p, i)
             end
             pr.stop()
             pr.divide(100)
-            log{"", " flow avg: ", pr}
+            if foo then
+                log{"", " flow avg: ", pr}
+            end
+            inner.divide(100)
+            --log{"", " inner avg: ", inner}
         end
     end
 end

@@ -459,10 +459,12 @@ local gui_functions = {
                     global.selected[player_index] = false
                     GUI.update_button(player_index, old_selected)
                     GUI.hide_sliders(player_index)
+                    GUI.update_button_styles(player, player_index)--TODO: only update changed buttons
                     return
                 end
                 GUI.clear_button(player, player_index, params, config_tmp)
                 GUI.update_button(player_index, params.slot, old_selected, element)
+                GUI.update_button_styles(player, player_index)--TODO: only update changed buttons
             elseif event.button == defines.mouse_button_type.left then
                 if event.shift then
                     local cursor_ghost = player.cursor_ghost
@@ -486,6 +488,7 @@ local gui_functions = {
                             GUI.update_button(player_index, params.slot, params.slot, element)
                             GUI.update_button(player_index, old_selected, params.slot)
                             GUI.update_button_styles(player, player_index)--TODO: only update changed buttons
+                            GUI.mark_dirty(player_index)
                             GUI.update_sliders(player_index)
                             return
                         end
@@ -1014,8 +1017,7 @@ local function get_network_data(player)
     return available, on_the_way, item_count, cursor_stack, armor, gun, ammo
 end
 
-function GUI.get_button_style(i, selected, config, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
-    local item = config and config.config[i]
+function GUI.get_button_style(i, selected, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
     if not (available and on_the_way and item and item.request > 0) then
         return (i == selected) and "at_button_slot_selected" or "at_button_slot"
     end
@@ -1050,12 +1052,13 @@ function GUI.update_button_styles(player, player_index)
         for i, button in pairs(ruleset_grid.children) do
             button.style = (i == selected) and "at_button_slot_selected" or "at_button_slot"
         end
-        return
+        return true
     end
-
+    config = config.config
     for i, button in pairs(ruleset_grid.children) do
-        button.style = GUI.get_button_style(i, selected, config, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+        button.style = GUI.get_button_style(i, selected, config[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
     end
+    return true
 end
 
 function GUI.update_buttons(player, player_index)
@@ -1063,12 +1066,12 @@ function GUI.update_buttons(player, player_index)
     if not (ruleset_grid and ruleset_grid.valid) then return end
 
     local selected = global.selected[player_index]
-    local config = global.config_tmp[player_index]
+    local config = global.config_tmp[player_index].config
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
 
     for i, button in pairs(ruleset_grid.children) do
         GUI.update_button(player_index, i, selected, button)
-        button.style = GUI.get_button_style(i, selected, config, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+        button.style = GUI.get_button_style(i, selected, config[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
     end
 end
 
@@ -1109,6 +1112,7 @@ function GUI.create_buttons(player, start)
     global.gui_elements[player_index].ruleset_grid = ruleset_grid
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
     local button
+    config_tmp = config_tmp.config
     for i = start, slots do
         button = ruleset_grid.add{
             type = "choose-elem-button",
@@ -1129,7 +1133,7 @@ function GUI.create_buttons(player, start)
             caption = ""
         }
         GUI.update_button(player_index, i, selected, button)
-        button.style = GUI.get_button_style(i, selected, config_tmp, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+        button.style = GUI.get_button_style(i, selected, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
     end
     return slots
 end
@@ -1173,10 +1177,10 @@ function GUI.update_status_flow(player, player_index)
 
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
     status_flow.clear()
-    if not available or global.settings[player_index].pause_requests then
-        return
+    if not (available and not global.settings[player_index].pause_requests) then
+        return true
     end
-    local config_tmp = global.config_new[player_index]
+    local config_tmp = global.config_new[player_index].config
     local style
     -- local button
     local c = 0
@@ -1187,31 +1191,22 @@ function GUI.update_status_flow(player, player_index)
     for i = 1, character.request_slot_count do
         item = get_request_slot(i)
         if item and item.count > 0 then
-    --TODO: looping over config_tmp is slightly faster
-    -- for i, item in pairs(config_tmp.config) do--luacheck: ignore
+    --TODO: looping over config_tmp is slightly faster, but may be out of sync with the actual requests
+    -- for i, item in pairs(config_tmp) do--luacheck: ignore
     --     if item and item.request > 0 then
             if c >= max_count then break end
-            -- button = status_flow[item.name]
-            style = GUI.get_button_style(i, false, config_tmp, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+            style = GUI.get_button_style(i, false, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
             if style ~= "at_button_slot" then
-                -- if not button then
-                    status_flow.add{
-                        type = "sprite-button",
-                        style = style,
-                        ignored_by_interaction = true,
-                        name = item.name
-                    }.sprite = "item/" .. item.name
-                -- else
-                --     button.style = style
-                -- end
+                status_flow.add{
+                    type = "sprite-button",
+                    style = style,
+                    ignored_by_interaction = true,
+                }.sprite = "item/" .. item.name
                 c = c + 1
-            -- else
-            --     if button then
-            --         button.destroy()
-            --     end
             end
         end
     end
+    return true
 end
 
 function GUI.open_status_flow(player, player_index)
@@ -1223,33 +1218,31 @@ function GUI.open_status_flow(player, player_index)
         GUI.deregister_action(status_flow, true)
         gui_elements.status_flow = nil
     end
-
+    local mod_settings = player.mod_settings
     status_flow = left.add{
         type = "table",
         --direction = "vertical",
-        column_count = player.mod_settings["autotrash_status_columns"].value
+        column_count = mod_settings["autotrash_status_columns"].value
     }
     gui_elements.status_flow = status_flow
     status_flow.style.horizontal_spacing = 0
     status_flow.style.vertical_spacing = 0
 
-    local config_tmp = global.config_new[player_index]
+    local max_count, c = mod_settings["autotrash_status_count"].value, 0
+    local config_tmp = global.config_new[player_index].config
     local style
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
-    for i, item in pairs(config_tmp.config) do
+    for i, item in pairs(config_tmp) do
+        if c >= max_count then break end
         if item and item.request > 0 then
-            style = GUI.get_button_style(i, false, config_tmp, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+            style = GUI.get_button_style(i, false, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
             if style ~= "at_button_slot" then
                 status_flow.add{
                     type = "sprite-button",
                     style = style,
                     ignored_by_interaction = true,
-                    name = item.name
                 }.sprite = "item/" .. item.name
-            else
-                if status_flow.children[item.name] then
-                    status_flow.children[item.name].destroy()
-                end
+                c = c + 1
             end
         end
     end

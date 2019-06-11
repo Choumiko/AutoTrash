@@ -16,7 +16,6 @@ local function set_trash(player)
     else
         for _, item_config in pairs(global.config_new[player_index].config) do
             if item_config.trash then
-                assert(item_config.trash >= item_config.request, serpent.line(item_config))--TODO: remove
                 trash_filters[item_config.name] = (item_config.trash > item_config.request) and item_config.trash or item_config.request
             end
         end
