@@ -32,7 +32,7 @@ end
 local function unpause_trash(player, pdata)
     if not player.character then return end
     pdata.settings.pause_trash = false
-    set_trash(player)
+    set_trash(player, pdata)
 end
 
 local function set_requests(player, pdata)

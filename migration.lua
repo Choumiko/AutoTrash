@@ -97,19 +97,6 @@ local function convert_logistics(stored, stored_trash, player)
     return tmp
 end
 
-local function convert_storage(storage, player)
-    if not storage or not storage.store then
-        return {}
-    end
-
-    local tmp = {}
-    for name, stored in pairs(storage.store) do
-        log("Converting: " .. name)
-        tmp[name] = update_item_config(stored, player)
-    end
-    return tmp
-end
-
 local convert = {}
 
 convert.to_4_1_2 = function(GUI, init_global, init_player, register_conditional_events)
@@ -189,7 +176,16 @@ convert.to_4_1_2 = function(GUI, init_global, init_player, register_conditional_
             pdata.temporary_trash = {}
 
             log("Converting storage")
-            pdata.storage_new = convert_storage(global.storage[pi], player)
+            if not global.storage[pi] or not global.storage[pi].store then
+                pdata.storage_new = {}
+            else
+                local tmp = {}
+                for name, stored in pairs(global.storage[pi].store) do
+                    log("Converting: " .. name)
+                    tmp[name] = update_item_config(stored, player)
+                end
+                pdata.storage_new = tmp
+            end
             GUI.update_main_button(pdata)
         end)
         if not status_i then

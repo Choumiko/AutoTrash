@@ -62,30 +62,14 @@ styles["at_request_label_top"] = {
     vertical_align = "top",
 }
 
-local default = util.table.deepcopy(styles.slot_button)
-
 styles["at_button_slot"] = {
     type = "button_style",
     parent = "logistic_button_slot",
-    --default_graphical_set = default,
-    --hovered_graphical_set = default,
-    --clicked_graphical_set = default.clicked_graphical_set,
-    --disabled_graphical_set = default,
-    --selected_graphical_set = default.default_graphical_set,
-    --selected_hovered_graphical_set = default,
-    --selected_clicked_graphical_set = default.default_graphical_set,
 }
 
 styles["at_button_slot_selected"] = {
     type = "button_style",
     parent = "logistic_button_selected_slot",
-    -- default_graphical_set = orangebuttongraphcialset(),--luacheck:ignore
-    -- hovered_graphical_set = orangebuttongraphcialset(),--luacheck:ignore
-    -- clicked_graphical_set = orangebuttongraphcialset(),--luacheck:ignore
-
-    -- selected_graphical_set = default.selected_hovered_graphical_set,
-    -- selected_hovered_graphical_set = default.selected_hovered_graphical_set,
-    -- selected_clicked_graphical_set = orangebuttongraphcialset(),--luacheck:ignore
 }
 
 styles["at_button_slot_items_on_the_way"] = {
@@ -106,18 +90,6 @@ styles["at_button_slot_items_not_enough"] = {
     default_graphical_set = bluebuttongraphicalset(),
 }
 
-styles["at_button_slot_locked"] = {
-    type = "button_style",
-    parent = "logistic_button_slot",
-    --default_graphical_set = default.default_graphical_set,
-    --hovered_graphical_set = default,
-    clicked_graphical_set = default.selected_hovered_graphical_set,
-    --disabled_graphical_set = default,
-    selected_graphical_set = default.default_graphical_set, --did something good
-    --selected_hovered_graphical_set = default.hovered_graphical_set,
-    selected_clicked_graphical_set = default.selected_hovered_graphical_set,
-}
-
 styles["at_main_flow"] = {
     type = "horizontal_flow_style",
     parent = "horizontal_flow",
@@ -125,9 +97,10 @@ styles["at_main_flow"] = {
 
 }
 
-styles["at_small_button"] = {
+styles["at_save_button"] = {
     type = "button_style",
     parent = "button",
+    width = 60
 }
 
 styles["at_sprite_button"] = {
@@ -142,7 +115,7 @@ styles["at_preset_button"] = {
 
 local button = styles.button
 
-styles["at_preset_button_selected"] = {--luacheck: ignore
+styles["at_preset_button_selected"] = {
     type = "button_style",
     parent = "at_preset_button",
     default_font_color = button.selected_font_color,
@@ -204,61 +177,99 @@ styles["at_preset_button_small_selected"] = {
     clicked_graphical_set = button.selected_clicked_graphical_set,
 }
 
-
-styles["at_extend_flow"] = {
-    type = "vertical_flow_style",
-    parent = "vertical_flow",
-    left_padding = 0,
-    right_padding = 0,
-    top_padding = 0,
-    bottom_padding = 0,
+styles["at_request_status_table"] = {
+    type = "table_style",
+    horizontal_spacing = 0,
     vertical_spacing = 0
 }
 
-data:extend{{
-    type = "sprite",
-    name = "autotrash_trash",
-    filename = "__AutoTrash__/graphics/gui2.png",
-    size = 128,
-    position = {0, 0}
-}}
+styles["at_logistics_frame"] = {
+    type = "frame_style",
+    minimal_width = 340
+}
 
-data:extend{{
-    type = "sprite",
-    name = "autotrash_trash_paused",
-    layers = {
-        {
-            filename = "__AutoTrash__/graphics/gui2.png",
-            size = 128,
-            position = {0, 0}
-        },
-        {
-            filename = "__AutoTrash__/graphics/gui2.png",
-            size = 128,
-            position = {128, 0}
-        }
-    }
+styles["at_preset_button"] = {
+    type = "button_style",
+    width = 150
+}
 
-}}
+styles["at_storage_grid_flow"] = {
+    type = "vertical_flow_style",
+    horizontally_stretchable = "on"
+}
 
-data:extend{{
-    type = "sprite",
-    name = "autotrash_requests_paused",
-    layers = {
-        {
-            filename = "__AutoTrash__/graphics/gui2.png",
-            size = 128,
-            position = {0, 0}
-        },
-        {
-            filename = "__AutoTrash__/graphics/gui2.png",
-            size = 128,
-            position = {0, 128}
-        }
-    }
-}}
+styles["at_save_as_textfield"] = {
+    type = "textbox_style",
+    horizontally_stretchable = "on",
+    width = 150
+}
+
+styles["at_storage_frame_button_flow"] = {
+    type = "horizontal_flow_style",
+    horizontally_stretchable = "on"
+}
+
+styles["at_bordered_frame"] = {
+    type = "frame_style",
+    parent = "bordered_frame",
+    horizontally_stretchable = "on"
+}
+
+styles["at_quick_actions"] = {
+    type = "dropdown_style",
+    minimal_width = 216
+}
+
+styles["at_slider_flow"] = {
+    type = "horizontal_flow_style",
+    vertical_align = "center"
+}
+
+styles["at_slider_table"] = {
+    type = "table_style",
+    minimal_height = 60
+}
 
 data:extend{
+    {
+        type = "sprite",
+        name = "autotrash_trash",
+        filename = "__AutoTrash__/graphics/gui2.png",
+        size = 128,
+        position = {0, 0}
+    },
+    {
+        type = "sprite",
+        name = "autotrash_trash_paused",
+        layers = {
+            {
+                filename = "__AutoTrash__/graphics/gui2.png",
+                size = 128,
+                position = {0, 0}
+            },
+            {
+                filename = "__AutoTrash__/graphics/gui2.png",
+                size = 128,
+                position = {128, 0}
+            }
+        }
+    },
+    {
+        type = "sprite",
+        name = "autotrash_requests_paused",
+        layers = {
+            {
+                filename = "__AutoTrash__/graphics/gui2.png",
+                size = 128,
+                position = {0, 0}
+            },
+            {
+                filename = "__AutoTrash__/graphics/gui2.png",
+                size = 128,
+                position = {0, 128}
+            }
+        }
+    },
     {
         type = "sprite",
         name = "autotrash_both_paused",

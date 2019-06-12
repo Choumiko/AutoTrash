@@ -1189,12 +1189,10 @@ function GUI.open_status_flow(player, pdata)
     local mod_settings = player.mod_settings
     status_flow = left.add{
         type = "table",
-        --direction = "vertical",
+        style = "at_request_status_table",
         column_count = mod_settings["autotrash_status_columns"].value
     }
     gui_elements.status_flow = status_flow
-    status_flow.style.horizontal_spacing = 0
-    status_flow.style.vertical_spacing = 0
 
     local max_count, c = mod_settings["autotrash_status_count"].value, 0
     local config_tmp = pdata.config_new.config
@@ -1235,18 +1233,17 @@ function GUI.open_logistics_frame(player, pdata)
 
     local frame = left.add{
         type = "frame",
+        style = "at_logistics_frame",
         caption = {"gui-logistic.title"},
         direction = "vertical"
     }
-    frame.style.minimal_width = 340
     gui_elements.config_frame = frame
 
     local config_flow_v = frame.add{
         type = "frame",
-        style = "bordered_frame",
+        style = "at_bordered_frame",
         direction = "vertical",
     }
-    config_flow_v.style.horizontally_stretchable = true
 
     local config_flow_h = config_flow_v.add{
         type = "flow",
@@ -1311,21 +1308,20 @@ function GUI.open_logistics_frame(player, pdata)
 
     local slider_vertical_flow = config_flow_v.add{
         type = "table",
+        style = "at_slider_table",
         column_count = 2
     }
     gui_elements.slider_flow = slider_vertical_flow
 
-    slider_vertical_flow.style.minimal_height = 60
     slider_vertical_flow.add{
         type = "label",
         caption = {"gui-logistic.title-request-short"}
     }
     local slider_flow_request = slider_vertical_flow.add{
         type = "flow",
+        style = "at_slider_flow",
         name = gui_defines.config_request,
-        direction = "horizontal",
     }
-    slider_flow_request.style.vertical_align = "center"
 
     local request_slider = slider_flow_request.add{
         type = "slider",
@@ -1348,10 +1344,9 @@ function GUI.open_logistics_frame(player, pdata)
     }
     local slider_flow_trash = slider_vertical_flow.add{
         type = "flow",
+        style = "at_slider_flow",
         name = gui_defines.config_trash,
-        direction = "horizontal",
     }
-    slider_flow_trash.style.vertical_align = "center"
 
     local trash_slider = slider_flow_trash.add{
         type = "slider",
@@ -1374,6 +1369,7 @@ function GUI.open_logistics_frame(player, pdata)
 
     local quick_actions = config_flow_v.add{
         type = "drop-down",
+        style = "at_quick_actions",
         items = {
             [1] = "Quick actions",
             [2] = "Clear requests",
@@ -1384,19 +1380,15 @@ function GUI.open_logistics_frame(player, pdata)
         },
         selected_index = 1
     }
-    quick_actions.style.minimal_width = 216
 
     GUI.register_action(pdata, quick_actions, {type = "quick_actions"})
 
     local trash_options = frame.add{
         type = "frame",
-        style = "bordered_frame",
+        style = "at_bordered_frame",
         direction = "vertical",
     }
     gui_elements.trash_options = trash_options
-    trash_options.style.use_header_filler = false
-    trash_options.style.horizontally_stretchable = true
-    trash_options.style.font = "default-bold"
 
     local settings = pdata.settings
 
@@ -1461,30 +1453,27 @@ function GUI.open_presets_frame(left, pdata)
         caption = {"auto-trash-storage-frame-title"},
         direction = "vertical"
     }
-    --storage_frame.style.width = 340
     gui_elements.storage_frame = storage_frame
 
 
     local storage_frame_buttons = storage_frame.add{
         type = "flow",
+        style = "at_storage_frame_button_flow",
         direction = "horizontal",
         name = "auto-trash-logistics-storage-buttons"
     }
-    storage_frame_buttons.style.horizontally_stretchable = true
 
     local save_as = storage_frame_buttons.add{
         type = "textfield",
+        style = "at_save_as_textfield",
         text = ""
     }
-    save_as.style.horizontally_stretchable = true
-    save_as.style.width = 150
 
     local save_button = storage_frame_buttons.add{
         type = "button",
         caption = {"gui-save-game.save"},
-        style = "at_small_button"
+        style = "at_save_button"
     }
-    save_button.style.width = 60
 
     gui_elements.storage_textfield = save_as
     GUI.register_action(pdata, save_button, {type = "save_preset"})
@@ -1492,14 +1481,14 @@ function GUI.open_presets_frame(left, pdata)
     local storage_scroll = storage_frame.add{
         type = "scroll-pane",
     }
-
     storage_scroll.style.maximal_height = math.ceil(38*10+4)
+
     local storage_grid = storage_scroll.add{
         type = "flow",
+        style = "at_storage_grid_flow",
         direction = "vertical"
     }
     gui_elements.storage_grid = storage_grid
-    storage_grid.style.horizontally_stretchable = true
 
     for key, _ in pairs(pdata.storage_new) do
         GUI.add_preset(key, pdata)
@@ -1572,11 +1561,10 @@ function GUI.add_preset(preset_name, pdata)
 
     local preset = preset_flow.add{
         type = "button",
+        style = "at_preset_button",
         caption = preset_name,
         name = preset_name
     }
-    preset.style.width = 150
-    --preset.style.horizontal_align = "left"
 
     local rip = preset_flow.add{
         type = "sprite-button",
