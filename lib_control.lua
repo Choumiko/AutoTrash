@@ -1,20 +1,19 @@
 local floor = math.floor
 
-local function set_trash(player)
+local function set_trash(player, pdata)
     if not player.character then return end
     local trash_filters = {}
-    local player_index = player.index
-    if global.settings[player_index].trash_above_requested then
+    if pdata.settings.trash_above_requested then
         local threshold = player.mod_settings["autotrash_threshold"].value
         local amount
-        for i, item_config in pairs(global.config_new[player_index].config) do
+        for i, item_config in pairs(pdata.config_new.config) do
             if item_config.trash or item_config.request > 0 then
                 amount = item_config.request + threshold
                 trash_filters[item_config.name] = (amount > (item_config.trash or 0)) and amount or item_config.trash
             end
         end
     else
-        for _, item_config in pairs(global.config_new[player_index].config) do
+        for _, item_config in pairs(pdata.config_new.config) do
             if item_config.trash then
                 trash_filters[item_config.name] = (item_config.trash > item_config.request) and item_config.trash or item_config.request
             end
@@ -24,22 +23,22 @@ local function set_trash(player)
     player.auto_trash_filters = trash_filters
 end
 
-local function pause_trash(player)
+local function pause_trash(player, pdata)
     if not player.character then return end
-    global.settings[player.index].pause_trash = true
+    pdata.settings.pause_trash = true
     player.character.auto_trash_filters = {}
 end
 
-local function unpause_trash(player)
+local function unpause_trash(player, pdata)
     if not player.character then return end
-    global.settings[player.index].pause_trash = false
+    pdata.settings.pause_trash = false
     set_trash(player)
 end
 
-local function set_requests(player)
+local function set_requests(player, pdata)
     local character = player.character
     if not character then return end
-    local config_new = global.config_new[player.index]
+    local config_new = pdata.config_new
     local storage = config_new.config
     local slot_count = character.request_slot_count
     local set_request_slot = character.set_request_slot
@@ -80,19 +79,19 @@ local function get_requests(player)
     return requests, max_slot, count
 end
 
-local function pause_requests(player)
+local function pause_requests(player, pdata)
     local character = player.character
     if not character then return end
-    global.settings[player.index].pause_requests = true
+    pdata.settings.pause_requests = true
     for c = 1, character.request_slot_count do
         character.clear_request_slot(c)
     end
 end
 
-local function unpause_requests(player)
+local function unpause_requests(player, pdata)
     if not player.character then return end
-    global.settings[player.index].pause_requests = false
-    set_requests(player)
+    pdata.settings.pause_requests = false
+    set_requests(player, pdata)
 end
 
 local function get_network_entity(player)
@@ -103,12 +102,12 @@ local function get_network_entity(player)
     end
 end
 
-local function in_network(player)
-    if not global.settings[player.index].trash_network then
+local function in_network(player, pdata)
+    if not pdata.settings.trash_network then
         return true
     end
     local currentNetwork = player.character.logistic_network
-    local entity = global.mainNetwork[player.index]
+    local entity = pdata.mainNetwork
     if currentNetwork and entity and currentNetwork.valid and entity.valid and currentNetwork == entity.logistic_network then
         return true
     end
