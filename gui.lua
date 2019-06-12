@@ -986,8 +986,8 @@ local function get_network_data(player)
     return available, on_the_way, item_count, cursor_stack, armor, gun, ammo
 end
 
-function GUI.get_button_style(i, selected, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
-    if not (available and on_the_way and item and item.request > 0) then
+function GUI.get_button_style(i, selected, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo, paused)
+    if paused or not (available and on_the_way and item and item.request > 0) then
         return (i == selected) and "at_button_slot_selected" or "at_button_slot"
     end
     if i == selected then
@@ -1040,7 +1040,7 @@ function GUI.update_buttons(player, pdata)
 
     for i, button in pairs(ruleset_grid.children) do
         GUI.update_button(pdata, i, selected, button)
-        button.style = GUI.get_button_style(i, selected, config[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+        button.style = GUI.get_button_style(i, selected, config[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo, pdata.settings.pause_requests)
     end
 end
 
@@ -1101,7 +1101,7 @@ function GUI.create_buttons(player, start, pdata)
             caption = ""
         }
         GUI.update_button(pdata, i, selected, button)
-        button.style = GUI.get_button_style(i, selected, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+        button.style = GUI.get_button_style(i, selected, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo, pdata.settings.pause_requests)
     end
     return slots
 end
@@ -1203,7 +1203,7 @@ function GUI.open_status_flow(player, pdata)
     for i, item in pairs(config_tmp) do
         if c >= max_count then break end
         if item and item.request > 0 then
-            style = GUI.get_button_style(i, false, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+            style = GUI.get_button_style(i, false, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo, pdata.settings.pause_requests)
             if style ~= "at_button_slot" then
                 status_flow.add{
                     type = "sprite-button",
