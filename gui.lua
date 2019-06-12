@@ -396,11 +396,11 @@ local gui_functions = {
 
     set_main_network = function(event, pdata)
         local player = event.player
-        if pdata.mainNetwork then
-            pdata.mainNetwork = false
+        if pdata.main_network then
+            pdata.main_network = false
         else
-            pdata.mainNetwork = lib_control.get_network_entity(player)
-            if not pdata.mainNetwork then
+            pdata.main_network = lib_control.get_network_entity(player)
+            if not pdata.main_network then
                 display_message(player, {"auto-trash-not-in-network"}, true)
             end
         end
@@ -611,7 +611,7 @@ local gui_functions = {
         if event.name ~= defines.events.on_gui_checked_state_changed then return end
         local element = event.element
         local player = event.player
-        if element.state and not pdata.mainNetwork then
+        if element.state and not pdata.main_network then
             player.print("No main network set")
             element.state = false
         else
@@ -891,7 +891,7 @@ function GUI.update_settings(pdata)
     frame[def.trash_network].state = settings.trash_network
     frame[def.pause_trash].state = settings.pause_trash
     frame[def.pause_requests].state = settings.pause_requests
-    frame[def.network_button].caption = pdata.mainNetwork and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+    frame[def.network_button].caption = pdata.main_network and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
 end
 
 function GUI.delete(pdata)
@@ -1445,7 +1445,7 @@ function GUI.open_logistics_frame(player, pdata)
     GUI.register_action(pdata, trash_options.add{
                 type = "button",
                 name = gui_defines.network_button,
-                caption = pdata.mainNetwork and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+                caption = pdata.main_network and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
                 },
                 {type = "set_main_network"}
     )
