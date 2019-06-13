@@ -132,7 +132,7 @@ function GUI.extend_buttons(player, max_slot, pdata)
     local ruleset_grid = gui_elements.ruleset_grid
     local count = #ruleset_grid.children
     if max_slot >= count then
-        local last = GUI.create_buttons(player, count+1, pdata)
+        local last = GUI.create_buttons(player, pdata, count+1)
         gui_elements.config_scroll.scroll_to_element(ruleset_grid.children[last], "top-third")
     end
 end
@@ -306,7 +306,7 @@ local gui_functions = {
         local ruleset_grid = gui_elements.ruleset_grid
         local count = #ruleset_grid.children
         if config_tmp.max_slot >= count then
-            local last = GUI.create_buttons(event.player, count+1, pdata)
+            local last = GUI.create_buttons(event.player, pdata, count+1)
             gui_elements.config_scroll.scroll_to_element(ruleset_grid.children[last], "top-third")
         end
         GUI.update_buttons(event.player, pdata)
@@ -747,7 +747,7 @@ local gui_functions = {
         GUI.deregister_action(frame, pdata, true)
     end,
 
-    import_export_close = function(_, _, params, pdata)
+    import_export_close = function(_, pdata, params)
         GUI.deregister_action(params.frame, pdata, true)
     end,
 }
@@ -1044,7 +1044,7 @@ function GUI.update_buttons(player, pdata)
     end
 end
 
-function GUI.create_buttons(player, start, pdata)
+function GUI.create_buttons(player, pdata, start)
     local scroll_pane = pdata.gui_elements.config_scroll
     if not (scroll_pane and scroll_pane.valid) then return end
     local ruleset_grid = scroll_pane.children[1]
@@ -1365,7 +1365,7 @@ function GUI.open_logistics_frame(player, pdata)
 
     GUI.hide_sliders(pdata)
 
-    GUI.create_buttons(player, nil, pdata)
+    GUI.create_buttons(player, pdata)
 
     local quick_actions = config_flow_v.add{
         type = "drop-down",

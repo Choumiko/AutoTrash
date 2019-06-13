@@ -87,7 +87,7 @@ local function on_player_trash_inventory_changed(event)
     local trash_filters = player.auto_trash_filters
     local requests = requested_items(player)
     local desired, changed
-    local temporary_trash = global._pdata[player.index].temporary_trash
+    local temporary_trash = global._pdata[event.player_index].temporary_trash
     for name, saved_count in pairs() do
         if trash_filters[name] then
              desired = requests[name] and requests[name] or 0
@@ -175,9 +175,9 @@ local function on_init()
 end
 
 local function on_pre_player_removed(event)
-    local player_index = event.player_index
-    log("Removing invalid player index " .. player_index)
-    global._pdata[player_index] = nil
+    log("Removing invalid player index " .. event.player_index)
+    GUI.delete(global._pdata[event.player_index])
+    global._pdata[event.player_index] = nil
     register_conditional_events()
 end
 
@@ -293,29 +293,27 @@ local function on_player_toggled_map_editor(event)
     local player = game.get_player(event.player_index)
     if not player.character then
         GUI.close(player, global._pdata[event.player_index], true)
-        GUI.close_quick_presets(event.player_index)
+        GUI.close_quick_presets(global._pdata[event.player_index])
     end
 end
 
 local function on_pre_player_died(event)
-    local player_index = event.player_index
-    local player = game.get_player(player_index)
+    local player = game.get_player(event.player_index)
     if player.mod_settings["autotrash_pause_on_death"].value then
-        local pdata = global._pdata[player_index]
+        local pdata = global._pdata[event.player_index]
         lib_control.pause_requests(player, pdata)
         GUI.update_status_flow(player, pdata)
         GUI.update_main_button(pdata)
         GUI.close(player, pdata, true)
-        GUI.close_quick_presets(player_index)
+        GUI.close_quick_presets(pdata)
     end
 end
 
 local function on_player_respawned(event)
-    local player_index = event.player_index
-    local pdata = global._pdata[player_index]
+    local pdata = global._pdata[event.player_index]
     local selected_presets = pdata.death_presets
     if table_size(selected_presets) > 0 then
-        local player = game.get_player(player_index)
+        local player = game.get_player(event.player_index)
         local tmp = {config = {}, max_slot = 0, c_requests = 0}
         for key, _ in pairs(selected_presets) do
             presets.merge(tmp, pdata.storage_new[key])
@@ -332,10 +330,9 @@ local function on_player_respawned(event)
 end
 
 local function on_player_changed_position(event)
-    local player_index = event.player_index
-    local player = game.get_player(player_index)
+    local player = game.get_player(event.player_index)
     if not player.character then return end
-    local pdata = global._pdata[player_index]
+    local pdata = global._pdata[event.player_index]
     local current = pdata.current_network and pdata.current_network.logistic_network
     if player.character.logistic_network ~= current then
         log("Network changed")
@@ -375,7 +372,7 @@ script.on_event(defines.events.on_pre_player_died, on_pre_player_died)
 script.on_event(defines.events.on_player_respawned, on_player_respawned)
 script.on_event(defines.events.on_player_changed_position, on_player_changed_position)
 
-local function update_network(entity, player_index, main)
+local function update_network(entity, player_index, pdata, main)
     local newEntity = false
     --get another roboport from the network
     if newEntity == false and entity.logistic_network and entity.logistic_network.valid then
@@ -391,7 +388,7 @@ local function update_network(entity, player_index, main)
         local player = game.get_player(player_index)
         player.print("Autotrash main network has been unset")
     end
-    GUI.update_settings(player_index)
+    GUI.update_settings(pdata)
     return newEntity
 end
 
@@ -401,10 +398,10 @@ local function on_pre_mined_item(event)
             local entity = event.entity
             for pi, pdata in pairs(global._pdata) do
                 if entity == pdata.main_network then
-                    pdata.main_network = update_network(entity, pi, true)
+                    pdata.main_network = update_network(entity, pi, pdata, true)
                 end
                 if entity == pdata.current_network then
-                    pdata.current_network = update_network(entity, pi)
+                    pdata.current_network = update_network(entity, pi, pdata)
                 end
             end
         end
@@ -470,24 +467,24 @@ local gui_settings = {
 }
 local function on_runtime_mod_setting_changed(event)
     local player_index = event.player_index
-    local player = game.get_player(event.player_index)
+    local player = game.get_player(player_index)
     local pdata = global._pdata[player_index]
     if gui_settings[event.setting] then
         if player_index then
             if player.character then
-                GUI.create_buttons(player, nil, pdata)
+                GUI.create_buttons(player, pdata)
             else
                 GUI.close(player, pdata, true)
-                GUI.close_quick_presets(player_index)
+                GUI.close_quick_presets(pdata)
             end
         else
             --update all guis, value was changed by script
             for pi, p in pairs(game.players) do
                 if p.character then
-                    GUI.create_buttons(p, nil, pdata)
+                    GUI.create_buttons(p, global._pdata[pi])
                 else
                     GUI.close(p, global._pdata[pi], true)
-                    GUI.close_quick_presets(pi)
+                    GUI.close_quick_presets(global._pdata[pi])
                 end
             end
         end
