@@ -67,7 +67,7 @@ local function on_nth_tick(event)--luacheck: ignore
             end
             pr.reset()
             for _ = 1, 100 do
-                foo = GUI.update_status_flow(p, pdata)
+                foo = GUI.update_status_display(p, pdata)
             end
             pr.stop()
             pr.divide(100)
@@ -235,7 +235,7 @@ local function on_configuration_changed(data)
             remove_invalid_items(pdata, stored)
         end
         GUI.update_buttons(player, pdata)
-        GUI.update_status_flow(player, pdata)
+        GUI.update_status_display(player, pdata)
     end
 end
 
@@ -308,7 +308,7 @@ local function on_pre_player_died(event)
     if player.mod_settings["autotrash_pause_on_death"].value then
         local pdata = global._pdata[event.player_index]
         lib_control.pause_requests(player, pdata)
-        GUI.update_status_flow(player, pdata)
+        GUI.update_status_display(player, pdata)
         GUI.update_main_button(pdata)
         GUI.close(player, pdata, true)
         GUI.close_quick_presets(pdata)
@@ -334,7 +334,7 @@ local function on_player_respawned(event)
         pdata.config_new = util.table.deepcopy(tmp)
 
         lib_control.unpause_requests(player, pdata)
-        GUI.update_status_flow(player, pdata)
+        GUI.update_status_display(player, pdata)
         unpause_trash(player, pdata)
         GUI.update_main_button(pdata)
     end
@@ -477,7 +477,7 @@ local function toggle_autotrash_pause_requests(player)
     else
         lib_control.pause_requests(player, pdata)
     end
-    GUI.update_status_flow(player, pdata)
+    GUI.update_status_display(player, pdata)
     GUI.update_main_button(pdata)
     GUI.close(player, pdata)
     end)
@@ -515,17 +515,12 @@ local function on_runtime_mod_setting_changed(event)
         end
     end
     if event.setting == "autotrash_status_count" then
-        GUI.update_status_flow(player, pdata)
+        GUI.update_status_display(player, pdata)
     end
     if event.setting == "autotrash_status_columns" then
-        if pdata.gui_elements.status_flow then
-            if pdata.gui_elements.config_frame then
-                GUI.close(player, pdata, true)
-                GUI.open_status_flow(player, pdata)
-                GUI.open_config_frame(player, pdata)
-            else
-                GUI.open_status_flow(player, pdata)
-            end
+        local status_table = pdata.gui_elements.status_table
+        if status_table and status_table.valid then
+            GUI.open_status_display(player, pdata)
         end
     end
     end)

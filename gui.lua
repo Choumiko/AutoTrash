@@ -146,16 +146,11 @@ local gui_functions = {
                 GUI.close(player, pdata)
                 GUI.open_quick_presets(pdata)
             else
-                if gui_elements.status_flow then
-                    GUI.close_status_flow(pdata)
+                local status_table = gui_elements.status_table
+                if status_table and status_table.valid then
+                    GUI.close_status_display(pdata)
                 else
-                    if gui_elements.config_frame then
-                        GUI.close(player, pdata, true)
-                        GUI.open_status_flow(player, pdata)
-                        GUI.open_config_frame(player, pdata)
-                    else
-                        GUI.open_status_flow(player, pdata)
-                    end
+                    GUI.open_status_display(player, pdata)
                 end
             end
         else
@@ -191,7 +186,7 @@ local gui_functions = {
         if not pdata.settings.pause_requests then
             set_requests(player, pdata)
         end
-        GUI.update_status_flow(player, pdata)
+        GUI.update_status_display(player, pdata)
     end,
 
     reset_changes = function(event, pdata)
@@ -344,7 +339,7 @@ local gui_functions = {
             if not settings.pause_requests then
                 set_requests(player, pdata)
             end
-            GUI.update_status_flow(player, pdata)
+            GUI.update_status_display(player, pdata)
             display_message(player, "Preset '" .. tostring(name) .. "' loaded", "success")
         end
         GUI.deregister_action(element, pdata, true)
@@ -829,10 +824,20 @@ function GUI.generic_event(event)
 end
 
 function GUI.init(player)
+    local pdata = global._pdata[player.index]
+    local gui_elements = pdata.gui_elements
+    local status_flow = gui_elements.status_flow
+    if not (status_flow and status_flow.valid) then
+        gui_elements.status_flow = mod_gui.get_frame_flow(player).add{
+            type = "flow",
+            name = "autotrash_status_flow",
+            direction = "vertical"
+        }
+        GUI.open_status_display(player, pdata)
+    end
     local button_flow = mod_gui.get_button_flow(player)
     local main_flow = button_flow[GUI.defines.main_button_flow]
     if main_flow and main_flow.valid then return end
-    local pdata = global._pdata[player.index]
     local main_button = pdata.gui_elements.main_button
     if main_button and main_button.valid then return end
 
@@ -1129,36 +1134,33 @@ function GUI.close_quick_presets(pdata)
     GUI.deregister_action(button_flow[GUI.defines.quick_presets], pdata, true)
 end
 
-function GUI.update_status_flow(player, pdata)
-    local status_flow = pdata.gui_elements.status_flow
-    if not (status_flow and status_flow.valid) then
+function GUI.update_status_display(player, pdata)
+    local status_table = pdata.gui_elements.status_table
+    if not (status_table and status_table.valid) then
         return
     end
-
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
-    status_flow.clear()
+    status_table.clear()
     if not (available and not pdata.settings.pause_requests) then
         return true
     end
-    --local config_tmp = pdata.config_new.config
     local style
-    -- local button
     local c = 0
     local max_count = player.mod_settings["autotrash_status_count"].value
     local character = player.character
     local get_request_slot = character.get_request_slot--luacheck: ignore
     local item--luacheck: ignore
-    for i = 1, character.request_slot_count do
-        item = get_request_slot(i)
-        if item and item.count > 0 then
     --TODO: looping over config_new is slightly faster, but may be out of sync with the actual requests
     -- for i, item in pairs(config_tmp) do--luacheck: ignore
     --     if item and item.request > 0 then
+    for i = 1, character.request_slot_count do
+        item = get_request_slot(i)
+        if item and item.count > 0 then
             if c >= max_count then break end
             item.request = item.count
             style = GUI.get_button_style(i, false, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
             if style ~= "at_button_slot" then
-                status_flow.add{
+                status_table.add{
                     type = "sprite-button",
                     style = style,
                     ignored_by_interaction = true,
@@ -1170,22 +1172,27 @@ function GUI.update_status_flow(player, pdata)
     return true
 end
 
-function GUI.open_status_flow(player, pdata)
-    local left = mod_gui.get_frame_flow(player)
+function GUI.open_status_display(player, pdata)
     local gui_elements = pdata.gui_elements
-
     local status_flow = gui_elements.status_flow
-    if status_flow and status_flow.valid then
-        GUI.deregister_action(status_flow, pdata, true)
-        gui_elements.status_flow = nil
+    if not (status_flow and status_flow.valid) then
+        GUI.init(player)
+        status_flow = gui_elements.status_flow
     end
+
+    local status_table = gui_elements.status_table
     local mod_settings = player.mod_settings
-    status_flow = left.add{
+    if status_table and status_table.valid then
+        GUI.deregister_action(status_table, pdata, true)
+        gui_elements.status_table = nil
+    end
+
+    status_table = status_flow.add{
         type = "table",
         style = "at_request_status_table",
         column_count = mod_settings["autotrash_status_columns"].value
     }
-    gui_elements.status_flow = status_flow
+    gui_elements.status_table = status_table
 
     local max_count, c = mod_settings["autotrash_status_count"].value, 0
     local config_tmp = pdata.config_new.config
@@ -1196,7 +1203,7 @@ function GUI.open_status_flow(player, pdata)
         if item and item.request > 0 then
             style = GUI.get_button_style(i, false, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo, pdata.settings.pause_requests)
             if style ~= "at_button_slot" then
-                status_flow.add{
+                status_table.add{
                     type = "sprite-button",
                     style = style,
                     ignored_by_interaction = true,
@@ -1207,14 +1214,12 @@ function GUI.open_status_flow(player, pdata)
     end
 end
 
-function GUI.close_status_flow(pdata)
-    local gui_elements = pdata.gui_elements
-
-    local status_flow = gui_elements.status_flow
-    if status_flow and status_flow.valid then
-        GUI.deregister_action(status_flow, pdata, true)
+function GUI.close_status_display(pdata)
+    local status_table = pdata.gui_elements.status_table
+    if status_table and status_table.valid then
+        GUI.deregister_action(status_table, pdata, true)
+        pdata.gui_elements.status_table = nil
     end
-    gui_elements.status_flow = nil
 end
 
 function GUI.open_config_frame(player, pdata)
