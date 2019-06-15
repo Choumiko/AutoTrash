@@ -50,7 +50,6 @@ function presets.merge(current, preset)
     end
 
     local start = 1
-    --log(max_slot .. " " .. #no_slot)
     for _, s in pairs(no_slot) do
         for i = start, max_slot + #no_slot do
             if not result[i] then
@@ -62,7 +61,6 @@ function presets.merge(current, preset)
             end
         end
     end
-    --log(serpent.block(result, {name="test"}))
     current.max_slot = max_slot
     current.c_requests = c_requests
     return current, max_slot, c_requests
@@ -137,7 +135,6 @@ function presets.import(preset, icons)--luacheck: ignore
                 end
             end
         end
-        log(serpent.block(tmp))
     else--luacheck: ignore
         --do
     end

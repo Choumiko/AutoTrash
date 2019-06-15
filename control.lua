@@ -80,6 +80,17 @@ local function on_nth_tick(event)--luacheck: ignore
     end
 end
 
+local function check_temporary_trash()
+    for _, pdata in pairs(global._pdata) do
+        if next(pdata.temporary_trash) then
+            log("temp trash set")
+            --some player has stuff in temporary_trash, don't unregister the event
+            return true
+        end
+    end
+    log("temp trash not set")
+end
+
 local function on_player_trash_inventory_changed(event)
     local player = game.get_player(event.player_index)
     if not (player.character and player.get_inventory(defines.inventory.character_trash).is_empty()) then return end
@@ -101,32 +112,18 @@ local function on_player_trash_inventory_changed(event)
     end
     if changed then
         player.auto_trash_filters = trash_filters
-        for _, pdata in pairs(global._pdata) do
-            if next(pdata.temporary_trash) then
-                --some player has stuff in temporary_trash, don't unregister the event
-                return
-            end
+        if not check_temporary_trash() then
+            script.on_event(defines.events.on_player_trash_inventory_changed, nil)
         end
-        log("unregistering on_player_trash_inventory_changed")
-        script.on_event(defines.events.on_player_trash_inventory_changed, nil)
     end
 end
 
 local function register_conditional_events()
-    local handler
-    for _, pdata in pairs(global._pdata) do
-        if next(pdata.temporary_trash) then
-            --some player has stuff in temporary_trash, register the event
-            handler = on_player_trash_inventory_changed
-            break
-        end
-    end
-    if handler then
-        log("registering on_player_trash_inventory_changed")
+    if check_temporary_trash() then
+       script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
     else
-        log("not registering on_player_trash_inventory_changed")
+        script.on_event(defines.events.on_player_trash_inventory_changed, nil)
     end
-    script.on_event(defines.events.on_player_trash_inventory_changed, handler)
     script.on_nth_tick(nil)
     script.on_nth_tick(settings.global["autotrash_update_rate"].value + 1, on_nth_tick)
 end
@@ -175,7 +172,6 @@ local function on_init()
 end
 
 local function on_pre_player_removed(event)
-    log("Removing invalid player index " .. event.player_index)
     GUI.delete(global._pdata[event.player_index])
     global._pdata[event.player_index] = nil
     register_conditional_events()
@@ -281,11 +277,11 @@ local function add_to_trash(player, item)
     if not trash_filters[item] then
         local requests = requested_items(player)
         trash_filters[item] = requests[item] or 0
-        log(serpent.block(trash_filters))
         player.auto_trash_filters = trash_filters
     end
-    log("registering trash inventory changed")
-    script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
+    if check_temporary_trash() then
+        script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
+    end
     player.print({"", "Added ", item_prototype(item).localised_name, " to temporary trash"})
 end
 
@@ -515,7 +511,7 @@ local function on_runtime_mod_setting_changed(event)
             if pdata.gui_elements.config_frame then
                 GUI.close(player, pdata, true)
                 GUI.open_status_flow(player, pdata)
-                GUI.open_logistics_frame(player, pdata)
+                GUI.open_config_frame(player, pdata)
             else
                 GUI.open_status_flow(player, pdata)
             end

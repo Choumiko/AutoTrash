@@ -117,10 +117,8 @@ end
 item_prototypes = {}--luacheck: allow defined top
 local function item_prototype(name)
     if item_prototypes[name] then
-        --log("cached: " .. name)
         return item_prototypes[name]
     end
-    --log("uncached: " .. name)
     item_prototypes[name] = game.item_prototypes[name]
     return item_prototypes[name]
 end

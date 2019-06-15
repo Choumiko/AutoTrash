@@ -152,7 +152,7 @@ local gui_functions = {
                     if gui_elements.config_frame then
                         GUI.close(player, pdata, true)
                         GUI.open_status_flow(player, pdata)
-                        GUI.open_logistics_frame(player, pdata)
+                        GUI.open_config_frame(player, pdata)
                     else
                         GUI.open_status_flow(player, pdata)
                     end
@@ -170,7 +170,7 @@ local gui_functions = {
                 if gui_elements.config_frame then
                     GUI.close(player, pdata)
                 else
-                    GUI.open_logistics_frame(player, pdata)
+                    GUI.open_config_frame(player, pdata)
                 end
             end
         end
@@ -179,11 +179,6 @@ local gui_functions = {
     apply_changes = function(event, pdata)
         local player = event.player
         pdata.config_new = util.table.deepcopy(pdata.config_tmp)
-        local status_flow = pdata.gui_elements.status_flow
-        if status_flow and status_flow.valid then
-            status_flow.clear()
-            GUI.update_status_flow(player, pdata)
-        end
         pdata.dirty = false
         pdata.gui_elements.reset_button.enabled = false
         if player.mod_settings["autotrash_close_on_apply"].value then
@@ -196,6 +191,7 @@ local gui_functions = {
         if not pdata.settings.pause_requests then
             set_requests(player, pdata)
         end
+        GUI.update_status_flow(player, pdata)
     end,
 
     reset_changes = function(event, pdata)
@@ -339,11 +335,6 @@ local gui_functions = {
             local player = event.player
             pdata.selected_presets = {[name] = true}
             pdata.config_new = util.table.deepcopy(stored_preset)
-            local status_flow = pdata.gui_elements.status_flow
-            if status_flow and status_flow.valid then
-                status_flow.clear()
-                GUI.update_status_flow(player, pdata)
-            end
             pdata.config_tmp = util.table.deepcopy(stored_preset)
             pdata.selected = false
             pdata.dirty = false
@@ -353,6 +344,7 @@ local gui_functions = {
             if not settings.pause_requests then
                 set_requests(player, pdata)
             end
+            GUI.update_status_flow(player, pdata)
             display_message(player, "Preset '" .. tostring(name) .. "' loaded", "success")
         end
         GUI.deregister_action(element, pdata, true)
@@ -426,12 +418,10 @@ local gui_functions = {
                     pdata.selected = false
                     GUI.update_button(pdata, old_selected)
                     GUI.hide_sliders(pdata)
-                    GUI.update_button_styles(player, pdata)--TODO: only update changed buttons
                     return
                 end
                 GUI.clear_button(player, pdata, params, config_tmp)
                 GUI.update_button(pdata, params.slot, old_selected, element)
-                GUI.update_button_styles(player, pdata)--TODO: only update changed buttons
             elseif event.button == defines.mouse_button_type.left then
                 if event.shift then
                     local cursor_ghost = player.cursor_ghost
@@ -842,7 +832,6 @@ function GUI.init(player)
     local pdata = global._pdata[player.index]
     local main_button = pdata.gui_elements.main_button
     if main_button and main_button.valid then return end
-    log("init gui")
 
     if player.force.technologies["character-logistic-slots-1"].researched
     or player.force.technologies["character-logistic-trash-slots-1"].researched then
@@ -1148,7 +1137,7 @@ function GUI.update_status_flow(player, pdata)
     if not (available and not pdata.settings.pause_requests) then
         return true
     end
-    local config_tmp = pdata.config_new.config
+    --local config_tmp = pdata.config_new.config
     local style
     -- local button
     local c = 0
@@ -1159,11 +1148,12 @@ function GUI.update_status_flow(player, pdata)
     for i = 1, character.request_slot_count do
         item = get_request_slot(i)
         if item and item.count > 0 then
-    --TODO: looping over config_tmp is slightly faster, but may be out of sync with the actual requests
+    --TODO: looping over config_new is slightly faster, but may be out of sync with the actual requests
     -- for i, item in pairs(config_tmp) do--luacheck: ignore
     --     if item and item.request > 0 then
             if c >= max_count then break end
-            style = GUI.get_button_style(i, false, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+            item.request = item.count
+            style = GUI.get_button_style(i, false, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
             if style ~= "at_button_slot" then
                 status_flow.add{
                     type = "sprite-button",
@@ -1224,7 +1214,7 @@ function GUI.close_status_flow(pdata)
     gui_elements.status_flow = nil
 end
 
-function GUI.open_logistics_frame(player, pdata)
+function GUI.open_config_frame(player, pdata)
     hide_yarm(player, pdata)
     local left = mod_gui.get_frame_flow(player)
     local gui_elements = pdata.gui_elements

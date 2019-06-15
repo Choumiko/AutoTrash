@@ -2,18 +2,15 @@ local lib_control = require '__AutoTrash__/lib_control'
 
 local debugDump = lib_control.debugDump
 
-local function cleanup_table(tbl, tbl_name)
+local function cleanup_table(tbl, tbl_name)--luacheck: ignore
     if tbl then
-        log("Cleaning " .. tostring(tbl_name) or "table")
+--        log("Cleaning " .. tostring(tbl_name) or "table")
         local r = 0
         for i, p in pairs(tbl) do
             if p and not p.name or (p.name and p.name == "") then
                 tbl[i] = nil
                 r = r + 1
             end
-        end
-        if r > 0 then
-            log("Removed " .. r .. " invalied entries")
         end
     end
 end
@@ -56,20 +53,20 @@ local function update_item_config(stored, player)
 end
 
 local function convert_logistics(stored, stored_trash, player)
-    log("Merging Request and Trash slots")
+    --log("Merging Request and Trash slots")
     local config, no_slot
 
-    log("Processing requests")
+    --log("Processing requests")
     local tmp, max_slot, by_name = update_item_config(stored, player)
 
     no_slot = {}
-    log("Merging trash")
+    --log("Merging trash")
     for i, trash in pairs(stored_trash) do
         config = by_name[trash.name]
         if config then
-            if config.request > trash.count then
-                log("Adjusting trash amount for " .. trash.name .. " from " .. trash.count .. " to " .. config.request)
-            end
+            -- if config.request > trash.count then
+            --     log("Adjusting trash amount for " .. trash.name .. " from " .. trash.count .. " to " .. config.request)
+            -- end
             config.trash = (config.request > trash.count) and config.request or trash.count
             tmp.config[config.slot] = config
         else
@@ -88,7 +85,7 @@ local function convert_logistics(stored, stored_trash, player)
                 s.slot = i
                 tmp.config[i] = s
                 start = i + 1
-                log("Assigning slot " .. serpent.line(s))
+                --log("Assigning slot " .. serpent.line(s))
                 tmp.max_slot = tmp.max_slot > i and tmp.max_slot or i
                 break
             end
@@ -142,7 +139,6 @@ convert.to_4_1_2 = function(GUI, init_global, init_player, register_conditional_
                 debugDump(err, player, true)
             end
 
-            log("Cleaning storage")
             status, err = pcall(function()
                 if global.storage[pi].store then
                     for name, stored in pairs(global.storage[pi].store) do
@@ -175,13 +171,12 @@ convert.to_4_1_2 = function(GUI, init_global, init_player, register_conditional_
             pdata.temporary_requests = {}
             pdata.temporary_trash = {}
 
-            log("Converting storage")
             if not global.storage[pi] or not global.storage[pi].store then
                 pdata.storage_new = {}
             else
                 local tmp = {}
                 for name, stored in pairs(global.storage[pi].store) do
-                    log("Converting: " .. name)
+                    --log("Converting: " .. name)
                     tmp[name] = update_item_config(stored, player)
                 end
                 pdata.storage_new = tmp
@@ -204,7 +199,7 @@ convert.to_4_1_2 = function(GUI, init_global, init_player, register_conditional_
             GUI.close(player, pdata)
         end
         if pdata.gui_elements.main_button then
-            GUI.open_logistics_frame(player, pdata)
+            GUI.open_config_frame(player, pdata)
         end
     end
 
