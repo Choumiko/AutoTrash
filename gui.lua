@@ -432,11 +432,14 @@ local gui_functions = {
                         GUI.update_button(pdata, old_selected, params.slot)
                         GUI.update_button_styles(player, pdata)--TODO: only update changed buttons
                         GUI.update_sliders(pdata)
-                        return
                     elseif cursor_ghost and cursor_ghost.name == config_tmp.config[old_selected].name then
                         if elem_value then--always true, even when shift clicking an empty button with a ghost, since it gets set before on_click
                             local tmp = util.table.deepcopy(config_tmp.config[params.slot])
                             config_tmp.config[params.slot] = util.table.deepcopy(config_tmp.config[old_selected])
+                            config_tmp.config[params.slot].slot = params.slot
+                            if tmp then
+                                tmp.slot = old_selected
+                            end
                             config_tmp.config[old_selected] = tmp
                             player.cursor_ghost = nil
                             pdata.selected = params.slot
@@ -447,9 +450,9 @@ local gui_functions = {
                             GUI.update_button_styles(player, pdata)--TODO: only update changed buttons
                             GUI.mark_dirty(pdata)
                             GUI.update_sliders(pdata)
-                            return
                         end
                     end
+                    return
                 end
                 if not elem_value or old_selected == params.slot then return end--empty button
                 pdata.selected = params.slot
