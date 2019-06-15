@@ -226,12 +226,16 @@ local function on_configuration_changed(data)
     init_global()
     init_players()
     on_load()
-    for _, pdata in pairs(global._pdata) do
+    local pdata
+    for pi, player in pairs(game.players) do
+        pdata = global._pdata[pi]
         remove_invalid_items(pdata, pdata.config_new)
         remove_invalid_items(pdata, pdata.config_tmp, true)
         for _, stored in pairs(pdata.storage_new) do
             remove_invalid_items(pdata, stored)
         end
+        GUI.update_buttons(player, pdata)
+        GUI.update_status_flow(player, pdata)
     end
 end
 
@@ -286,14 +290,20 @@ local function add_to_trash(player, item)
 end
 
 local function on_player_toggled_map_editor(event)
+    local status, err = pcall(function()
     local player = game.get_player(event.player_index)
     if not player.character then
         GUI.close(player, global._pdata[event.player_index], true)
         GUI.close_quick_presets(global._pdata[event.player_index])
     end
+    end)
+    if not status then
+        debugDump(err, event.player_index, true)
+    end
 end
 
 local function on_pre_player_died(event)
+    local status, err = pcall(function()
     local player = game.get_player(event.player_index)
     if player.mod_settings["autotrash_pause_on_death"].value then
         local pdata = global._pdata[event.player_index]
@@ -303,9 +313,14 @@ local function on_pre_player_died(event)
         GUI.close(player, pdata, true)
         GUI.close_quick_presets(pdata)
     end
+    end)
+    if not status then
+        debugDump(err, event.player_index, true)
+    end
 end
 
 local function on_player_respawned(event)
+    local status, err = pcall(function()
     local pdata = global._pdata[event.player_index]
     local selected_presets = pdata.death_presets
     if table_size(selected_presets) > 0 then
@@ -322,6 +337,10 @@ local function on_player_respawned(event)
         GUI.update_status_flow(player, pdata)
         unpause_trash(player, pdata)
         GUI.update_main_button(pdata)
+    end
+    end)
+    if not status then
+        debugDump(err, event.player_index, true)
     end
 end
 
@@ -435,6 +454,7 @@ function add_to_requests(player, item, count)--luacheck: ignore
 end
 
 local function toggle_autotrash_pause(player)
+    local status, err = pcall(function()
     local pdata = global._pdata[player.index]
     if pdata.settings.pause_trash then
         unpause_trash(player, pdata)
@@ -443,9 +463,14 @@ local function toggle_autotrash_pause(player)
     end
     GUI.update_main_button(pdata)
     GUI.close(player, pdata)
+    end)
+    if not status then
+        debugDump(err, player.index, true)
+    end
 end
 
 local function toggle_autotrash_pause_requests(player)
+    local status, err = pcall(function()
     local pdata = global._pdata[player.index]
     if pdata.settings.pause_requests then
         lib_control.unpause_requests(player, pdata)
@@ -455,6 +480,10 @@ local function toggle_autotrash_pause_requests(player)
     GUI.update_status_flow(player, pdata)
     GUI.update_main_button(pdata)
     GUI.close(player, pdata)
+    end)
+    if not status then
+        debugDump(err, player.index, true)
+    end
 end
 
 local gui_settings = {
@@ -462,46 +491,28 @@ local gui_settings = {
     ["autotrash_gui_max_rows"] = true,
 }
 local function on_runtime_mod_setting_changed(event)
+    local status, err = pcall(function()
+    if event.setting == "autotrash_update_rate" then
+        register_conditional_events()
+        return
+    end
     local player_index = event.player_index
     local player = game.get_player(player_index)
     local pdata = global._pdata[player_index]
+    if not (player_index and pdata) then return end
     if gui_settings[event.setting] then
-        if player_index then
-            if player.character then
-                GUI.create_buttons(player, pdata)
-            else
-                GUI.close(player, pdata, true)
-                GUI.close_quick_presets(pdata)
-            end
+        if player.character then
+            GUI.create_buttons(player, pdata)
         else
-            --update all guis, value was changed by script
-            for pi, p in pairs(game.players) do
-                if p.character then
-                    GUI.create_buttons(p, global._pdata[pi])
-                else
-                    GUI.close(p, global._pdata[pi], true)
-                    GUI.close_quick_presets(global._pdata[pi])
-                end
-            end
+            GUI.close(player, pdata, true)
+            GUI.close_quick_presets(pdata)
         end
     end
     if event.setting == "autotrash_threshold" then
-        if player_index then
-            local settings = pdata.settings
-            if not settings.pause_trash and settings.trash_above_requested then
-                lib_control.set_trash(player, pdata)
-            end
-        else
-            for pi, p in pairs(game.players) do
-                local _pdata = global._pdata[pi]
-                if not _pdata.settings.pause_trash and _pdata.settings.trash_above_requested then
-                    lib_control.set_trash(p, _pdata)
-                end
-            end
+        local settings = pdata.settings
+        if not settings.pause_trash and settings.trash_above_requested then
+            lib_control.set_trash(player, pdata)
         end
-    end
-    if event.setting == "autotrash_update_rate" then
-        register_conditional_events()
     end
     if event.setting == "autotrash_status_count" then
         GUI.update_status_flow(player, pdata)
@@ -517,6 +528,10 @@ local function on_runtime_mod_setting_changed(event)
             end
         end
     end
+    end)
+    if not status then
+        debugDump(err, false, true)
+    end
 end
 
 script.on_event(defines.events.on_gui_click, GUI.generic_event)
@@ -529,12 +544,16 @@ script.on_event(defines.events.on_gui_selection_state_changed, GUI.generic_event
 script.on_event(defines.events.on_runtime_mod_setting_changed, on_runtime_mod_setting_changed)
 
 local function on_research_finished(event)
+    local status, err = pcall(function()
     if event.research.name == "character-logistic-trash-slots-1" or
         event.research.name == "character-logistic-slots-1" then
         for _, player in pairs(event.research.force.players) do
             GUI.init(player)
         end
-        return
+    end
+    end)
+    if not status then
+        debugDump(err, false, true)
     end
 end
 script.on_event(defines.events.on_research_finished, on_research_finished)
@@ -548,6 +567,7 @@ script.on_event("autotrash_pause_requests", function(e)
 end)
 
 local function autotrash_trash_cursor(event)
+    local status, err = pcall(function()
     local player = game.get_player(event.player_index)
     if player.force.technologies["character-logistic-trash-slots-1"].researched then
         local cursorStack = player.cursor_stack
@@ -556,6 +576,10 @@ local function autotrash_trash_cursor(event)
         else
             toggle_autotrash_pause(player)
         end
+    end
+    end)
+    if not status then
+        debugDump(err, event.player_index, true)
     end
 end
 script.on_event("autotrash_trash_cursor", autotrash_trash_cursor)
@@ -589,9 +613,19 @@ local at_commands = {
     end,
 }
 
-commands.add_command("reload_mods", "", at_commands.reload)
-commands.add_command("at_hide", "Hide the AutoTrash button", at_commands.hide)
-commands.add_command("at_show", "Show the AutoTrash button", at_commands.show)
+local comms = commands.commands
+
+if not comms.reload_mods then
+    commands.add_command("reload_mods", "", at_commands.reload)
+else
+    commands.add_command("autotrash_reload_mods", "", at_commands.reload)
+end
+local command_prefix = "at_"
+if comms.at_hide or comms.at_show then
+    command_prefix = "autotrash_"
+end
+commands.add_command(command_prefix .. "hide", "Hide the AutoTrash button", at_commands.hide)
+commands.add_command(command_prefix .. "show", "Show the AutoTrash button", at_commands.show)
 
 remote.add_interface("at",
     {
@@ -602,45 +636,4 @@ remote.add_interface("at",
         init_gui = function()
             GUI.init(game.player)
         end,
-
-        logistic = function()
-            -- local function get_name(m)
-            --     for k, value in pairs(defines.logistic_mode) do
-            --         if m == value then
-            --             return k
-            --         end
-            --     end
-
-            -- end
-            for _, player in pairs(game.players) do
-                if player.character then
-                    local req = player.character.get_logistic_point(defines.logistic_member_index.character_requester) --requests of the player
-                    if req then
-                    log("requests: " .. serpent.block(req.filters))
-
-                    log("on the way: " .. serpent.block(req.targeted_items_deliver))-- items on the way
-                    local network = player.character.logistic_network
-                    log("available: " .. serpent.block(network and network.get_contents())) --network the player is in
-                    log("robots (t/a): " .. tostring(network and network.all_logistic_robots) .. "/" .. tostring(network and network.available_logistic_robots))
-                    end
-                end
-            end
-            GUI.update_button_styles(game.player, global._pdata[game.player.index])
-            --log(serpent.block(req.filters))
-
-        end,
-
-        test = function(max)
-            GUI.close(game.player, global._pdata[game.player.index])
-            for j = 1, max or 1 do
-                local p = game.create_profiler()
-                for i = 1, 100 do
-                    if not game.player.get_inventory(defines.inventory.character_trash).is_empty() then--luacheck:ignore
-
-                    end
-                end
-                p.stop()
-                log{"", p}
-            end
-        end
     })
