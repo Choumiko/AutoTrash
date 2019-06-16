@@ -62,12 +62,12 @@ end
 local function check_temporary_trash()
     for _, pdata in pairs(global._pdata) do
         if next(pdata.temporary_trash) then
-            log("temp trash set")
+            --log("temp trash set")
             --some player has stuff in temporary_trash, don't unregister the event
             return true
         end
     end
-    log("temp trash not set")
+    --log("temp trash not set")
 end
 
 local function on_player_trash_inventory_changed(event)
@@ -329,7 +329,7 @@ local function on_player_changed_position(event)
     local pdata = global._pdata[event.player_index]
     local current = pdata.current_network and pdata.current_network.logistic_network
     if player.character.logistic_network ~= current then
-        log("Network changed")
+        --log("Network changed")
         GUI.update_button_styles(player, pdata)
         pdata.current_network = get_network_entity(player)
     end

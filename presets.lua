@@ -1,6 +1,6 @@
 local presets = {}
 
-local function log_blueprint_entities(ents)
+local function log_blueprint_entities(ents)--luacheck: ignore
     for i, ent in pairs(ents) do
         log(serpent.line({entity_number = ent.entity_number, position = ent.position}))
         if ent.control_behavior then
@@ -105,7 +105,7 @@ function presets.export(preset)
         bp[#bp+1] = request_cc[cc]
         bp[#bp+1] = trash_cc[cc]
     end
-    log_blueprint_entities(bp)
+    --log_blueprint_entities(bp)
     return bp, {{index = 1, signal = {name = "signal-A", type = "virtual"}},{index = 2, signal = {name = "signal-T", type = "virtual"}},{index = 3, signal = {name = "signal-0", type = "virtual"}}}
 end
 
@@ -117,7 +117,7 @@ function presets.import(preset, icons)--luacheck: ignore
     local config = tmp.config
     local index_offset, index
     if icons then--luacheck: ignore
-        log_blueprint_entities(preset)
+        --log_blueprint_entities(preset)
         for _, cc in pairs(preset) do
             index_offset = cc.position.x * item_slot_count
             if cc.control_behavior then
