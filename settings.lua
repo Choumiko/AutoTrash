@@ -23,7 +23,7 @@ data:extend({
         type = "bool-setting",
         name = prefix .. "overwrite",
         setting_type = "runtime-per-user",
-        default_value = false,
+        default_value = true,
         order = "b"
     },
     {
@@ -55,16 +55,16 @@ data:extend({
     --     setting_type = "runtime-per-user",
     --     order = "f"
     -- },
-    {
-        type = "int-setting",
-        name = prefix .. "threshold",
-        setting_type = "runtime-per-user",
-        default_value = 0,
-        minimum_value = 0,
-        maximum_value = 4294967295,--2^32-1
-        order = "g",
-        localised_description = {"autotrash_threshold", {"auto-trash-above-requested"}}
-    },
+    -- {
+    --     type = "int-setting",
+    --     name = prefix .. "threshold",
+    --     setting_type = "runtime-per-user",
+    --     default_value = 0,
+    --     minimum_value = 0,
+    --     maximum_value = 4294967295,--2^32-1
+    --     order = "g",
+    --     localised_description = {"autotrash_threshold", {"auto-trash-above-requested"}}
+    -- },
     {
         type = "int-setting",
         name = prefix .. "gui_columns",

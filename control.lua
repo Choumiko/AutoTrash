@@ -508,12 +508,12 @@ local function on_runtime_mod_setting_changed(event)
             GUI.close_quick_presets(pdata)
         end
     end
-    if event.setting == "autotrash_threshold" then
-        local settings = pdata.settings
-        if not settings.pause_trash and settings.trash_above_requested then
-            lib_control.set_trash(player, pdata)
-        end
-    end
+    -- if event.setting == "autotrash_threshold" then
+    --     local settings = pdata.settings
+    --     if not settings.pause_trash and settings.trash_above_requested then
+    --         lib_control.set_trash(player, pdata)
+    --     end
+    -- end
     if event.setting == "autotrash_status_count" then
         GUI.update_status_display(player, pdata)
     end

@@ -4,11 +4,10 @@ local function set_trash(player, pdata)
     if not player.character then return end
     local trash_filters = {}
     if pdata.settings.trash_above_requested then
-        local threshold = player.mod_settings["autotrash_threshold"].value
         local amount
         for i, item_config in pairs(pdata.config_new.config) do
             if item_config.trash or item_config.request > 0 then
-                amount = item_config.request + threshold
+                amount = item_config.request
                 trash_filters[item_config.name] = (amount > (item_config.trash or 0)) and amount or item_config.trash
             end
         end
