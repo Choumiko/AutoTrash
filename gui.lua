@@ -829,11 +829,16 @@ function GUI.init(player)
     local gui_elements = pdata.gui_elements
     local status_flow = gui_elements.status_flow
     if not (status_flow and status_flow.valid) then
-        gui_elements.status_flow = mod_gui.get_frame_flow(player).add{
-            type = "flow",
-            name = "autotrash_status_flow",
-            direction = "vertical"
-        }
+        status_flow = mod_gui.get_frame_flow(player).autotrash_status_flow
+        if (status_flow and status_flow.valid) then
+            gui_elements.status_flow = status_flow
+        else
+            gui_elements.status_flow = mod_gui.get_frame_flow(player).add{
+                type = "flow",
+                name = "autotrash_status_flow",
+                direction = "vertical"
+            }
+        end
         GUI.open_status_display(player, pdata)
     end
     local button_flow = mod_gui.get_button_flow(player)
@@ -966,8 +971,8 @@ end
 
 local function get_network_data(player)
     local character = player.character
-    local network = character.logistic_network
-    local requester = character.get_logistic_point(defines.logistic_member_index.character_requester)
+    local network = character and character.logistic_network
+    local requester = character and character.get_logistic_point(defines.logistic_member_index.character_requester)
     if not (network and requester) then
         return
     end
@@ -1224,6 +1229,7 @@ function GUI.close_status_display(pdata)
 end
 
 function GUI.open_config_frame(player, pdata)
+    if not player.character then return end
     hide_yarm(player, pdata)
     local left = mod_gui.get_frame_flow(player)
     local gui_elements = pdata.gui_elements
