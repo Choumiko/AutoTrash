@@ -189,13 +189,14 @@ local function on_configuration_changed(data)
         oldVersion = oldVersion and v(oldVersion)
         log("Updating AutoTrash from " .. tostring(oldVersion) .. " to " .. tostring(newVersion))
         if oldVersion then
-            if oldVersion < v'2.0.3' then
+            if oldVersion < v'3.0.0' then
+                log("Resetting all AutoTrash settings")
                 global = nil
                 init_global()
                 init_players()
             end
 
-            if oldVersion < v'4.1.0' then
+            if oldVersion >= v'3.0.0' and oldVersion < v'4.1.0' then
                 conversion.to_4_1_2(GUI, init_global, init_player, register_conditional_events)
                 saveVar(global, "storage_post")
             end
