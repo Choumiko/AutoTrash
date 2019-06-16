@@ -3,7 +3,5 @@ build/*
 factorio_mods
 /.buildpath
 /.project
-Autotrash.xcf
-Autotrash2.xcf
-gui.xcf
-rip.xcf
+*.odg
+*.xcf
