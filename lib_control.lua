@@ -122,6 +122,47 @@ local function item_prototype(name)
     return item_prototypes[name]
 end
 
+local function combine_from_vanilla(player)
+    if not player.character then return end
+    local tmp = {config = {}, max_slot = 0, c_requests = 0}
+    local requests, max_slot, c_requests = get_requests(player)
+    local trash = player.auto_trash_filters
+
+    for name, config in pairs(requests) do
+        config.trash = false
+        tmp.config[config.slot] = config
+        if trash[name] then
+            config.trash = trash[name] > config.request and trash[name] or config.request
+            trash[name] = nil
+        end
+    end
+    local no_slot = {}
+    for name, count in pairs(trash) do
+        no_slot[#no_slot+1] = {
+            name = name,
+            request = 0,
+            trash = count,
+            slot = false
+        }
+    end
+    local start = 1
+    max_slot = max_slot or 0
+    for _, s in pairs(no_slot) do
+        for i = start, max_slot + #no_slot do
+            if not tmp.config[i] then
+                s.slot = i
+                tmp.config[i] = s
+                start = i + 1
+                max_slot = max_slot > i and max_slot or i
+                break
+            end
+        end
+    end
+    tmp.max_slot = max_slot
+    tmp.c_requests = c_requests
+    return tmp
+end
+
 local function saveVar(var, name)
     var = var or global
     local n = name and "autotrash_" .. name or "autotrash"
@@ -250,7 +291,8 @@ local M = {
     pause_requests = pause_requests,
     unpause_requests = unpause_requests,
     get_network_entity = get_network_entity,
-    in_network = in_network
+    in_network = in_network,
+    combine_from_vanilla = combine_from_vanilla
 }
 
 return M

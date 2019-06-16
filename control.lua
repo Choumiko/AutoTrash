@@ -586,6 +586,24 @@ local at_commands = {
             button.visible = true
         end
     end,
+
+    import = function(args)
+        local player_index = args.player_index
+        local pdata = global._pdata[player_index]
+        local player = game.get_player(player_index)
+        local status, err = pcall(function()
+            GUI.close(player, pdata)
+            pdata.config_tmp = lib_control.combine_from_vanilla(player)
+            GUI.open_config_frame(player, pdata)
+            GUI.mark_dirty(pdata)
+        end)
+        if not status then
+            GUI.close(player, pdata)
+            pdata.config_tmp = nil
+            init_player(player)
+            debugDump(err, player_index, true)
+        end
+    end
 }
 
 local comms = commands.commands
@@ -601,6 +619,7 @@ if comms.at_hide or comms.at_show then
 end
 commands.add_command(command_prefix .. "hide", "Hide the AutoTrash button", at_commands.hide)
 commands.add_command(command_prefix .. "show", "Show the AutoTrash button", at_commands.show)
+commands.add_command(command_prefix .. "import", "Import from vanilla", at_commands.import)
 
 remote.add_interface("at",
     {

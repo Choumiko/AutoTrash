@@ -22,47 +22,6 @@ local function tonumber_max(n)
     return (n and n > max_value) and max_value or n
 end
 
-local function combine_from_vanilla(player)
-    if not player.character then return end
-    local tmp = {config = {}, max_slot = 0, c_requests = 0}
-    local requests, max_slot, c_requests = lib_control.get_requests(player)
-    local trash = player.auto_trash_filters
-
-    for name, config in pairs(requests) do
-        config.trash = false
-        tmp.config[config.slot] = config
-        if trash[name] then
-            config.trash = trash[name] > config.request and trash[name] or config.request
-            trash[name] = nil
-        end
-    end
-    local no_slot = {}
-    for name, count in pairs(trash) do
-        no_slot[#no_slot+1] = {
-            name = name,
-            request = 0,
-            trash = count,
-            slot = false
-        }
-    end
-    local start = 1
-    max_slot = max_slot or 0
-    for _, s in pairs(no_slot) do
-        for i = start, max_slot + #no_slot do
-            if not tmp.config[i] then
-                s.slot = i
-                tmp.config[i] = s
-                start = i + 1
-                max_slot = max_slot > i and max_slot or i
-                break
-            end
-        end
-    end
-    tmp.max_slot = max_slot
-    tmp.c_requests = c_requests
-    return tmp
-end
-
 local function show_yarm(player, pdata)
     if remote.interfaces.YARM then
         remote.call("YARM", "set_filter", player.index, pdata.settings.YARM_active_filter)
@@ -396,7 +355,7 @@ local gui_functions = {
     end,
 
     import_from_vanilla = function(event, pdata)
-        pdata.config_tmp = combine_from_vanilla(event.player)
+        pdata.config_tmp = lib_control.combine_from_vanilla(event.player)
         GUI.mark_dirty(pdata)
         GUI.hide_sliders(pdata)
         GUI.update_buttons(event.player, pdata)
