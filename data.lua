@@ -179,8 +179,8 @@ styles["at_preset_button_small_selected"] = {
 
 styles["at_request_status_table"] = {
     type = "table_style",
-    horizontal_spacing = 0,
-    vertical_spacing = 0
+    horizontal_spacing = 1,
+    vertical_spacing = 1
 }
 
 styles["at_logistics_frame"] = {

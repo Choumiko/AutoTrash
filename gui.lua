@@ -265,6 +265,7 @@ local gui_functions = {
         element.selected_index = 1
 
         GUI.mark_dirty(pdata)
+        GUI.update_sliders(pdata)
         GUI.update_buttons(event.player, pdata)
     end,
 
@@ -1369,14 +1370,15 @@ function GUI.open_config_frame(player, pdata)
         type = "drop-down",
         style = "at_quick_actions",
         items = {
-            [1] = "Quick actions",
-            [2] = "Clear requests",
-            [3] = "Clear trash",
-            [4] = "Clear both",
-            [5] = "Set trash to requests",
-            [6] = "Set requests to trash"
+            [1] = {"autotrash_quick_actions"},
+            [2] = {"autotrash_clear_requests"},
+            [3] = {"autotrash_clear_trash"},
+            [4] = {"autotrash_clear_both"},
+            [5] = {"autotrash_trash_to_requests"},
+            [6] = {"autotrash_requests_to_trash"}
         },
-        selected_index = 1
+        selected_index = 1,
+        tooltip = {"autotrash_quick_actions_tt"}
     }
 
     GUI.register_action(pdata, quick_actions, {type = "quick_actions"})

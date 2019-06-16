@@ -99,7 +99,7 @@ local function on_player_trash_inventory_changed(event)
     local requests = requested_items(player)
     local desired, changed
     local temporary_trash = global._pdata[event.player_index].temporary_trash
-    for name, saved_count in pairs() do
+    for name, saved_count in pairs(temporary_trash) do
         if trash_filters[name] then
              desired = requests[name] and requests[name] or 0
             if main_inventory_count(name) <= desired then
