@@ -1,11 +1,12 @@
 ---------------------------------------------------------------------------------------------------
-Version: 4.1.1
-Date: ??. ??. 2019
+Version: 4.1.2
+Date: 16. 06. 2019
   Features:
     - Combined logistic requests and trash configuration into one window
     - Click and drop: Hold shift when clicking a configured item, then shift click another button to swap the buttons
     - It is now possible to load multiple presets at once. If more than one preset contains an item, the maximum request/trash amount is chosen
     - Right click the main button to quickly load and apply a preset
+    - Shift + Right click the main button to display the status of your requests
     - Different colors for indicating the status of an order:
         - grey: All items are delivered
         - red: Not enough items available in the network
