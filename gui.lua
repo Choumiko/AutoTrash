@@ -1094,7 +1094,7 @@ function GUI.open_quick_presets(pdata)
 end
 
 function GUI.close_quick_presets(pdata)
-    local button_flow = pdata.gui_elements.main_button.parent
+    local button_flow = pdata.gui_elements.main_button and pdata.gui_elements.main_button.parent
     if not (button_flow and button_flow.valid) then return end
     GUI.deregister_action(button_flow[GUI.defines.quick_presets], pdata, true)
 end

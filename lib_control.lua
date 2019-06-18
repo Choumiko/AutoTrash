@@ -177,6 +177,9 @@ local function debugDump(var, player, force)
         else
             msg = serpent.dump(var, {name = "var", comment = false, sparse = false, sortkeys = true})
         end
+        if type(player) == "number" then
+            player = game.get_player(player)
+        end
         if player then
             player.print(msg)
         else
