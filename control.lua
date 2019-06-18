@@ -198,7 +198,19 @@ local function on_configuration_changed(data)
 
             if oldVersion >= v'3.0.0' and oldVersion < v'4.1.0' then
                 conversion.to_4_1_2(GUI, init_global, init_player, register_conditional_events)
-                saveVar(global, "storage_post")
+                --saveVar(global, "storage_post")
+            end
+
+            if oldVersion < v'4.1.4' then
+                local player
+                for i, pdata in pairs(global._pdata) do
+                    player = game.get_player(i)
+                    pdata.current_network = get_network_entity(player)
+                    if pdata.main_network and not pdata.main_network.valid then
+                        pdata.main_network = nil
+                        player.print("Autotrash main network has been unset")
+                    end
+                end
             end
         end
     end
@@ -328,7 +340,7 @@ local function on_player_changed_position(event)
     local player = game.get_player(event.player_index)
     if not player.character then return end
     local pdata = global._pdata[event.player_index]
-    local current = pdata.current_network and pdata.current_network.logistic_network
+    local current = (pdata.current_network and pdata.current_network.valid) and pdata.current_network.logistic_network
     if player.character.logistic_network ~= current then
         --log("Network changed")
         GUI.update_button_styles(player, pdata)
@@ -389,7 +401,7 @@ end
 
 local function on_pre_mined_item(event)
     local status, err = pcall(function()
-        if event.entity.type == "roboport" then
+        if event.entity and event.entity.type == "roboport" then
             local entity = event.entity
             for pi, pdata in pairs(global._pdata) do
                 if entity == pdata.main_network then
@@ -409,6 +421,7 @@ end
 script.on_event(defines.events.on_pre_player_mined_item, on_pre_mined_item)
 script.on_event(defines.events.on_robot_pre_mined, on_pre_mined_item)
 script.on_event(defines.events.on_entity_died, on_pre_mined_item)
+script.on_event(defines.events.script_raised_destroy, on_pre_mined_item)
 
 --[[
 Temporary requests:

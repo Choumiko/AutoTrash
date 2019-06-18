@@ -106,8 +106,8 @@ local function in_network(player, pdata)
         return true
     end
     local currentNetwork = player.character.logistic_network
-    local entity = pdata.main_network
-    if currentNetwork and entity and currentNetwork.valid and entity.valid and currentNetwork == entity.logistic_network then
+    local entity = (pdata.main_network and pdata.main_network.valid) and pdata.main_network
+    if currentNetwork and entity and currentNetwork.valid and currentNetwork == entity.logistic_network then
         return true
     end
     return false

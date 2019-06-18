@@ -2,6 +2,7 @@
 Version: 4.1.4
 Date: 18. 06. 2019
   Bugfixes:
+    - Fixed crash when entering a Factorissimo2 building
     - Fixed error when creating a new scenario via map editor
 ---------------------------------------------------------------------------------------------------
 Version: 4.1.3
