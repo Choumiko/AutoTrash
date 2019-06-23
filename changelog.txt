@@ -4,6 +4,7 @@ Date: 23. 06. 2019
   Changes:
     - Preset textfield only gets cleared when selecting multiple presets
     - Select all text when clicking the preset textfield
+    - Adding AutoTrash to an existing save will import existing request/trash filters
 ---------------------------------------------------------------------------------------------------
 Version: 4.1.4
 Date: 18. 06. 2019
