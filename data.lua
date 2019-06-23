@@ -235,12 +235,14 @@ data:extend{
         type = "sprite",
         name = "autotrash_trash",
         filename = "__AutoTrash__/graphics/gui2.png",
+        flags = {"icon"},
         size = 128,
         position = {0, 0}
     },
     {
         type = "sprite",
         name = "autotrash_trash_paused",
+        flags = {"icon"},
         layers = {
             {
                 filename = "__AutoTrash__/graphics/gui2.png",
@@ -257,6 +259,7 @@ data:extend{
     {
         type = "sprite",
         name = "autotrash_requests_paused",
+        flags = {"icon"},
         layers = {
             {
                 filename = "__AutoTrash__/graphics/gui2.png",
@@ -273,6 +276,7 @@ data:extend{
     {
         type = "sprite",
         name = "autotrash_both_paused",
+        flags = {"icon"},
         layers = {
             {
                 filename = "__AutoTrash__/graphics/gui2.png",
@@ -290,6 +294,7 @@ data:extend{
         type = "sprite",
         name = "autotrash_rip",
         filename = "__AutoTrash__/graphics/rip.png",
+        flags = {"icon"},
         size = 64,
     }
 }

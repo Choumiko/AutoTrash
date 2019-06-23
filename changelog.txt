@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 4.1.5
+Date: 23. 06. 2019
+  Changes:
+    - Preset textfield only gets cleared when selecting multiple presets
+    - Select all text when clicking the preset textfield
+---------------------------------------------------------------------------------------------------
 Version: 4.1.4
 Date: 18. 06. 2019
   Bugfixes:

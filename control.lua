@@ -186,6 +186,31 @@ local function on_configuration_changed(data)
         local newVersion = data.mod_changes.AutoTrash.new_version
         newVersion = v(newVersion)
         local oldVersion = data.mod_changes.AutoTrash.old_version
+        if not oldVersion then
+            init_global()
+            for player_index, player in pairs(game.players) do
+                init_player(player)
+                if player.character then
+                    local pdata = global._pdata[player_index]
+                    local status, err = pcall(function()
+                        GUI.close(player, pdata)
+                        pdata.config_tmp = lib_control.combine_from_vanilla(player)
+                        pdata.storage_new["at_imported"] = util.table.deepcopy(pdata.config_tmp)
+                        pdata.selected_presets = {at_imported = true}
+                        GUI.open_config_frame(player, pdata)
+                        GUI.mark_dirty(pdata, true)
+                    end)
+                    if not status then
+                        GUI.close(player, pdata)
+                        pdata.config_tmp = nil
+                        pdata.storage_new["at_imported"] = nil
+                        pdata.selected_presets = {}
+                        init_player(player)
+                        debugDump(err, player_index, true)
+                    end
+                end
+            end
+        end
         oldVersion = oldVersion and v(oldVersion)
         log("Updating AutoTrash from " .. tostring(oldVersion) .. " to " .. tostring(newVersion))
         if oldVersion then

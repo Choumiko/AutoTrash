@@ -305,6 +305,11 @@ local gui_functions = {
         GUI.deregister_action(element, pdata, true)
     end,
 
+    select_textfield = function(event)
+        if event.name ~= defines.events.on_gui_click then return end
+        event.element.select_all()
+    end,
+
     save_preset = function(event, pdata)
         local textfield = pdata.gui_elements.storage_textfield
         local name = textfield.text
@@ -507,12 +512,14 @@ local gui_functions = {
         local number
         if event.name == defines.events.on_gui_text_changed then
             number = tonumber_max(event.element.text) or false
+            if number == item_config.trash then return end
         elseif event.name == defines.events.on_gui_value_changed then
             if event.element.slider_value == 42 then
                 number = false
             else
                 number = tonumber_max(convert_from_slider(event.element.slider_value)) or false
             end
+            if number == item_config.trash then return end
             if number and item_config.request > number then
                 if item_config.request > 0 and number == 0 then
                     config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
@@ -1441,6 +1448,7 @@ function GUI.open_presets_frame(left, pdata)
     }
 
     gui_elements.storage_textfield = save_as
+    GUI.register_action(pdata, save_as, {type = "select_textfield"})
     GUI.register_action(pdata, save_button, {type = "save_preset"})
 
     local storage_scroll = storage_frame.add{
@@ -1510,7 +1518,7 @@ function GUI.update_presets(pdata)
     local s = table_size(selected_presets)
     if s == 1 then
         pdata.gui_elements.storage_textfield.text = next(selected_presets)
-    elseif s > 1 or s == 0 then
+    elseif s > 1 then
         pdata.gui_elements.storage_textfield.text = ""
     end
 end
