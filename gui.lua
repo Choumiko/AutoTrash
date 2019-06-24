@@ -963,7 +963,7 @@ function GUI.get_button_style(i, selected, item, available, on_the_way, item_cou
         return "at_button_slot_selected"
     end
     local n, c = item.name, item.request
-    local diff = c - (item_count[n] or 0) + (armor[n] or 0) + (gun[n] or 0) + (ammo[n] or 0) + (cursor_stack[n] or 0)
+    local diff = c - ((item_count[n] or 0) + (armor[n] or 0) + (gun[n] or 0) + (ammo[n] or 0) + (cursor_stack[n] or 0))
 
     if diff <= 0 then
         return "at_button_slot"
