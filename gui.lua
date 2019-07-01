@@ -70,8 +70,7 @@ function GUI.clear_button(player, pdata, params, config_tmp)
     if config_tmp.max_slot == params.slot then
         config_tmp.max_slot = 0
     end
-    local gui_elements = pdata.gui_elements
-    local ruleset_grid = gui_elements.ruleset_grid
+    local ruleset_grid = pdata.gui_elements.ruleset_grid
     local columns = player.mod_settings["autotrash_gui_columns"].value
     local count = #ruleset_grid.children
     local max_buttons = config_tmp.max_slot + columns + 1
@@ -79,8 +78,9 @@ function GUI.clear_button(player, pdata, params, config_tmp)
     max_buttons = max_buttons > request_slots and max_buttons or request_slots
     if count >= max_buttons then
         for i = count, max_buttons, -1 do
-            assert(not config_tmp.config[i], "Should be empty")-- TODO: remove
-            GUI.deregister_action(ruleset_grid.children[i], pdata, true)
+            if not config_tmp.config[i] then
+                GUI.deregister_action(ruleset_grid.children[i], pdata, true)
+            end
         end
     end
     GUI.mark_dirty(pdata)
@@ -463,6 +463,7 @@ local gui_functions = {
                     GUI.update_button_styles(player, pdata)--TODO: only update changed buttons
                 end
             elseif params.item then
+                --Selected button gets cleared
                 GUI.clear_button(player, pdata, params, config_tmp)
                 GUI.hide_sliders(pdata)
                 GUI.update_button(pdata, params.slot, false, element)
@@ -868,6 +869,7 @@ function GUI.delete(pdata)
         GUI.deregister_action(element, pdata, true)
     end
     pdata.gui_elements = {}
+    pdata.gui_actions = {}
 end
 
 function GUI.mark_dirty(pdata, keep_presets)

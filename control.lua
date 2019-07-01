@@ -190,15 +190,19 @@ local function on_configuration_changed(data)
             init_global()
             for player_index, player in pairs(game.players) do
                 init_player(player)
-                if player.character then
+                if player.character and (player.force.technologies["character-logistic-slots-1"].researched
+                    or player.force.technologies["character-logistic-trash-slots-1"].researched)
+                then
                     local pdata = global._pdata[player_index]
                     local status, err = pcall(function()
                         GUI.close(player, pdata)
                         pdata.config_tmp = lib_control.combine_from_vanilla(player)
-                        pdata.storage_new["at_imported"] = util.table.deepcopy(pdata.config_tmp)
-                        pdata.selected_presets = {at_imported = true}
-                        GUI.open_config_frame(player, pdata)
-                        GUI.mark_dirty(pdata, true)
+                        if next(pdata.config_tmp.config) then
+                            pdata.storage_new["at_imported"] = util.table.deepcopy(pdata.config_tmp)
+                            pdata.selected_presets = {at_imported = true}
+                            GUI.open_config_frame(player, pdata)
+                            GUI.mark_dirty(pdata, true)
+                        end
                     end)
                     if not status then
                         GUI.close(player, pdata)

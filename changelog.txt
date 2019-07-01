@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 4.1.6
+Date: 25. 06. 2019
+  Changes:
+    - Adding AutoTrash to an existing save only opens the gui when requests/trash is set
+  Bugfixes:
+    - Fixed items in armor, gun and ammo inventory not being counted for the request status display
+---------------------------------------------------------------------------------------------------
 Version: 4.1.5
 Date: 23. 06. 2019
   Changes:
