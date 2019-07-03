@@ -151,9 +151,11 @@ local function on_init()
 end
 
 local function on_pre_player_removed(event)
-    GUI.delete(global._pdata[event.player_index])
-    global._pdata[event.player_index] = nil
-    register_conditional_events()
+    if global._pdata[event.player_index] then
+        GUI.delete(global._pdata[event.player_index])
+        global._pdata[event.player_index] = nil
+        register_conditional_events()
+    end
 end
 
 local function remove_invalid_items(pdata, tbl, unselect)
