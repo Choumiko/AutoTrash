@@ -52,7 +52,7 @@ local function set_requests(player, pdata)
     for c = 1, slot_count do
         clear_request_slot(c)
         req = storage[c]
-        if req then
+        if req and req.request > 0 then
             set_request_slot({name = req.name, count = req.request}, c)
         end
     end
