@@ -50,7 +50,7 @@ remove_mod:
 	then \
 		for name in factorio_mods/$(OUTPUT_NAME)*; do \
 			echo "removing $$name"; \
-			# rm -rf $$name; \
+			rm -rf $$name; \
 		done \
 	fi;
 
@@ -62,4 +62,5 @@ install_mod:
 
 tag:
 	git tag -f $(VERSION_STRING)
+	git push
 	git push --tags
