@@ -113,7 +113,7 @@ end
 --Importing a string with invalid item signals removes the combinator containing the invalid signals.
 function presets.import(preset, icons)--luacheck: ignore
     local item_slot_count = game.entity_prototypes["constant-combinator"].item_slot_count
-    local tmp = {config = {}, max_slot = 0}
+    local tmp = {config = {}, max_slot = 0, c_requests = 0}
     local config = tmp.config
     local index_offset, index
     if icons then--luacheck: ignore
@@ -132,11 +132,10 @@ function presets.import(preset, icons)--luacheck: ignore
                         config[index].trash = item_config.count
                     end
                     tmp.max_slot = tmp.max_slot > index and tmp.max_slot or index
+                    tmp.c_requests = config[index].request > 0 and (tmp.c_requests + 1) or tmp.c_requests
                 end
             end
         end
-    else--luacheck: ignore
-        --do
     end
     return tmp
 end

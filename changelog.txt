@@ -1,8 +1,10 @@
 ---------------------------------------------------------------------------------------------------
 Version: 4.1.7
-Date: 04. 07. 2019
+Date: 08. 07. 2019
   Changes:
     - Requests with 0 amount are no longer set in the vanilla gui
+  Bugfixes:
+    - Fixed crash when importing a blueprint with requests
 ---------------------------------------------------------------------------------------------------
 Version: 4.1.6
 Date: 03. 07. 2019

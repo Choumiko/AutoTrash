@@ -320,4 +320,10 @@ data:extend{
         key_sequence = "SHIFT + T",
         consuming = "none"
     },
+    -- {
+    --     type = "custom-input",
+    --     name = "autotrash_close_gui",
+    --     linked_game_control = "close-gui",
+    --     key_sequence = ""
+    -- }
 }

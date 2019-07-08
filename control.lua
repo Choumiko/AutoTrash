@@ -585,6 +585,36 @@ script.on_event("autotrash_pause_requests", function(e)
     toggle_autotrash_pause_requests(game.get_player(e.player_index))
 end)
 
+-- local function gui_name(i)--luacheck: ignore
+--     for name, k in pairs(defines.gui_type) do
+--         if k == i then return name end
+--     end
+-- end
+
+-- script.on_event(defines.events.on_gui_closed, function()
+--     --log{"","closed ", e.tick, " type: ", gui_name(e.gui_type)}
+-- end)
+-- script.on_event(defines.events.on_gui_opened, function(e)
+--     local pdata = global._pdata[e.player_index]
+--     if pdata.close_self then
+--         local player = game.get_player(e.player_index)
+--         --log{"","opened ", e.tick, " self: ", tostring(player.opened_self), " opened: ", tostring(player.opened), " type: ", gui_name(player.opened_gui_type)}
+--         player.opened = defines.gui_type.none
+--         pdata.close_self = nil
+--     end
+-- end)
+
+-- script.on_event("autotrash_close_gui", function(e)
+--     local player = game.get_player(e.player_index)
+--     --log{"","custom ", e.tick, " self: ", tostring(player.opened_self), " opened: ", tostring(player.opened), " type: ", gui_name(player.opened_gui_type)}
+--     local pdata = global._pdata[e.player_index]
+--     if not (pdata.gui_elements.config_frame and pdata.gui_elements.config_frame.valid) then return end
+--     if not (player.opened or player.opened_self) then
+--         GUI.close(player, pdata)
+--         pdata.close_self = true
+--     end
+-- end)
+
 local function autotrash_trash_cursor(event)
     local status, err = pcall(function()
     local player = game.get_player(event.player_index)
