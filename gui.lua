@@ -940,6 +940,7 @@ end
 
 local function get_network_data(player)
     local character = player.character
+    if not character then return end
     local network = character and character.logistic_network
     local requester = character and character.get_logistic_point(defines.logistic_member_index.character_requester)
     if not (network and requester) then

@@ -1,6 +1,3 @@
-local lib_control = require '__AutoTrash__/lib_control'
-local saveVar = lib_control.saveVar
-
 if not global._pdata then
     global._pdata = {}
     -- just enough to get on_load() to run
@@ -9,5 +6,4 @@ if not global._pdata then
             temporary_trash = {},
         }
     end
-    saveVar(global, "storage_post_migration")
 end

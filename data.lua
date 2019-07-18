@@ -158,8 +158,8 @@ styles["at_preset_button_small"] = {
     parent = "button",
     width = 28,
     height = 28,
-    natural_width = 28,
-    natural_height = 28,
+    -- natural_width = 28,
+    -- natural_height = 28,
     padding = 0
 }
 
