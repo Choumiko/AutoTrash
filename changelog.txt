@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 4.1.9
+Date: 20. 09. 2019
+  Changes:
+    - Item status display now shows the number of missing items to fulfill the request
+  Bugfixes:
+    - Fixed request slot count not resetting properly when clearing requests
+---------------------------------------------------------------------------------------------------
 Version: 4.1.8
 Date: 18. 07. 2019
   Bugfixes:

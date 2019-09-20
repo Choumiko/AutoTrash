@@ -972,14 +972,14 @@ function GUI.get_button_style(i, selected, item, available, on_the_way, item_cou
     if diff <= 0 then
         return "at_button_slot"
     else
-        diff = diff - (on_the_way[n] or 0) - (available[n] or 0)
-        if diff <= 0 then
-            return "at_button_slot_items_on_the_way"
-        elseif --(on_the_way[n] and not available[n]) then
-        item.name == "locomotive" then
-            return "at_button_slot_items_not_enough"
+        local diff2 = diff - (on_the_way[n] or 0) - (available[n] or 0)
+        if diff2 <= 0 then
+            return "at_button_slot_items_on_the_way", diff
+        elseif (on_the_way[n] and not available[n]) then
+        --item.name == "locomotive" then
+            return "at_button_slot_items_not_enough", diff
         end
-        return "at_button_slot_items_not_available"
+        return "at_button_slot_items_not_available", diff
     end
 end
 
@@ -1125,7 +1125,7 @@ function GUI.update_status_display(player, pdata)
     local max_count = player.mod_settings["autotrash_status_count"].value
     local character = player.character
     local get_request_slot = character.get_request_slot--luacheck: ignore
-    local item--luacheck: ignore
+    local item, diff, button
     --TODO: looping over config_new is slightly faster, but may be out of sync with the actual requests
     -- for i, item in pairs(config_tmp) do--luacheck: ignore
     --     if item and item.request > 0 then
@@ -1134,13 +1134,15 @@ function GUI.update_status_display(player, pdata)
         if item and item.count > 0 then
             if c >= max_count then break end
             item.request = item.count
-            style = GUI.get_button_style(i, false, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+            style, diff = GUI.get_button_style(i, false, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
             if style ~= "at_button_slot" then
-                status_table.add{
+                button = status_table.add{
                     type = "sprite-button",
                     style = style,
                     ignored_by_interaction = true,
-                }.sprite = "item/" .. item.name
+                }
+                button.sprite = "item/" .. item.name
+                button.number = diff
                 c = c + 1
             end
         end
@@ -1172,18 +1174,21 @@ function GUI.open_status_display(player, pdata)
 
     local max_count, c = mod_settings["autotrash_status_count"].value, 0
     local config_tmp = pdata.config_new.config
-    local style
+    local style, diff
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
+    local button
     for i, item in pairs(config_tmp) do
         if c >= max_count then break end
         if item and item.request > 0 then
-            style = GUI.get_button_style(i, false, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo, pdata.settings.pause_requests)
+            style, diff = GUI.get_button_style(i, false, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo, pdata.settings.pause_requests)
             if style ~= "at_button_slot" then
-                status_table.add{
+                button = status_table.add{
                     type = "sprite-button",
                     style = style,
                     ignored_by_interaction = true,
-                }.sprite = "item/" .. item.name
+                }
+                button.sprite = "item/" .. item.name
+                button.number = diff
                 c = c + 1
             end
         end

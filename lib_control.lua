@@ -49,12 +49,18 @@ local function set_requests(player, pdata)
         slot_count = character.request_slot_count
     end
     if config_new.max_slot > slot_count then error("Should not happen") end
+    local max_req_slot = 0
     for c = 1, slot_count do
         clear_request_slot(c)
         req = storage[c]
         if req and req.request > 0 then
             set_request_slot({name = req.name, count = req.request}, c)
+            max_req_slot = c
         end
+    end
+    if slot_count > max_req_slot then
+        local adjust = player.character_logistic_slot_count_bonus - (slot_count - max_req_slot)
+        player.character_logistic_slot_count_bonus = adjust > 0 and adjust or 0
     end
 end
 
