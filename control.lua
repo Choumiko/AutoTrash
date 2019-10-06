@@ -372,7 +372,11 @@ local function on_player_changed_position(event)
     if not player.character then return end
     local pdata = global._pdata[event.player_index]
     local current = (pdata.current_network and pdata.current_network.valid) and pdata.current_network.logistic_network
-    if player.character.logistic_network ~= current then
+    local maybe_new = get_network_entity(player)
+    if maybe_new then
+        maybe_new = maybe_new.logistic_network
+    end
+    if maybe_new ~= current then
         --log("Network changed")
         GUI.update_button_styles(player, pdata)
         pdata.current_network = get_network_entity(player)

@@ -945,9 +945,9 @@ end
 local function get_network_data(player)
     local character = player.character
     if not character then return end
-    local network = character and character.logistic_network
+    local network = lib_control.get_non_equipment_network(player)--character and character.logistic_network--
     local requester = character and character.get_logistic_point(defines.logistic_member_index.character_requester)
-    if not (network and requester) then
+    if not (network and network.valid and requester and requester.valid) then
         return
     end
     local on_the_way = requester.targeted_items_deliver

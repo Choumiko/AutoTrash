@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 4.1.11
+Date: 06. 10. 2019
+  Bugfixes:
+    - Fixed setting a main network wouldn't work at all when the player had ropobort equipment in the armor
+---------------------------------------------------------------------------------------------------
 Version: 4.1.10
 Date: 06. 10. 2019
   Bugfixes:
