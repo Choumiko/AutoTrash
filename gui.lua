@@ -349,6 +349,10 @@ local gui_functions = {
     set_main_network = function(event, pdata)
         local player = event.player
         if pdata.main_network then
+            if not pdata.main_network.valid then
+                --ended up with an invalid entity, not much i can do to recover
+                player.print("AutoTrash lost the main network. You will have to set it again.")
+            end
             pdata.main_network = false
         else
             pdata.main_network = lib_control.get_network_entity(player)

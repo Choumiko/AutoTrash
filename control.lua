@@ -380,7 +380,10 @@ local function on_player_changed_position(event)
     if not pdata.settings.trash_network then
         return
     end
-    local is_in_network = in_network(player, pdata)
+    local is_in_network, invalid = in_network(player, pdata)
+    if invalid then
+        GUI.update_settings(pdata)
+    end
     local paused = pdata.settings.pause_trash
     if not is_in_network and not paused then
         pause_trash(player, pdata)
@@ -564,6 +567,7 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, on_runtime_mod_se
 
 local function on_research_finished(event)
     local status, err = pcall(function()
+    --TODO only unlock the trashing part if auto trash slots is researched
     if event.research.name == "character-logistic-trash-slots-1" or
         event.research.name == "character-logistic-slots-1" then
         for _, player in pairs(event.research.force.players) do

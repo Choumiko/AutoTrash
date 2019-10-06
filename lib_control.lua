@@ -112,6 +112,12 @@ local function in_network(player, pdata)
         return true
     end
     local currentNetwork = player.character.logistic_network
+    if pdata.main_network and not pdata.main_network.valid then
+        --ended up with an invalid entity, not much i can do to recover
+        player.print("AutoTrash lost the main network. You will have to set it again.")
+        pdata.main_network = false
+        return false, true
+    end
     local entity = (pdata.main_network and pdata.main_network.valid) and pdata.main_network
     if currentNetwork and entity and currentNetwork.valid and currentNetwork == entity.logistic_network then
         return true
