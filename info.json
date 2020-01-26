@@ -1,10 +1,10 @@
 {
   "name": "AutoTrash",
-  "version": "4.2.0",
-  "factorio_version": "0.17",
+  "version": "5.0.0",
+  "factorio_version": "0.18",
   "title": "Auto Trash",
   "author": "Choumiko",
   "homepage": "https://forums.factorio.com/viewtopic.php?f=97&t=16016",
   "description": "Allows saving of different logistic request setups\nCan enable autotrash only in a certain logistics network\nKeeps your inventory clean of certain items",
-  "dependencies": ["base >= 0.17.46"]
+  "dependencies": []
 }
