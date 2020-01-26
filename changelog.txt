@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 4.2.0
+Date: 26. 01. 2020
+  Changes:
+    - Added mod setting to lock unlimited request slots behind the final character logistic slots research
+---------------------------------------------------------------------------------------------------
 Version: 4.1.11
 Date: 06. 10. 2019
   Bugfixes:

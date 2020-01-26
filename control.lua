@@ -62,12 +62,9 @@ end
 local function check_temporary_trash()
     for _, pdata in pairs(global._pdata) do
         if next(pdata.temporary_trash) then
-            --log("temp trash set")
-            --some player has stuff in temporary_trash, don't unregister the event
             return true
         end
     end
-    --log("temp trash not set")
 end
 
 local function on_player_trash_inventory_changed(event)
@@ -107,6 +104,12 @@ local function register_conditional_events()
     script.on_nth_tick(settings.global["autotrash_update_rate"].value + 1, on_nth_tick)
 end
 
+local infinite_tech = "character-logistic-slots-6"
+
+local function infinite_slots_unlocked(force)
+    return settings.global["autotrash_free_infinite_slots"].value or (force.technologies[infinite_tech] and force.technologies[infinite_tech].researched)
+end
+
 local function init_player(player)
     local pdata = global._pdata[player.index] or {}
     global._pdata[player.index] = {
@@ -123,6 +126,8 @@ local function init_player(player)
             dirty = pdata.dirty or false,
             selected_presets = pdata.selected_presets or {},
             death_presets = pdata.death_presets or {},
+
+            infinite = infinite_slots_unlocked(player.force),
 
             gui_actions = pdata.gui_actions or {},
             gui_elements = pdata.gui_elements or {},
@@ -232,12 +237,13 @@ local function on_configuration_changed(data)
                 --saveVar(global, "storage_post")
             end
 
-            if oldVersion < v'4.1.4' then
+            if oldVersion < v'4.1.11' then
                 local player
                 for i, pdata in pairs(global._pdata) do
                     player = game.get_player(i)
+                    pdata.infinite = infinite_slots_unlocked(player.force)
                     pdata.current_network = get_network_entity(player)
-                    if pdata.main_network and not pdata.main_network.valid then
+                    if pdata.main_network and (not pdata.main_network.valid or pdata.main_network.type == "character") then
                         pdata.main_network = nil
                         player.print("Autotrash main network has been unset")
                     end
@@ -456,10 +462,23 @@ local function on_pre_mined_item(event)
     end
 end
 
-script.on_event(defines.events.on_pre_player_mined_item, on_pre_mined_item)
-script.on_event(defines.events.on_robot_pre_mined, on_pre_mined_item)
-script.on_event(defines.events.on_entity_died, on_pre_mined_item)
-script.on_event(defines.events.script_raised_destroy, on_pre_mined_item)
+local function on_script_raised_destroy(event)
+    local status, err = pcall(function()
+        if event.entity and event.entity.type == "roboport" then
+            on_pre_mined_item(event)
+        end
+    end)
+    if not status then
+        debugDump(err, event.player_index, true)
+    end
+end
+
+local robofilter = {{filter = "type", type = "roboport"}}
+script.on_event(defines.events.on_pre_player_mined_item, on_pre_mined_item, robofilter)
+script.on_event(defines.events.on_robot_pre_mined, on_pre_mined_item, robofilter)
+script.on_event(defines.events.on_entity_died, on_pre_mined_item, robofilter)
+
+script.on_event(defines.events.script_raised_destroy, on_script_raised_destroy)
 
 --[[
 Temporary requests:
@@ -527,6 +546,14 @@ local function on_runtime_mod_setting_changed(event)
         register_conditional_events()
         return
     end
+
+    if event.setting == "autotrash_free_infinite_slots" then
+        log("changed")
+        for pi, p in pairs(game.players) do
+            global._pdata[pi].infinite = infinite_slots_unlocked(p.force)
+        end
+    end
+
     local player_index = event.player_index
     local player = game.get_player(player_index)
     local pdata = global._pdata[player_index]
@@ -577,7 +604,12 @@ local function on_research_finished(event)
         for _, player in pairs(event.research.force.players) do
             GUI.init(player)
         end
+    elseif event.research.name == infinite_tech then
+        for _, player in pairs(event.research.force.players) do
+            global._pdata[player.index].infinite = true
+        end
     end
+
     end)
     if not status then
         debugDump(err, false, true)
