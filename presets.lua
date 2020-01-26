@@ -38,6 +38,9 @@ function presets.merge(current, preset)
         end
     end
     --preserve slot number if possible
+    --TODO find out how b can be nil
+    if not b then return end
+
     for i, config in pairs(b.config) do
         assert(i==config.slot)
         if not result[config.slot] then
