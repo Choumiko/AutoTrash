@@ -638,19 +638,26 @@ local gui_functions = {
         local player = event.player
         local stack = player.cursor_stack
         if not stack then return end
+        local config_tmp, cc_found
         if stack and stack.valid_for_read and stack.name == "blueprint" and stack.is_blueprint_setup() then
-            pdata.config_tmp = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
-            player.print({"string-import-successful", "AutoTrash configuration"})
-            pdata.selected = false
-            if stack.label ~= "Autotrash_configuration" then
-                local textfield = pdata.gui_elements.storage_textfield
-                if textfield and textfield.valid then
-                    textfield.text = string.sub(stack.label, 11)
+            config_tmp, cc_found = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
+            if cc_found then
+                pdata.config_tmp = config_tmp
+                player.print({"string-import-successful", "AutoTrash configuration"})
+                pdata.selected = false
+                if stack.label and stack.label ~= "Autotrash_configuration" then
+                    local textfield = pdata.gui_elements.storage_textfield
+                    if textfield and textfield.valid then
+                        textfield.text = string.sub(stack.label, 11)
+                    end
                 end
+                GUI.update_buttons(player, pdata)
+                GUI.hide_sliders(pdata)
+                return
+            else
+                player.print({"", {"error-while-importing-string"}, " ", {"autotrash_import_error"}})
+                return
             end
-            GUI.update_buttons(player, pdata)
-            GUI.hide_sliders(pdata)
-            return
         end
         local gui = player.gui.center
         local frame = gui.add{type = "frame", caption = {"gui-blueprint-library.import-string"}, direction = "vertical"}
@@ -693,17 +700,22 @@ local gui_functions = {
         end
         stack.import_stack(textfield.text)
         pdata.selected = false
-        pdata.config_tmp = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
-        if stack.label ~= "Autotrash_configuration" then
-            textfield = pdata.gui_elements.storage_textfield
-            if textfield and textfield.valid then
-                textfield.text = string.sub(stack.label, 11)
+        local config_tmp, cc_found = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
+        if cc_found then
+            pdata.config_tmp = config_tmp
+            if stack.label and stack.label ~= "Autotrash_configuration" then
+                textfield = pdata.gui_elements.storage_textfield
+                if textfield and textfield.valid then
+                    textfield.text = string.sub(stack.label, 11)
+                end
             end
+            player.print({"string-import-successful", "AutoTrash configuration"})
+            GUI.update_buttons(player, pdata)
+            GUI.hide_sliders(pdata)
+        else
+            player.print({"", {"error-while-importing-string"}, " ", {"autotrash_import_error"}})
         end
         stack.clear()--the blueprint we spawned in
-        player.print({"string-import-successful", "AutoTrash configuration"})
-        GUI.update_buttons(player, pdata)
-        GUI.hide_sliders(pdata)
         GUI.deregister_action(frame, pdata, true)
     end,
 

@@ -2,7 +2,7 @@ local presets = {}
 
 local function log_blueprint_entities(ents)--luacheck: ignore
     for i, ent in pairs(ents) do
-        log(serpent.line({entity_number = ent.entity_number, position = ent.position}))
+        log(serpent.line({name = ent.name, entity_number = ent.entity_number, position = ent.position}))
         if ent.control_behavior then
             for j, item in pairs(ent.control_behavior.filters) do
                 log("\t" .. serpent.line(item))
@@ -114,16 +114,18 @@ end
 
 --Storing the exported string in the blueprint library preserves it even when mod items have been removed
 --Importing a string with invalid item signals removes the combinator containing the invalid signals.
-function presets.import(preset, icons)--luacheck: ignore
+function presets.import(preset, icons)
     local item_slot_count = game.entity_prototypes["constant-combinator"].item_slot_count
     local tmp = {config = {}, max_slot = 0, c_requests = 0}
     local config = tmp.config
     local index_offset, index
-    if icons then--luacheck: ignore
+    local cc_found = false
+    if icons then
         --log_blueprint_entities(preset)
         for _, cc in pairs(preset) do
             index_offset = cc.position.x * item_slot_count
-            if cc.control_behavior then
+            if cc.name == "constant-combinator" and cc.control_behavior then
+                cc_found = true
                 for i, item_config in pairs(cc.control_behavior.filters) do
                     index = index_offset + item_config.index
                     if not config[index] then
@@ -140,7 +142,7 @@ function presets.import(preset, icons)--luacheck: ignore
             end
         end
     end
-    return tmp
+    return tmp, cc_found
 end
 
 return presets
