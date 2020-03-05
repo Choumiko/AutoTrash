@@ -1574,7 +1574,7 @@ function GUI.add_preset(preset_name, pdata)
     local remove = preset_flow.add{
         type = "sprite-button",
         style = "at_delete_preset",
-        sprite = "utility/remove"
+        sprite = "utility/trash"
     }
 
     GUI.register_action(pdata, preset, {type = "load_preset"})
