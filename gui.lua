@@ -1046,7 +1046,7 @@ function GUI.create_buttons(player, pdata, start)
         ruleset_grid = scroll_pane.add{
             type = "table",
             column_count = columns,
-            style = "slot_table"
+            style = "logistics_slot_table"
         }
         start = 1
     else

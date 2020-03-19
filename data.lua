@@ -13,38 +13,38 @@
 
 local styles = data.raw["gui-style"].default
 
-local function yellowbuttongraphicalset()
-    return
-    {
-        border = 1,
-        filename = "__core__/graphics/gui.png",
-        position = {111, 72},
-        size = 36,
-        scale = 1
-    }
-end
+-- local function yellowbuttongraphicalset()
+--     return
+--     {
+--         border = 1,
+--         filename = "__core__/graphics/gui.png",
+--         position = {111, 72},
+--         size = 36,
+--         scale = 1
+--     }
+-- end
 
-local function redbuttongraphicalset()
-    return
-    {
-        border = 1,
-        filename = "__core__/graphics/gui.png",
-        position = {111, 36},
-        size = 36,
-        scale = 1
-    }
-end
+-- local function redbuttongraphicalset()
+--     return
+--     {
+--         border = 1,
+--         filename = "__core__/graphics/gui.png",
+--         position = {111, 36},
+--         size = 36,
+--         scale = 1
+--     }
+-- end
 
-local function bluebuttongraphicalset()
-    return
-    {
-        border = 1,
-        filename = "__core__/graphics/gui.png",
-        position = {221, 36},
-        size = 36,
-        scale = 1
-    }
-end
+-- local function bluebuttongraphicalset()
+--     return
+--     {
+--         border = 1,
+--         filename = "__core__/graphics/gui.png",
+--         position = {221, 36},
+--         size = 36,
+--         scale = 1
+--     }
+-- end
 
 styles["at_request_label_bottom"] = {
     type = "label_style",
@@ -64,30 +64,30 @@ styles["at_request_label_top"] = {
 
 styles["at_button_slot"] = {
     type = "button_style",
-    parent = "logistic_slot_button",
+    parent = "CGUI_logistic_slot_button",
 }
 
 styles["at_button_slot_selected"] = {
     type = "button_style",
-    parent = "selected_logistic_slot_button",
+    parent = "CGUI_selected_logistic_slot_button",
 }
 
 styles["at_button_slot_items_on_the_way"] = {
     type = "button_style",
-    parent = "selected_logistic_slot_button",
-    default_graphical_set = yellowbuttongraphicalset(),
+    parent = "CGUI_yellow_logistic_slot_button",
+    --default_graphical_set = yellowbuttongraphicalset(),
 }
 
 styles["at_button_slot_items_not_available"] = {
     type = "button_style",
-    parent = "selected_logistic_slot_button",
-    default_graphical_set = redbuttongraphicalset(),
+    parent = "CGUI_red_logistic_slot_button",
+    --default_graphical_set = redbuttongraphicalset(),
 }
 
 styles["at_button_slot_items_not_enough"] = {
     type = "button_style",
-    parent = "selected_logistic_slot_button",
-    default_graphical_set = bluebuttongraphicalset(),
+    parent = "CGUI_blue_slot_button",
+    --default_graphical_set = bluebuttongraphicalset(),
 }
 
 styles["at_main_flow"] = {
