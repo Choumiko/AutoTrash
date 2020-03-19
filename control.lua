@@ -25,7 +25,7 @@ local function requested_items(player)
     local requests = {}
     local get_request_slot = player.character.get_request_slot
     local t, max_slot
-    for c = player.character.request_slot_count, 1, -1 do
+    for c = player.character_logistic_slot_count, 1, -1 do
         t = get_request_slot(c)
         if t then
             max_slot = not max_slot and c or max_slot
@@ -557,7 +557,7 @@ local function on_runtime_mod_setting_changed(event)
     -- if event.setting == "autotrash_threshold" then
     --     local settings = pdata.settings
     --     if not settings.pause_trash and settings.trash_above_requested then
-    --         lib_control.set_trash(player, pdata)
+    --         lib_control.set_requests(player, pdata)
     --     end
     -- end
     if event.setting == "autotrash_status_count" then

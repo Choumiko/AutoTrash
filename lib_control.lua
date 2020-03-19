@@ -1,67 +1,49 @@
 local floor = math.floor
 
-local function set_trash(player, pdata)
-    if not player.character then return end
-    local trash_filters = {}
-    if pdata.settings.trash_above_requested then
-        local amount
-        for i, item_config in pairs(pdata.config_new.config) do
-            if item_config.trash or item_config.request > 0 then
-                amount = item_config.request
-                trash_filters[item_config.name] = (amount > (item_config.trash or 0)) and amount or item_config.trash
-            end
-        end
-    else
-        for _, item_config in pairs(pdata.config_new.config) do
-            if item_config.trash then
-                trash_filters[item_config.name] = (item_config.trash > item_config.request) and item_config.trash or item_config.request
-            end
-        end
-    end
-
-    player.auto_trash_filters = trash_filters
-end
-
-local function pause_trash(player, pdata)
-    if not player.character then return end
-    pdata.settings.pause_trash = true
-    player.character.auto_trash_filters = {}
-end
-
-local function unpause_trash(player, pdata)
-    if not player.character then return end
-    pdata.settings.pause_trash = false
-    set_trash(player, pdata)
-end
-
 local function set_requests(player, pdata)
     local character = player.character
     if not character then return end
     local config_new = pdata.config_new
     local storage = config_new.config
-    local slot_count = character.request_slot_count --force slots + player specific bonus
-    local set_request_slot = character.set_request_slot
-    local clear_request_slot = character.clear_request_slot
+    local slot_count = player.character_logistic_slot_count
+    local set_request_slot = character.set_personal_logistic_slot
+    local clear_request_slot = character.clear_personal_logistic_slot
+    local trash_paused = pdata.settings.pause_trash
+    local trash_above_requested = pdata.settings.trash_above_requested
+    local requests_paused = pdata.settings.pause_requests
+
     local req
-    local unchanged_bonus = player.character_logistic_slot_count_bonus
-    --kind of cheaty.. <- not anymore!
+
     if slot_count < config_new.max_slot then
-        player.character_logistic_slot_count_bonus = unchanged_bonus + (config_new.max_slot - slot_count)
-        slot_count = character.request_slot_count
+        slot_count = player.character_logistic_slot_count
     end
-    if config_new.max_slot > slot_count then error("Should not happen") end
-    local max_req_slot = 0
+    if config_new.max_slot > slot_count then
+        player.character_logistic_slot_count = config_new.max_slot
+        slot_count = config_new.max_slot
+    end
+    local min, max
+
     for c = 1, slot_count do
         clear_request_slot(c)
         req = storage[c]
-        if req and req.request > 0 then
-            set_request_slot({name = req.name, count = req.request}, c)
-            max_req_slot = c
+        if req then
+            if not requests_paused and req.request > 0 then
+                min = req.request
+            end
+            if not trash_paused then
+                if trash_above_requested then
+                    max = req.request
+                    max = (max > (req.trash or 0)) and max or req.trash
+                else
+                    if req.trash then
+                        max = req.trash
+                    end
+                end
+            end
+            log(serpent.block(req))
+            set_request_slot(c, {name = req.name, min = min, max = max})
+            min, max = nil, nil
         end
-    end
-    if slot_count > max_req_slot then
-        local adjust = player.character_logistic_slot_count_bonus - (slot_count - max_req_slot)
-        player.character_logistic_slot_count_bonus = adjust > 0 and adjust or 0
     end
 end
 
@@ -74,7 +56,7 @@ local function get_requests(player)
     local count = 0
     local get_request_slot = character.get_request_slot
     local t, max_slot
-    for c = character.request_slot_count, 1, -1 do
+    for c = player.character_logistic_slot_count, 1, -1 do
         t = get_request_slot(c)
         if t then
             max_slot = not max_slot and c or max_slot
@@ -89,14 +71,24 @@ local function pause_requests(player, pdata)
     local character = player.character
     if not character then return end
     pdata.settings.pause_requests = true
-    for c = 1, character.request_slot_count do
-        character.clear_request_slot(c)
-    end
+    set_requests(player, pdata)
 end
 
 local function unpause_requests(player, pdata)
     if not player.character then return end
     pdata.settings.pause_requests = false
+    set_requests(player, pdata)
+end
+
+local function pause_trash(player, pdata)
+    if not player.character then return end
+    pdata.settings.pause_trash = true
+    set_requests(player, pdata)
+end
+
+local function unpause_trash(player, pdata)
+    if not player.character then return end
+    pdata.settings.pause_trash = false
     set_requests(player, pdata)
 end
 
@@ -311,7 +303,6 @@ local M = {
     format_trash = format_trash,
     convert_to_slider = convert_to_slider,
     convert_from_slider = convert_from_slider,
-    set_trash = set_trash,
     pause_trash = pause_trash,
     unpause_trash = unpause_trash,
     set_requests = set_requests,

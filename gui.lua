@@ -7,7 +7,6 @@ local format_request = lib_control.format_request
 local format_trash = lib_control.format_trash
 local convert_to_slider = lib_control.convert_to_slider
 local convert_from_slider = lib_control.convert_from_slider
-local set_trash = lib_control.set_trash
 local pause_trash = lib_control.pause_trash
 local unpause_trash = lib_control.unpause_trash
 local set_requests = lib_control.set_requests
@@ -74,7 +73,7 @@ function GUI.clear_button(player, pdata, params, config_tmp)
     local columns = player.mod_settings["autotrash_gui_columns"].value
     local count = #ruleset_grid.children
     local max_buttons = config_tmp.max_slot + columns + 1
-    local request_slots = player.character.request_slot_count + 1
+    local request_slots = player.character_logistic_slot_count + 1
     max_buttons = max_buttons > request_slots and max_buttons or request_slots
     if count >= max_buttons then
         for i = count, max_buttons, -1 do
@@ -139,12 +138,8 @@ local gui_functions = {
             GUI.close(player, pdata)
         end
 
-        if not pdata.settings.pause_trash then
-            set_trash(player, pdata)
-        end
-        if not pdata.settings.pause_requests then
-            set_requests(player, pdata)
-        end
+        set_requests(player, pdata)
+
         GUI.update_status_display(player, pdata)
     end,
 
@@ -285,7 +280,6 @@ local gui_functions = {
         local element = event.element
         local name = element.get_item(element.selected_index)
         local stored_preset = pdata.storage_new[name]
-        local settings = pdata.settings
         if stored_preset then
             local player = event.player
             pdata.selected_presets = {[name] = true}
@@ -293,12 +287,9 @@ local gui_functions = {
             pdata.config_tmp = util.table.deepcopy(stored_preset)
             pdata.selected = false
             pdata.dirty = false
-            if not settings.pause_trash then
-                set_trash(player, pdata)
-            end
-            if not settings.pause_requests then
-                set_requests(player, pdata)
-            end
+
+            set_requests(player, pdata)
+
             GUI.update_status_display(player, pdata)
             display_message(player, "Preset '" .. tostring(name) .. "' loaded", "success")
         end
@@ -562,9 +553,7 @@ local gui_functions = {
         if event.name ~= defines.events.on_gui_checked_state_changed then return end
         local settings = pdata.settings
         settings[event.element.name] = event.element.state
-        if not settings.pause_trash then
-            set_trash(event.player, pdata)
-        end
+        set_requests(event.player, pdata)
     end,
 
     toggle_trash_network = function(event, pdata)
@@ -1043,7 +1032,7 @@ function GUI.create_buttons(player, pdata, start)
     local columns = player.mod_settings["autotrash_gui_columns"].value
     local config_tmp = pdata.config_tmp
     local max_slot = config_tmp.max_slot or columns
-    local slots = player.character.request_slot_count
+    local slots = player.character_logistic_slot_count
     slots = slots > columns and slots or columns
     slots = slots > max_slot and slots or max_slot
 
@@ -1144,7 +1133,7 @@ function GUI.update_status_display(player, pdata)
     --TODO: looping over config_new is slightly faster, but may be out of sync with the actual requests
     -- for i, item in pairs(config_tmp) do--luacheck: ignore
     --     if item and item.request > 0 then
-    for i = 1, character.request_slot_count do
+    for i = 1, player.character_logistic_slot_count do
         item = get_request_slot(i)
         if item and item.count > 0 then
             if c >= max_count then break end
