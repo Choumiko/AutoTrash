@@ -239,7 +239,7 @@ local function on_configuration_changed(data)
                 end
             end
 
-            if oldVersion < v'5.0.3' then
+            if oldVersion < v'5.1.0' then
                 for i, pdata in pairs(global._pdata) do
                     pdata.infinite = nil
                 end

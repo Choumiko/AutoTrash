@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 5.1.0
+Date: 19. 03. 2020
+  Changes:
+    - Updated to work with the new character GUI added in 0.18.13
+    - Removed obsolete setting to lock infinite slots behind a research
+    - Updated gui to the dark logistic slots
+  Bugfixes:
+    - Fixed out of range error when AutoTrash was added to an existing save
+---------------------------------------------------------------------------------------------------
 Version: 5.0.2
 Date: 05. 03. 2020
   Bugfixes:
