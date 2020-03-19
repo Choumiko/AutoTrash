@@ -44,40 +44,24 @@ local function set_requests(player, pdata)
     local clear_request_slot = character.clear_request_slot
     local req
     local unchanged_bonus = player.character_logistic_slot_count_bonus
-    if pdata.infinite then
-        --kind of cheaty..
-        if slot_count < config_new.max_slot then
-            player.character_logistic_slot_count_bonus = unchanged_bonus + (config_new.max_slot - slot_count)
-            slot_count = character.request_slot_count
+    --kind of cheaty.. <- not anymore!
+    if slot_count < config_new.max_slot then
+        player.character_logistic_slot_count_bonus = unchanged_bonus + (config_new.max_slot - slot_count)
+        slot_count = character.request_slot_count
+    end
+    if config_new.max_slot > slot_count then error("Should not happen") end
+    local max_req_slot = 0
+    for c = 1, slot_count do
+        clear_request_slot(c)
+        req = storage[c]
+        if req and req.request > 0 then
+            set_request_slot({name = req.name, count = req.request}, c)
+            max_req_slot = c
         end
-        if config_new.max_slot > slot_count then error("Should not happen") end
-        local max_req_slot = 0
-        for c = 1, slot_count do
-            clear_request_slot(c)
-            req = storage[c]
-            if req and req.request > 0 then
-                set_request_slot({name = req.name, count = req.request}, c)
-                max_req_slot = c
-            end
-        end
-        if slot_count > max_req_slot then
-            local adjust = player.character_logistic_slot_count_bonus - (slot_count - max_req_slot)
-            player.character_logistic_slot_count_bonus = adjust > 0 and adjust or 0
-        end
-    else
-        local slot = 1
-        for c = 1, slot_count do
-            clear_request_slot(c)
-        end
-        for _, req2 in pairs(storage) do
-            if req2 and req2.request > 0 and slot <= slot_count then
-                set_request_slot({name = req2.name, count = req2.request}, slot)
-                slot = slot + 1
-            end
-        end
-        if config_new.c_requests > slot_count then
-            player.print("Not all requests have been set. Research more logistic slots")
-        end
+    end
+    if slot_count > max_req_slot then
+        local adjust = player.character_logistic_slot_count_bonus - (slot_count - max_req_slot)
+        player.character_logistic_slot_count_bonus = adjust > 0 and adjust or 0
     end
 end
 

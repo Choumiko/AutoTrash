@@ -1,19 +1,12 @@
 local prefix = "autotrash_"
 data:extend({
     {
-        type = "bool-setting",
-        name = prefix .. "free_infinite_slots",
-        setting_type = "runtime-global",
-        default_value = false,
-        order = "a"
-    },
-    {
         type = "int-setting",
         name = prefix .. "update_rate",
         setting_type = "runtime-global",
         default_value = 120,
         minimum_value = 1,
-        order = "b"
+        order = "a"
     },
 })
 

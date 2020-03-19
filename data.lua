@@ -64,29 +64,29 @@ styles["at_request_label_top"] = {
 
 styles["at_button_slot"] = {
     type = "button_style",
-    parent = "logistic_button_slot",
+    parent = "logistic_slot_button",
 }
 
 styles["at_button_slot_selected"] = {
     type = "button_style",
-    parent = "logistic_button_selected_slot",
+    parent = "selected_logistic_slot_button",
 }
 
 styles["at_button_slot_items_on_the_way"] = {
     type = "button_style",
-    parent = "logistic_button_selected_slot",
+    parent = "selected_logistic_slot_button",
     default_graphical_set = yellowbuttongraphicalset(),
 }
 
 styles["at_button_slot_items_not_available"] = {
     type = "button_style",
-    parent = "logistic_button_selected_slot",
+    parent = "selected_logistic_slot_button",
     default_graphical_set = redbuttongraphicalset(),
 }
 
 styles["at_button_slot_items_not_enough"] = {
     type = "button_style",
-    parent = "logistic_button_selected_slot",
+    parent = "selected_logistic_slot_button",
     default_graphical_set = bluebuttongraphicalset(),
 }
 

@@ -104,12 +104,6 @@ local function register_conditional_events()
     script.on_nth_tick(settings.global["autotrash_update_rate"].value + 1, on_nth_tick)
 end
 
-local infinite_tech = "character-logistic-slots-6"
-
-local function infinite_slots_unlocked(force)
-    return settings.global["autotrash_free_infinite_slots"].value or (force.technologies[infinite_tech] and force.technologies[infinite_tech].researched)
-end
-
 local function init_player(player)
     local pdata = global._pdata[player.index] or {}
     global._pdata[player.index] = {
@@ -126,8 +120,6 @@ local function init_player(player)
             dirty = pdata.dirty or false,
             selected_presets = pdata.selected_presets or {},
             death_presets = pdata.death_presets or {},
-
-            infinite = infinite_slots_unlocked(player.force),
 
             gui_actions = pdata.gui_actions or {},
             gui_elements = pdata.gui_elements or {},
@@ -197,9 +189,7 @@ local function on_configuration_changed(data)
             init_global()
             for player_index, player in pairs(game.players) do
                 init_player(player)
-                if player.character and (player.force.technologies["character-logistic-slots-1"].researched
-                    or player.force.technologies["character-logistic-trash-slots-1"].researched)
-                then
+                if player.character and player.force.technologies["logistic-robotics"].researched then
                     local pdata = global._pdata[player_index]
                     local status, err = pcall(function()
                         GUI.close(player, pdata)
@@ -241,12 +231,17 @@ local function on_configuration_changed(data)
                 local player
                 for i, pdata in pairs(global._pdata) do
                     player = game.get_player(i)
-                    pdata.infinite = infinite_slots_unlocked(player.force)
                     pdata.current_network = get_network_entity(player)
                     if pdata.main_network and (not pdata.main_network.valid or pdata.main_network.type == "character") then
                         pdata.main_network = nil
                         player.print("Autotrash main network has been unset")
                     end
+                end
+            end
+
+            if oldVersion < v'5.0.3' then
+                for i, pdata in pairs(global._pdata) do
+                    pdata.infinite = nil
                 end
             end
         end
@@ -547,13 +542,6 @@ local function on_runtime_mod_setting_changed(event)
         return
     end
 
-    if event.setting == "autotrash_free_infinite_slots" then
-        log("changed")
-        for pi, p in pairs(game.players) do
-            global._pdata[pi].infinite = infinite_slots_unlocked(p.force)
-        end
-    end
-
     local player_index = event.player_index
     local player = game.get_player(player_index)
     local pdata = global._pdata[player_index]
@@ -598,15 +586,10 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, on_runtime_mod_se
 
 local function on_research_finished(event)
     local status, err = pcall(function()
-    --TODO only unlock the trashing part if auto trash slots is researched
-    if event.research.name == "character-logistic-trash-slots-1" or
-        event.research.name == "character-logistic-slots-1" then
+
+    if event.research.name == "logistic-robotics" then
         for _, player in pairs(event.research.force.players) do
             GUI.init(player)
-        end
-    elseif event.research.name == infinite_tech then
-        for _, player in pairs(event.research.force.players) do
-            global._pdata[player.index].infinite = true
         end
     end
 
@@ -658,7 +641,7 @@ end)
 local function autotrash_trash_cursor(event)
     local status, err = pcall(function()
     local player = game.get_player(event.player_index)
-    if player.force.technologies["character-logistic-trash-slots-1"].researched then
+    if player.force.technologies["logistic-robotics"].researched then
         local cursorStack = player.cursor_stack
         if cursorStack.valid_for_read then
             add_to_trash(player, cursorStack.name)
