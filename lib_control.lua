@@ -40,7 +40,6 @@ local function set_requests(player, pdata)
                     end
                 end
             end
-            log(serpent.block(req))
             set_request_slot(c, {name = req.name, min = min, max = max})
             min, max = nil, nil
         end
@@ -150,6 +149,7 @@ local function combine_from_vanilla(player)
         tmp.config[config.slot] = config
         if trash[name] then
             config.trash = trash[name] > config.request and trash[name] or config.request
+            config.trash = config.trash < 4294967295 and config.trash or false
             trash[name] = nil
         end
     end

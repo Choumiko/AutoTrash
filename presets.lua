@@ -85,6 +85,7 @@ function presets.export(preset)
     local bp = {}
     local item_config, request_items, trash_items, item_signal, pos_x
     local index_offset, index
+
     for cc = 1, combinators do
         pos_x = cc - 1
         index_offset = pos_x * item_slot_count
