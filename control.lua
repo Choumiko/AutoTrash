@@ -11,7 +11,7 @@ local presets = require "__AutoTrash__/presets"
 local saveVar = lib_control.saveVar
 local debugDump = lib_control.debugDump
 local display_message = lib_control.display_message
-local get_requests = lib_control.get_requests
+local set_requests = lib_control.set_requests
 local pause_trash = lib_control.pause_trash
 local unpause_trash = lib_control.unpause_trash
 local get_network_entity = lib_control.get_network_entity
@@ -276,22 +276,15 @@ local trash_blacklist = {
     ["selection-tool"] = true,
 }
 
-local function on_player_main_inventory_changed(event)
-    local settings = global._pdata[event.player_index].settings
-    if settings.pause_trash or not settings.trash_unrequested then return end
+--that's a bad event to handle unrequested, since adding stuff to the trash filters immediately triggers the next on_main_inventory_changed event
+-- on_nth_tick might work better or only registering when some player has trash_unrequested set to true
+local function on_player_main_inventory_changed(event) --luacheck: ignore
     local player = game.get_player(event.player_index)
     if not (player.character) then return end
-    --that's a bad event to handle unrequested, since adding stuff to the trash filters immediately triggers the next on_main_inventory_changed event
-    -- on_nth_tick might work better or only registering when some player has trash_unrequested set to true
-    local trash_filters = player.auto_trash_filters
-    local contents = player.get_main_inventory().get_contents()
-    local requests = get_requests(player)
-    for name, _ in pairs(contents) do
-        if not requests[name] and not trash_filters[name] and not trash_blacklist[item_prototype(name).type] then
-            trash_filters[name] = 0
-        end
-    end
-    player.auto_trash_filters = trash_filters
+    local pdata = global._pdata[event.player_index]
+    local settings = pdata.settings
+    if settings.pause_trash or not settings.trash_unrequested then return end
+    set_requests(player, pdata)
 end
 
 local function add_to_trash(player, item)

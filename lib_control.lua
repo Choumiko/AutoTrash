@@ -1,22 +1,41 @@
 local floor = math.floor
 
+local function get_requests(player)
+    local character = player.character
+    if not character then
+        return {}
+    end
+    local requests = {}
+    local count = 0
+    local get_request_slot = character.get_request_slot
+    local t, max_slot
+    for c = player.character_logistic_slot_count, 1, -1 do
+        t = get_request_slot(c)
+        if t then
+            max_slot = not max_slot and c or max_slot
+            requests[t.name] = {name = t.name, request = t.count, slot = c}
+            count = t.count > 0 and count + 1 or count
+        end
+    end
+    return requests, max_slot, count
+end
+
 local function set_requests(player, pdata)
     local character = player.character
     if not character then return end
+    local settings = pdata.settings
     local config_new = pdata.config_new
     local storage = config_new.config
     local slot_count = player.character_logistic_slot_count
     local set_request_slot = character.set_personal_logistic_slot
     local clear_request_slot = character.clear_personal_logistic_slot
-    local trash_paused = pdata.settings.pause_trash
-    local trash_above_requested = pdata.settings.trash_above_requested
-    local requests_paused = pdata.settings.pause_requests
+    local trash_paused = settings.pause_trash
+    local trash_above_requested = settings.trash_above_requested
+    local requests_paused = settings.pause_requests
+    local contents = settings.trash_unrequested and player.get_main_inventory().get_contents()
 
     local req
 
-    if slot_count < config_new.max_slot then
-        slot_count = player.character_logistic_slot_count
-    end
     if config_new.max_slot > slot_count then
         player.character_logistic_slot_count = config_new.max_slot
         slot_count = config_new.max_slot
@@ -39,31 +58,28 @@ local function set_requests(player, pdata)
                         max = req.trash
                     end
                 end
+                if contents and contents[req.name] then
+                    contents[req.name] = nil
+                end
             end
             set_request_slot(c, {name = req.name, min = min, max = max})
             min, max = nil, nil
         end
     end
-end
 
-local function get_requests(player)
-    local character = player.character
-    if not character then
-        return {}
-    end
-    local requests = {}
-    local count = 0
-    local get_request_slot = character.get_request_slot
-    local t, max_slot
-    for c = player.character_logistic_slot_count, 1, -1 do
-        t = get_request_slot(c)
-        if t then
-            max_slot = not max_slot and c or max_slot
-            requests[t.name] = {name = t.name, request = t.count, slot = c}
-            count = t.count > 0 and count + 1 or count
+    if contents and not trash_paused then
+        local c_contents = table_size(contents)
+        local n_slot_count = slot_count + c_contents
+        if slot_count < config_new.max_slot + c_contents then
+            player.character_logistic_slot_count = n_slot_count
+        end
+
+        local i = config_new.max_slot + 1
+        for name, _ in pairs(contents) do
+            set_request_slot(i, {name = name, max = 0})
+            i = i + 1
         end
     end
-    return requests, max_slot, count
 end
 
 local function pause_requests(player, pdata)
