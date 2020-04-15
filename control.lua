@@ -104,7 +104,7 @@ local function register_conditional_events()
     script.on_nth_tick(settings.global["autotrash_update_rate"].value + 1, on_nth_tick)
 end
 
-local function init_player(player)
+local function init_player(player, init_gui)
     local pdata = global._pdata[player.index] or {}
     global._pdata[player.index] = {
             config_new = pdata.config_new or {config = {}, c_requests = 0, max_slot = 0},
@@ -124,17 +124,19 @@ local function init_player(player)
             gui_actions = pdata.gui_actions or {},
             gui_elements = pdata.gui_elements or {},
         }
-    GUI.init(player)
+    if init_gui then
+        GUI.init(player)
+    end
     register_conditional_events()
-    saveVar(global, "post_init")
+    --saveVar(global, "post_init")
 end
 
-local function init_players(resetGui)
+local function init_players(resetGui, init_gui)
     for i, player in pairs(game.players) do
         if resetGui then
             GUI.delete(global._pdata[i])
         end
-        init_player(player)
+        init_player(player, init_gui)
     end
 end
 
@@ -188,7 +190,7 @@ local function on_configuration_changed(data)
         if not oldVersion then
             init_global()
             for player_index, player in pairs(game.players) do
-                init_player(player)
+                init_player(player, true)
                 if player.character and player.force.technologies["logistic-robotics"].researched then
                     local pdata = global._pdata[player_index]
                     local status, err = pcall(function()
@@ -219,7 +221,7 @@ local function on_configuration_changed(data)
                 log("Resetting all AutoTrash settings")
                 global = nil
                 init_global()
-                init_players()
+                init_players(false, true)
             end
 
             if oldVersion >= v'3.0.0' and oldVersion < v'4.1.0' then
@@ -258,13 +260,14 @@ local function on_configuration_changed(data)
         for _, stored in pairs(pdata.storage_new) do
             remove_invalid_items(pdata, stored)
         end
+        GUI.init(player)
         GUI.update_buttons(player, pdata)
         GUI.update_status_display(player, pdata)
     end
 end
 
 local function on_player_created(event)
-    init_player(game.get_player(event.player_index))
+    init_player(game.get_player(event.player_index), true)
 end
 
 local trash_blacklist = {
@@ -659,7 +662,7 @@ local at_commands = {
         end
 
         init_global()
-        init_players()
+        init_players(false, true)
         game.player.print("Mods reloaded")
     end,
 
@@ -690,7 +693,7 @@ local at_commands = {
         if not status then
             GUI.close(player, pdata)
             pdata.config_tmp = nil
-            init_player(player)
+            init_player(player, true)
             debugDump(err, player_index, true)
         end
     end

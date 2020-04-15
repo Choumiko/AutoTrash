@@ -1182,20 +1182,20 @@ function GUI.open_status_display(player, pdata)
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
     local button
     for i, item in pairs(config_tmp) do
-        if c >= max_count then break end
-        if item and item.request > 0 then
-            style, diff = GUI.get_button_style(i, false, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo, pdata.settings.pause_requests)
-            if style ~= "at_button_slot" then
-                button = status_table.add{
-                    type = "sprite-button",
-                    style = style,
-                    ignored_by_interaction = true,
-                }
-                button.sprite = "item/" .. item.name
-                button.number = diff
-                c = c + 1
+            if c >= max_count then break end
+            if item and item.request > 0 then
+                style, diff = GUI.get_button_style(i, false, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo, pdata.settings.pause_requests)
+                if style ~= "at_button_slot" then
+                    button = status_table.add{
+                        type = "sprite-button",
+                        style = style,
+                        ignored_by_interaction = true,
+                    }
+                    button.sprite = "item/" .. item.name
+                    button.number = diff
+                    c = c + 1
+                end
             end
-        end
     end
 end
 

@@ -108,11 +108,11 @@ convert.to_4_1_2 = function(GUI, init_global, init_player, register_conditional_
     for pi, player in pairs(game.players) do
         status_i, err_i = pcall(function()
             log("Updating data for player " .. player.name .. ", index: " .. pi)
-            init_player(player)
+            init_player(player, false)
             pdata = global._pdata[pi]
             settings = global.settings[pi]
-            settings.pause_trash = not global.active[pi]
-            settings.pause_requests = not global["logistics-active"][pi]
+            settings.pause_trash = false
+            settings.pause_requests = false
             if remote.interfaces.YARM then
                 settings.YARM_active_filter = remote.call("YARM", "get_current_filter", pi)
             end
@@ -166,7 +166,7 @@ convert.to_4_1_2 = function(GUI, init_global, init_player, register_conditional_
                 debugDump(err, player, true)
                 pdata.config_new = nil
                 pdata.config_tmp = nil
-                init_player(player)
+                init_player(player, false)
             end
             pdata.temporary_requests = {}
             pdata.temporary_trash = {}
@@ -181,6 +181,7 @@ convert.to_4_1_2 = function(GUI, init_global, init_player, register_conditional_
                 end
                 pdata.storage_new = tmp
             end
+            init_player(player, true)
             GUI.update_main_button(pdata)
         end)
         if not status_i then
@@ -193,7 +194,7 @@ convert.to_4_1_2 = function(GUI, init_global, init_player, register_conditional_
                     pdata[name] = nil
                 end
             end
-            init_player(player)
+            init_player(player, true)
             register_conditional_events()
             GUI.update_main_button(pdata)
             GUI.close(player, pdata)
@@ -227,7 +228,7 @@ convert.to_4_1_2 = function(GUI, init_global, init_player, register_conditional_
         end
         init_global()
         for pi, player in pairs(game.players) do
-            init_player(player)
+            init_player(player, true)
             GUI.update_main_button(global._pdata[pi])
             GUI.close(player, global._pdata[pi])
         end
