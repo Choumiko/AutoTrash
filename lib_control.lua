@@ -1,4 +1,13 @@
 local floor = math.floor
+local trash_blacklist = {
+    ["blueprint"] = true,
+    ["blueprint-book"] = true,
+    ["deconstruction-item"] = true,
+    ["upgrade-item"] = true,
+    ["copy-paste-tool"] = true,
+    ["selection-tool"] = true,
+}
+
 
 local function get_requests(player)
     local character = player.character
@@ -33,7 +42,6 @@ local function set_requests(player, pdata)
     local trash_above_requested = settings.trash_above_requested
     local requests_paused = settings.pause_requests
     local contents = settings.trash_unrequested and player.get_main_inventory().get_contents()
-
     local req
 
     if config_new.max_slot > slot_count then
@@ -68,6 +76,13 @@ local function set_requests(player, pdata)
     end
 
     if contents and not trash_paused then
+        local item_protos = game.item_prototypes
+        for name, _ in pairs(contents) do
+            if trash_blacklist[item_protos[name].type] then
+                contents[name] = nil
+            end
+        end
+
         local c_contents = table_size(contents)
         local n_slot_count = slot_count + c_contents
         if slot_count < config_new.max_slot + c_contents then
