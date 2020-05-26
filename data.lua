@@ -64,29 +64,29 @@ styles["at_request_label_top"] = {
 
 styles["at_button_slot"] = {
     type = "button_style",
-    parent = "CGUI_logistic_slot_button",
+    parent = "slot_button",
 }
 
 styles["at_button_slot_selected"] = {
     type = "button_style",
-    parent = "CGUI_selected_logistic_slot_button",
+    parent = "yellow_slot_button",
 }
 
 styles["at_button_slot_items_on_the_way"] = {
     type = "button_style",
-    parent = "CGUI_yellow_logistic_slot_button",
+    parent = "yellow_slot_button",
     --default_graphical_set = yellowbuttongraphicalset(),
 }
 
 styles["at_button_slot_items_not_available"] = {
     type = "button_style",
-    parent = "CGUI_red_logistic_slot_button",
+    parent = "red_slot_button",
     --default_graphical_set = redbuttongraphicalset(),
 }
 
 styles["at_button_slot_items_not_enough"] = {
     type = "button_style",
-    parent = "CGUI_blue_slot_button",
+    parent = "blue_slot",
     --default_graphical_set = bluebuttongraphicalset(),
 }
 
@@ -131,7 +131,7 @@ styles["at_preset_button_selected"] = {
 
 styles["at_delete_preset"] = {
     type = "button_style",
-    parent = "red_icon_button",
+    parent = "tool_button_red",
     padding = 0
 }
 

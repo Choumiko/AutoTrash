@@ -1299,7 +1299,7 @@ function GUI.open_config_frame(player, pdata)
 
     slider_vertical_flow.add{
         type = "label",
-        caption = {"gui-logistic.title-request-short"}
+        caption = {"auto-trash-request"}
     }
     local slider_flow_request = slider_vertical_flow.add{
         type = "flow",
