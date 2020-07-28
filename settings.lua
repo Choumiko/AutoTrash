@@ -69,7 +69,7 @@ data:extend({
         type = "int-setting",
         name = prefix .. "gui_columns",
         setting_type = "runtime-per-user",
-        default_value = 6,
+        default_value = 10,
         minimum_value = 1,
         order = "v"
     },

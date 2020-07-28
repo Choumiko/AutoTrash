@@ -586,6 +586,10 @@ local gui_functions = {
             return
         end
         local ents, icons = presets.export(pdata.config_tmp)
+        if table_size(ents) == 0 then
+            player.print("AutoTrash configuration is empty")
+            return
+        end
         stack.set_blueprint_entities(ents)
         stack.blueprint_icons = icons
         if table_size(pdata.selected_presets) == 1 then
@@ -1210,17 +1214,26 @@ end
 function GUI.open_config_frame(player, pdata)
     if not player.character then return end
     hide_yarm(player, pdata)
-    local left = mod_gui.get_frame_flow(player)
+    local left = player.gui.screen --mod_gui.get_frame_flow(player)
     local gui_elements = pdata.gui_elements
     local gui_defines = GUI.defines
     pdata.selected = false
 
-    local frame = left.add{
+    local container = left.add{
         type = "frame",
-        style = "at_logistics_frame",
+        style = "outer_frame_without_shadow",
+        direction = "horizontal"
+    }
+
+    gui_elements.container = container
+    local frame = container.add{
+        type = "frame",
+        --style = "at_logistics_frame",
+        style = "inner_frame_in_outer_frame",
         caption = {"gui-logistic.title"},
         direction = "vertical"
     }
+    frame.drag_target = container
     gui_elements.config_frame = frame
 
     local config_flow_v = frame.add{
@@ -1239,7 +1252,7 @@ function GUI.open_config_frame(player, pdata)
         type = "scroll-pane",
         vertical_scroll_policy = "auto-and-reserve-space"
     }
-    scroll_pane.style.maximal_height = 38 * player.mod_settings["autotrash_gui_max_rows"].value + 6
+    scroll_pane.style.maximal_height = 40 * player.mod_settings["autotrash_gui_max_rows"].value + 9
     gui_elements.config_scroll = scroll_pane
 
     local button_flow = config_flow_h.add{
@@ -1427,7 +1440,13 @@ function GUI.open_config_frame(player, pdata)
                 {type = "set_main_network"}
     )
 
-    GUI.open_presets_frame(left, pdata)
+    GUI.open_presets_frame(container, pdata)
+    if not pdata.gui_location then
+        container.force_auto_center()
+        pdata.gui_location = container.location
+    end
+    container.location = pdata.gui_location or {x = 50, y = 50}
+
 end
 
 function GUI.open_presets_frame(left, pdata)
@@ -1435,13 +1454,31 @@ function GUI.open_presets_frame(left, pdata)
     left = left or gui_elements.config_frame.parent
     local storage_frame = left.add{
         type = "frame",
-        caption = {"auto-trash-storage-frame-title"},
         direction = "vertical"
     }
+
+    local title_flow = storage_frame.add{type = "flow", direction = "horizontal"}
+    title_flow.style.horizontally_stretchable = true
+
+    local title_label = title_flow.add{type = "label", caption = {"auto-trash-storage-frame-title"}, style = "heading_1_label"}
+    title_label.drag_target = left
+
+    local title_pusher = title_flow.add{type = "empty-widget", style = "draggable_space_header"}
+    title_pusher.style.vertically_stretchable = false
+    title_pusher.style.height = 24
+    title_pusher.style.horizontally_stretchable = true
+    title_pusher.drag_target = left
+
+    title_flow.drag_target = left
+    local close_button = title_flow.add{type = "sprite-button", style = "frame_action_button", sprite = "utility/close_white"}
+
+    GUI.register_action(pdata, close_button, {type = "main_button"})
+
+    local inner_frame = storage_frame.add{type = "frame", style = "at_bordered_frame", direction = "vertical"}
     gui_elements.storage_frame = storage_frame
 
 
-    local storage_frame_buttons = storage_frame.add{
+    local storage_frame_buttons = inner_frame.add{
         type = "flow",
         style = "at_storage_frame_button_flow",
         direction = "horizontal",
@@ -1464,7 +1501,7 @@ function GUI.open_presets_frame(left, pdata)
     GUI.register_action(pdata, save_as, {type = "select_textfield"})
     GUI.register_action(pdata, save_button, {type = "save_preset"})
 
-    local storage_scroll = storage_frame.add{
+    local storage_scroll = inner_frame.add{
         type = "scroll-pane",
     }
     storage_scroll.style.maximal_height = math.ceil(38*10+4)
@@ -1501,6 +1538,10 @@ function GUI.close(player, pdata, no_reset)
         elements.slider_flow = nil
         elements.trash_options = nil
         elements.reset_button = nil
+    end
+    if elements.container and elements.container.valid then
+        GUI.deregister_action(elements.container, pdata, true)
+        elements.container = nil
     end
     pdata.selected = false
     if not no_reset and player.mod_settings["autotrash_reset_on_close"].value then

@@ -246,6 +246,13 @@ local function on_configuration_changed(data)
                     pdata.infinite = nil
                 end
             end
+
+            if oldVersion < v'5.2.0' then
+                for i, pdata in pairs(global._pdata) do
+                    GUI.close(game.get_player(i), global._pdata[i])
+                    pdata.gui_location = nil
+                end
+            end
         end
     end
 
@@ -368,6 +375,10 @@ local function on_player_changed_position(event)
     local player = game.get_player(event.player_index)
     if not player.character then return end
     local pdata = global._pdata[event.player_index]
+    --Rocket rush scenario might teleport before AutoTrash gets a chance to init?!
+    if not pdata then
+        init_player(player, true)
+    end
     local current = (pdata.current_network and pdata.current_network.valid) and pdata.current_network.logistic_network
     local maybe_new = get_network_entity(player)
     if maybe_new then
@@ -604,14 +615,23 @@ script.on_event("autotrash_pause_requests", function(e)
     toggle_autotrash_pause_requests(game.get_player(e.player_index))
 end)
 
+script.on_event(defines.events.on_gui_location_changed, function(e)
+    local pdata = global._pdata[e.player_index]
+    if not (e.player_index and pdata) then return end
+    if e.element == pdata.gui_elements.container then
+        pdata.gui_location = e.element.location
+    end
+end)
+
 -- local function gui_name(i)--luacheck: ignore
 --     for name, k in pairs(defines.gui_type) do
 --         if k == i then return name end
 --     end
 -- end
 
--- script.on_event(defines.events.on_gui_closed, function()
---     --log{"","closed ", e.tick, " type: ", gui_name(e.gui_type)}
+-- script.on_event(defines.events.on_gui_closed, function(e)
+--     log{"","closed ", e.tick, " type: ", gui_name(e.gui_type)}
+--     if not e.player_index then return end
 -- end)
 -- script.on_event(defines.events.on_gui_opened, function(e)
 --     local pdata = global._pdata[e.player_index]
