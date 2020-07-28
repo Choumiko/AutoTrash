@@ -1,4 +1,16 @@
 ---------------------------------------------------------------------------------------------------
+Version: 5.2.0
+Date: 28. 07. 2020
+  Changes:
+    - Changed the GUI to be draggable
+    - Changed default number of columns to 10, to match the characters logistics GUI
+    - Added setting to set the trash amount to the requested amount for new items
+    - Removed the "Pause requests on death" setting, since that is now a vanilla feature
+    - Reenable logistic requests after respawning when a death preset is selected
+  Bugfixes:
+    - Fixed crash with the Rocket Rush scenario
+    - Fixed error when exporting an empty configuration
+---------------------------------------------------------------------------------------------------
 Version: 5.1.4
 Date: 26. 05. 2020
   Bugfixes:

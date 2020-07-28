@@ -442,9 +442,12 @@ local gui_functions = {
                 end
                 if not found then
                     pdata.selected = params.slot
+                    local request_amount = item_prototype(elem_value).default_request_amount
+                    local trash_amount = player.mod_settings["autotrash_trash_equals_requests"].value and request_amount or false
+
                     config_tmp.config[params.slot] = {
-                        name = elem_value, request = item_prototype(elem_value).default_request_amount,
-                        trash = false, slot = params.slot
+                        name = elem_value, request = request_amount,
+                        trash = trash_amount, slot = params.slot
                     }
                     config_tmp.max_slot = params.slot > config_tmp.max_slot and params.slot or config_tmp.max_slot
                     if config_tmp.config[params.slot].request > 0 then

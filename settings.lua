@@ -14,9 +14,9 @@ data:extend({
 data:extend({
     {
         type = "bool-setting",
-        name = prefix .. "pause_on_death",
+        name = prefix .. "trash_equals_requests",
         setting_type = "runtime-per-user",
-        default_value = true,
+        default_value = false,
         order = "a"
     },
     {

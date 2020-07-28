@@ -329,22 +329,25 @@ local function on_player_toggled_map_editor(event)
     end
 end
 
-local function on_pre_player_died(event)
-    local status, err = pcall(function()
-    local player = game.get_player(event.player_index)
-    if player.mod_settings["autotrash_pause_on_death"].value then
-        local pdata = global._pdata[event.player_index]
-        lib_control.pause_requests(player, pdata)
-        GUI.update_status_display(player, pdata)
-        GUI.update_main_button(pdata)
-        GUI.close(player, pdata, true)
-        GUI.close_quick_presets(pdata)
-    end
-    end)
-    if not status then
-        debugDump(err, event.player_index, true)
-    end
-end
+--TODO Display paused icons/checkboxes without clearing the requests?
+-- Vanilla now pauses logistic requests and trash when dying
+
+-- local function on_pre_player_died(event)
+--     local status, err = pcall(function()
+--     local player = game.get_player(event.player_index)
+--     if player.mod_settings["autotrash_pause_on_death"].value then
+--         local pdata = global._pdata[event.player_index]
+--         lib_control.pause_requests(player, pdata)
+--         GUI.update_status_display(player, pdata)
+--         GUI.update_main_button(pdata)
+--         GUI.close(player, pdata, true)
+--         GUI.close_quick_presets(pdata)
+--     end
+--     end)
+--     if not status then
+--         debugDump(err, event.player_index, true)
+--     end
+-- end
 
 local function on_player_respawned(event)
     local status, err = pcall(function()
@@ -360,10 +363,9 @@ local function on_player_respawned(event)
         pdata.config_tmp = tmp
         pdata.config_new = util.table.deepcopy(tmp)
 
-        lib_control.unpause_requests(player, pdata)
+        set_requests(player, pdata)
+        player.character_personal_logistic_requests_enabled = true
         GUI.update_status_display(player, pdata)
-        unpause_trash(player, pdata)
-        GUI.update_main_button(pdata)
     end
     end)
     if not status then
@@ -421,7 +423,6 @@ script.on_event(defines.events.on_player_main_inventory_changed, on_player_main_
 
 script.on_event(defines.events.on_player_toggled_map_editor, on_player_toggled_map_editor)
 script.on_event(defines.events.on_pre_player_removed, on_pre_player_removed)
-script.on_event(defines.events.on_pre_player_died, on_pre_player_died)
 script.on_event(defines.events.on_player_respawned, on_player_respawned)
 script.on_event(defines.events.on_player_changed_position, on_player_changed_position)
 
