@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.1
-Date: ????
+Date: 2020-09-20
   Features:
     - Added buttons to export/import all presets at once
   Bugfixes:
