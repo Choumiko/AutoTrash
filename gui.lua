@@ -881,7 +881,7 @@ function GUI.init(player)
     local main_button = pdata.gui_elements.main_button
     if main_button and main_button.valid then return end
 
-    if player.force.technologies["logistic-robotics"].researched then
+    if player.force.character_logistic_requests then
         local flow = button_flow.add{
             type = "flow",
             name = GUI.defines.main_button_flow,

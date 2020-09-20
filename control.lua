@@ -46,6 +46,7 @@ local default_settings = {
 local function init_global()
     global = global or {}
     global._pdata = global._pdata or {}
+    global.unlocked_by_force = global.unlocked_by_force or {}
 end
 
 local function on_nth_tick(event)--luacheck: ignore
@@ -251,6 +252,18 @@ local function on_configuration_changed(data)
                 for i, pdata in pairs(global._pdata) do
                     GUI.close(game.get_player(i), global._pdata[i])
                     pdata.gui_location = nil
+                end
+            end
+
+            if oldVersion < v'5.2.2' then
+                init_global()
+                for _, force in pairs(game.forces) do
+                    if force.character_logistic_requests then
+                        for _, player in pairs(force.players) do
+                            GUI.init(player)
+                        end
+                        global.unlocked_by_force[force.name] = true
+                    end
                 end
             end
         end
@@ -594,13 +607,13 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, on_runtime_mod_se
 
 local function on_research_finished(event)
     local status, err = pcall(function()
-
-    if event.research.name == "logistic-robotics" then
-        for _, player in pairs(event.research.force.players) do
-            GUI.init(player)
+        local force = event.research.force
+        if not global.unlocked_by_force[force.name] and force.character_logistic_requests then
+            for _, player in pairs(event.research.force.players) do
+                GUI.init(player)
+            end
+            global.unlocked_by_force[force.name] = true
         end
-    end
-
     end)
     if not status then
         debugDump(err, false, true)
