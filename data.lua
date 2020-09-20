@@ -1,50 +1,4 @@
--- data:extend{
---   {
---     type = "item-with-tags",
---     name = "cheesy_item",
---     icon = "__base__/graphics/icons/cut-paste-tool.png",
---     icon_size = 32,
---     flags = {"only-in-cursor", "hidden"},
-
---     stack_size = 1,
---     stackable = false,
---     can_be_mod_opened = false
---   }}
-
 local styles = data.raw["gui-style"].default
-
--- local function yellowbuttongraphicalset()
---     return
---     {
---         border = 1,
---         filename = "__core__/graphics/gui.png",
---         position = {111, 72},
---         size = 36,
---         scale = 1
---     }
--- end
-
--- local function redbuttongraphicalset()
---     return
---     {
---         border = 1,
---         filename = "__core__/graphics/gui.png",
---         position = {111, 36},
---         size = 36,
---         scale = 1
---     }
--- end
-
--- local function bluebuttongraphicalset()
---     return
---     {
---         border = 1,
---         filename = "__core__/graphics/gui.png",
---         position = {221, 36},
---         size = 36,
---         scale = 1
---     }
--- end
 
 styles["at_request_label_bottom"] = {
     type = "label_style",
@@ -228,6 +182,19 @@ styles["at_slider_flow"] = {
 styles["at_slider_table"] = {
     type = "table_style",
     minimal_height = 60
+}
+
+data:extend{
+    {
+        type = "sprite",
+        name = "at_import_string",
+        filename = "__base__/graphics/icons/shortcut-toolbar/mip/import-string-x24-white.png",
+        priority = "extra-high-no-scale",
+        size = 24,
+        scale = 0.5,
+        mipmap_count = 2,
+        flags = {"gui-icon"}
+    }
 }
 
 data:extend{

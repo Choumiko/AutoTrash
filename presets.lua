@@ -113,6 +113,23 @@ function presets.export(preset)
     return bp, {{index = 1, signal = {name = "signal-A", type = "virtual"}},{index = 2, signal = {name = "signal-T", type = "virtual"}},{index = 3, signal = {name = "signal-0", type = "virtual"}}}
 end
 
+function presets.export_all(pdata, inventory)
+    inventory.insert{name = "blueprint-book"}
+    local book = inventory[1]
+    local book_inventory = book.get_inventory(defines.inventory.item_main)
+    local index = 1
+    for name, preset in pairs(pdata.storage_new) do
+        book_inventory.insert{name = "blueprint"}
+        local bp, icons = presets.export(preset)
+        local blueprint = book_inventory[index]
+        blueprint.set_blueprint_entities(bp)
+        blueprint.label = name
+        blueprint.blueprint_icons = icons
+        index = index + 1
+    end
+    return book
+end
+
 --Storing the exported string in the blueprint library preserves it even when mod items have been removed
 --Importing a string with invalid item signals removes the combinator containing the invalid signals.
 function presets.import(preset, icons)

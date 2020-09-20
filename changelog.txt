@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 5.2.1
+Date: ????
+  Features:
+    - Added buttons to export/import all presets at once
+  Bugfixes:
+    - Fixed importing would mess up the item order in the gui
+---------------------------------------------------------------------------------------------------
 Version: 5.2.0
 Date: 28. 07. 2020
   Changes:

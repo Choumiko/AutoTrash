@@ -575,41 +575,52 @@ local gui_functions = {
         end
     end,
 
-    export_config = function(event, pdata)
+    export_config = function(event, pdata, params)
         local player = event.player
-        local stack = player.cursor_stack
-        if not stack then return end
-        if stack.valid_for_read and not (stack.name == "blueprint" and not stack.is_blueprint_setup()) then
-            player.print("Click with an empty cursor or an empty blueprint")
-            return
-        end
-        if not stack.set_stack{name = "blueprint", count = 1} then
-            player.print({"", {"error-while-importing-string"}, " Could not set stack"})
-            log("Error setting stack")
-            return
-        end
-        local ents, icons = presets.export(pdata.config_tmp)
-        if table_size(ents) == 0 then
-            player.print("AutoTrash configuration is empty")
-            return
-        end
-        stack.set_blueprint_entities(ents)
-        stack.blueprint_icons = icons
-        if table_size(pdata.selected_presets) == 1 then
-            stack.label = "AutoTrash_" .. next(pdata.selected_presets)
+        local stack, inventory
+        if params.all then
+            if table_size(pdata.storage_new) == 0 then
+                player.print("AutoTrash presets are empty")
+                return
+            end
+            inventory = game.create_inventory(1)
+            stack = presets.export_all(pdata, inventory)
         else
-            stack.label = "AutoTrash_configuration"
+            if pdata.config_tmp.config and table_size(pdata.config_tmp.config) == 0 then
+                player.print("AutoTrash configuration is empty")
+                return
+            end
+            inventory = game.create_inventory(1)
+            inventory.insert{name = "blueprint"}
+            stack = inventory[1]
+
+            local ents, icons = presets.export(pdata.config_tmp)
+            stack.set_blueprint_entities(ents)
+            stack.blueprint_icons = icons
+            if table_size(pdata.selected_presets) == 1 then
+                stack.label = "AutoTrash_" .. next(pdata.selected_presets)
+            else
+                stack.label = "AutoTrash_configuration"
+            end
         end
         if event.shift then
-            if player.mod_settings["autotrash_open_library"].value then
-                player.opened = defines.gui_type.blueprint_library
+            local cursor_stack = player.cursor_stack
+            if cursor_stack.valid_for_read then
+                player.print("Click with an empty cursor")
+            else
+                if player.mod_settings["autotrash_open_library"].value then
+                    player.opened = defines.gui_type.blueprint_library
+                end
+                cursor_stack.set_stack(stack)
+            end
+            if inventory and inventory.valid then
+                inventory.destroy()
             end
             return
         end
 
         local text = stack.export_stack()
-        stack.clear()--the blueprint we spawned in
-        local gui = player.gui.center
+        local gui = player.gui.screen
         local frame = gui.add{type = "frame", caption = {"gui.export-to-string"}, direction = "vertical"}
         local textfield = frame.add{type = "text-box"}
         textfield.word_wrap = true
@@ -617,45 +628,74 @@ local gui_functions = {
         textfield.style.height = player.display_resolution.height * 0.3 / player.display_scale
         textfield.style.width = player.display_resolution.width * 0.3 / player.display_scale
         textfield.text = text
-        textfield.select_all()
-        textfield.focus()
         local flow = frame.add{type = "flow", direction = "horizontal"}
         flow.style.horizontally_stretchable = true
         local pusher = flow.add{type = "flow"}
         pusher.style.horizontally_stretchable = true
+        textfield.select_all()
+        textfield.focus()
+        frame.force_auto_center()
         GUI.register_action(
             pdata,
             flow.add{type = "button", caption = {"gui.close"}, style = "dialog_button"},
             {type = "import_export_close", frame = frame}
         )
+        if inventory and inventory.valid then
+            inventory.destroy()
+        end
     end,
 
-    import_config = function(event, pdata)
+    import_config = function(event, pdata, params)
         local player = event.player
         local stack = player.cursor_stack
         if not stack then return end
         local config_tmp, cc_found
-        if stack and stack.valid_for_read and stack.name == "blueprint" and stack.is_blueprint_setup() then
-            config_tmp, cc_found = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
-            if cc_found then
-                pdata.config_tmp = config_tmp
-                player.print({"string-import-successful", "AutoTrash configuration"})
-                pdata.selected = false
-                if stack.label and stack.label ~= "Autotrash_configuration" then
-                    local textfield = pdata.gui_elements.storage_textfield
-                    if textfield and textfield.valid then
-                        textfield.text = string.sub(stack.label, 11)
+        if stack and stack.valid_for_read then
+            if stack.is_blueprint and stack.is_blueprint_setup() then
+                config_tmp, cc_found = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
+                if cc_found then
+                    pdata.config_tmp = config_tmp
+                    player.print({"string-import-successful", "AutoTrash configuration"})
+                    pdata.selected = false
+                    if stack.label and stack.label ~= "Autotrash_configuration" then
+                        local textfield = pdata.gui_elements.storage_textfield
+                        local preset_name = string.sub(stack.label, 11)
+                        if textfield and textfield.valid then
+                            textfield.text = preset_name
+                        end
+                        if params.all then
+                            pdata.storage_new[preset_name] = util.table.deepcopy(config_tmp)
+                            GUI.add_preset(preset_name, pdata)
+                            pdata.selected_presets = {[preset_name] = true}
+                            GUI.update_presets(pdata)
+                        end
+                    end
+                    GUI.update_buttons(player, pdata)
+                    GUI.hide_sliders(pdata)
+                    return
+                else
+                    player.print({"", {"error-while-importing-string"}, " ", {"autotrash_import_error"}})
+                    return
+                end
+            elseif stack.is_blueprint_book and params.all then
+                local book_inventory = stack.get_inventory(defines.inventory.item_main)
+                for i = 1, #book_inventory do
+                    local bp = book_inventory[i]
+                    if bp.valid_for_read then
+                        local config, cc = presets.import(bp.get_blueprint_entities(), bp.blueprint_icons)
+                        if cc then
+                            pdata.storage_new[bp.label] = config
+                            GUI.add_preset(bp.label, pdata)
+                        end
                     end
                 end
+                GUI.update_presets(pdata)
                 GUI.update_buttons(player, pdata)
                 GUI.hide_sliders(pdata)
                 return
-            else
-                player.print({"", {"error-while-importing-string"}, " ", {"autotrash_import_error"}})
-                return
             end
         end
-        local gui = player.gui.center
+        local gui = player.gui.screen
         local frame = gui.add{type = "frame", caption = {"gui-blueprint-library.import-string"}, direction = "vertical"}
         local textfield = frame.add{type = "text-box"}
         textfield.word_wrap = true
@@ -671,6 +711,7 @@ local gui_functions = {
         )
         local pusher = flow.add{type = "flow"}
         pusher.style.horizontally_stretchable = true
+        frame.force_auto_center()
         GUI.register_action(
             pdata,
             flow.add{type = "button", caption = {"gui-blueprint-library.import"}, style = "confirm_button"},
@@ -683,35 +724,49 @@ local gui_functions = {
         local frame, textfield = params.frame, params.textfield
         if not (frame and frame.valid) then return end
         if not (textfield and textfield.valid) then return end
-        local stack = player.cursor_stack
-        if not stack then return end
-        if stack.valid_for_read and not (stack.name == "blueprint" and not stack.is_blueprint_setup()) then
-            player.print("Click with an empty cursor or empty blueprint")
+        local inventory = game.create_inventory(1)
+        inventory.insert{name = "blueprint"}
+        local stack = inventory[1]
+        local result = stack.import_stack(textfield.text)
+        if result ~= 0 then
+            player.print({"failed-to-import-string", "AutoTrash configuration"})
+            inventory.destroy()
             return
         end
-        if not stack.set_stack{name = "blueprint", count = 1} then
-            player.print({"", {"error-while-importing-string"}, " Could not set stack"})
-            GUI.deregister_action(frame, pdata, true)
-            return
-        end
-        stack.import_stack(textfield.text)
-        pdata.selected = false
-        local config_tmp, cc_found = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
-        if cc_found then
-            pdata.config_tmp = config_tmp
-            if stack.label and stack.label ~= "Autotrash_configuration" then
-                textfield = pdata.gui_elements.storage_textfield
-                if textfield and textfield.valid then
-                    textfield.text = string.sub(stack.label, 11)
+        if stack.is_blueprint then
+            pdata.selected = false
+            local config_tmp, cc_found = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
+            if cc_found then
+                pdata.config_tmp = config_tmp
+                if stack.label and stack.label ~= "Autotrash_configuration" then
+                    textfield = pdata.gui_elements.storage_textfield
+                    if textfield and textfield.valid then
+                        textfield.text = string.sub(stack.label, 11)
+                    end
+                end
+                player.print({"string-import-successful", "AutoTrash configuration"})
+                GUI.update_buttons(player, pdata)
+                GUI.hide_sliders(pdata)
+            else
+                player.print({"", {"error-while-importing-string"}, " ", {"autotrash_import_error"}})
+            end
+        elseif stack.is_blueprint_book then
+            local book_inventory = stack.get_inventory(defines.inventory.item_main)
+            for i = 1, #book_inventory do
+                local bp = book_inventory[i]
+                if bp.valid_for_read then
+                    local config, cc_found = presets.import(bp.get_blueprint_entities(), bp.blueprint_icons)
+                    if cc_found then
+                        pdata.storage_new[bp.label] = config
+                        GUI.add_preset(bp.label, pdata)
+                    end
                 end
             end
-            player.print({"string-import-successful", "AutoTrash configuration"})
+            GUI.update_presets(pdata)
             GUI.update_buttons(player, pdata)
             GUI.hide_sliders(pdata)
-        else
-            player.print({"", {"error-while-importing-string"}, " ", {"autotrash_import_error"}})
         end
-        stack.clear()--the blueprint we spawned in
+        inventory.destroy()
         GUI.deregister_action(frame, pdata, true)
     end,
 
@@ -1457,7 +1512,7 @@ function GUI.open_presets_frame(left, pdata)
     left = left or gui_elements.config_frame.parent
     local storage_frame = left.add{
         type = "frame",
-        direction = "vertical"
+        direction = "vertical",
     }
 
     local title_flow = storage_frame.add{type = "flow", direction = "horizontal"}
@@ -1473,8 +1528,13 @@ function GUI.open_presets_frame(left, pdata)
     title_pusher.drag_target = left
 
     title_flow.drag_target = left
+    local import_button = title_flow.add{type = "sprite-button", style = "frame_action_button", sprite = "at_import_string",
+        tooltip = {"", {"autotrash_import_tt"}, "\n[color=red][font=default-bold]", {"autotrash_import_extended"}, "[/font][/color]"}}
+    local export_button = title_flow.add{type = "sprite-button", style = "frame_action_button", sprite = "utility/export_slot", tooltip = {"autotrash_export_tt"}}
     local close_button = title_flow.add{type = "sprite-button", style = "frame_action_button", sprite = "utility/close_white"}
 
+    GUI.register_action(pdata, import_button, {type = "import_config", all = true})
+    GUI.register_action(pdata, export_button, {type = "export_config", all = true})
     GUI.register_action(pdata, close_button, {type = "main_button"})
 
     local inner_frame = storage_frame.add{type = "frame", style = "at_bordered_frame", direction = "vertical"}
@@ -1583,10 +1643,11 @@ end
 function GUI.add_preset(preset_name, pdata)
     local storage_grid = pdata.gui_elements.storage_grid
     if not (storage_grid and storage_grid.valid) then return end
-
+    if storage_grid[preset_name] then return end
     local preset_flow = storage_grid.add{
         type = "flow",
-        direction = "horizontal"
+        direction = "horizontal",
+        name = preset_name
     }
 
     local preset = preset_flow.add{
