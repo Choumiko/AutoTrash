@@ -124,15 +124,15 @@ function presets.import(preset, icons)
     if icons then
         --log_blueprint_entities(preset)
         for _, cc in pairs(preset) do
-            index_offset = cc.position.x * item_slot_count
+            index_offset = (cc.position.x - 0.5) * item_slot_count
             if cc.name == "constant-combinator" and cc.control_behavior then
                 cc_found = true
-                for i, item_config in pairs(cc.control_behavior.filters) do
+                for _, item_config in pairs(cc.control_behavior.filters) do
                     index = index_offset + item_config.index
                     if not config[index] then
                         config[index] = {name = item_config.signal.name, slot = index, trash = false, request = 0}
                     end
-                    if cc.position.y == 0 then
+                    if (cc.position.y - 0.5) == 0 then
                         config[index].request = item_config.count
                     else
                         config[index].trash = item_config.count
