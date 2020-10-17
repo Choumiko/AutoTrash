@@ -2,9 +2,8 @@ local lib_control = require '__AutoTrash__/lib_control'
 
 local debugDump = lib_control.debugDump
 
-local function cleanup_table(tbl, tbl_name)--luacheck: ignore
+local function cleanup_table(tbl)
     if tbl then
---        log("Cleaning " .. tostring(tbl_name) or "table")
         local r = 0
         for i, p in pairs(tbl) do
             if p and not p.name or (p.name and p.name == "") then

@@ -33,7 +33,7 @@ local function hide_yarm(player, pdata)
     end
 end
 
-local GUI = {--luacheck: allow defined top
+local GUI = {
     defines = {
         main_button = "at_config_button",
         main_button_flow = "autotrash_main_flow",
@@ -1190,7 +1190,7 @@ function GUI.update_status_display(player, pdata)
     local c = 0
     local max_count = player.mod_settings["autotrash_status_count"].value
     local character = player.character
-    local get_request_slot = character.get_request_slot--luacheck: ignore
+    local get_request_slot = character.get_request_slot
     local item, diff, button
     --TODO: looping over config_new is slightly faster, but may be out of sync with the actual requests
     -- for i, item in pairs(config_tmp) do--luacheck: ignore
