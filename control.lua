@@ -1,5 +1,9 @@
 require "__core__/lualib/util"
 local mod_gui = require '__core__/lualib/mod-gui'
+local event = require("__flib__.event")
+local gui = require("__flib__.gui")
+local migration = require("__flib__.migration")
+
 
 local v = require '__AutoTrash__/semver'
 local conversion = require "__AutoTrash__/migration"
@@ -90,19 +94,19 @@ local function on_player_trash_inventory_changed(event)
     if changed then
         player.auto_trash_filters = trash_filters
         if not check_temporary_trash() then
-            script.on_event(defines.events.on_player_trash_inventory_changed, nil)
+            event.on_player_trash_inventory_changed(nil)
         end
     end
 end
 
 local function register_conditional_events()
     if check_temporary_trash() then
-       script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
+        event.on_player_trash_inventory_changed(on_player_trash_inventory_changed)
     else
-        script.on_event(defines.events.on_player_trash_inventory_changed, nil)
+        event.on_player_trash_inventory_changed(nil)
     end
-    script.on_nth_tick(nil)
-    script.on_nth_tick(settings.global["autotrash_update_rate"].value + 1, on_nth_tick)
+    event.on_nth_tick(nil)
+    event.on_nth_tick(settings.global["autotrash_update_rate"].value + 1, on_nth_tick)
 end
 
 local function init_player(player, init_gui)
@@ -322,7 +326,7 @@ local function add_to_trash(player, item)
         player.auto_trash_filters = trash_filters
     end
     if check_temporary_trash() then
-        script.on_event(defines.events.on_player_trash_inventory_changed, on_player_trash_inventory_changed)
+        event.on_player_trash_inventory_changed(on_player_trash_inventory_changed)
     end
     player.print({"", "Added ", item_prototype(item).localised_name, " to temporary trash"})
 end
@@ -408,16 +412,16 @@ local function on_player_changed_position(event)
     end
 end
 
-script.on_init(on_init)
-script.on_load(on_load)
-script.on_configuration_changed(on_configuration_changed)
-script.on_event(defines.events.on_player_created, on_player_created)
-script.on_event(defines.events.on_player_main_inventory_changed, on_player_main_inventory_changed)
+event.on_init(on_init)
+event.on_load(on_load)
+event.on_configuration_changed(on_configuration_changed)
+event.on_player_created(on_player_created)
+event.on_player_main_inventory_changed(on_player_main_inventory_changed)
 
-script.on_event(defines.events.on_player_toggled_map_editor, on_player_toggled_map_editor)
-script.on_event(defines.events.on_pre_player_removed, on_pre_player_removed)
-script.on_event(defines.events.on_player_respawned, on_player_respawned)
-script.on_event(defines.events.on_player_changed_position, on_player_changed_position)
+event.on_player_toggled_map_editor(on_player_toggled_map_editor)
+event.on_pre_player_removed(on_pre_player_removed)
+event.on_player_respawned(on_player_respawned)
+event.on_player_changed_position(on_player_changed_position)
 
 local function update_network(entity, player_index, pdata, main)
     local newEntity = false
@@ -470,11 +474,10 @@ local function on_script_raised_destroy(event)
 end
 
 local robofilter = {{filter = "type", type = "roboport"}}
-script.on_event(defines.events.on_pre_player_mined_item, on_pre_mined_item, robofilter)
-script.on_event(defines.events.on_robot_pre_mined, on_pre_mined_item, robofilter)
-script.on_event(defines.events.on_entity_died, on_pre_mined_item, robofilter)
-
-script.on_event(defines.events.script_raised_destroy, on_script_raised_destroy)
+event.on_pre_player_mined_item(on_pre_mined_item, robofilter)
+event.on_robot_pre_mined(on_pre_mined_item, robofilter)
+event.on_entity_died(on_pre_mined_item, robofilter)
+event.script_raised_destroy(on_script_raised_destroy, robofilter)
 
 --[[
 Temporary requests:
@@ -570,14 +573,14 @@ local function on_runtime_mod_setting_changed(event)
     end
 end
 
-script.on_event(defines.events.on_gui_click, GUI.generic_event)
-script.on_event(defines.events.on_gui_checked_state_changed, GUI.generic_event)
-script.on_event(defines.events.on_gui_elem_changed, GUI.generic_event)
-script.on_event(defines.events.on_gui_value_changed, GUI.generic_event)
-script.on_event(defines.events.on_gui_text_changed, GUI.generic_event)
-script.on_event(defines.events.on_gui_selection_state_changed, GUI.generic_event)
+event.on_gui_click(GUI.generic_event)
+event.on_gui_checked_state_changed(GUI.generic_event)
+event.on_gui_elem_changed(GUI.generic_event)
+event.on_gui_value_changed(GUI.generic_event)
+event.on_gui_text_changed(GUI.generic_event)
+event.on_gui_selection_state_changed(GUI.generic_event)
 
-script.on_event(defines.events.on_runtime_mod_setting_changed, on_runtime_mod_setting_changed)
+event.on_runtime_mod_setting_changed(on_runtime_mod_setting_changed)
 
 local function on_research_finished(event)
     local status, err = pcall(function()
@@ -593,17 +596,17 @@ local function on_research_finished(event)
         debugDump(err, false, true)
     end
 end
-script.on_event(defines.events.on_research_finished, on_research_finished)
+event.on_research_finished(on_research_finished)
 
-script.on_event("autotrash_pause", function(e)
+event.register("autotrash_pause", function(e)
     toggle_autotrash_pause(game.get_player(e.player_index))
 end)
 
-script.on_event("autotrash_pause_requests", function(e)
+event.register("autotrash_pause_requests", function(e)
     toggle_autotrash_pause_requests(game.get_player(e.player_index))
 end)
 
-script.on_event(defines.events.on_gui_location_changed, function(e)
+event.on_gui_location_changed(function(e)
     local pdata = global._pdata[e.player_index]
     if not (e.player_index and pdata) then return end
     if e.element == pdata.gui_elements.container then
@@ -627,7 +630,7 @@ local function autotrash_trash_cursor(event)
         debugDump(err, event.player_index, true)
     end
 end
-script.on_event("autotrash_trash_cursor", autotrash_trash_cursor)
+event.register("autotrash_trash_cursor", autotrash_trash_cursor)
 
 local at_commands = {
     reload = function()

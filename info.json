@@ -6,7 +6,7 @@
   "author": "Choumiko",
   "homepage": "https://forums.factorio.com/viewtopic.php?f=97&t=16016",
   "description": "Allows saving of different logistic request setups\nCan enable autotrash only in a certain logistics network\nKeeps your inventory clean of certain items",
-  "dependencies": [],
+  "dependencies": ["flib >= 0.4.0"],
   "package":{
     "scripts": {
         "prepackage": "luacheck . --config '../.luacheckrc'"
