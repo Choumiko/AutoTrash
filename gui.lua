@@ -608,9 +608,9 @@ local gui_functions = {
             if cursor_stack.valid_for_read then
                 player.print("Click with an empty cursor")
             else
-                if player.mod_settings["autotrash_open_library"].value then
-                    player.opened = defines.gui_type.blueprint_library
-                end
+                -- if player.mod_settings["autotrash_open_library"].value then
+                --     player.opened = defines.gui_type.blueprint_library
+                -- end
                 cursor_stack.set_stack(stack)
             end
             if inventory and inventory.valid then
