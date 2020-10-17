@@ -1,12 +1,13 @@
 require "__core__/lualib/util"
-local mod_gui = require '__core__/lualib/mod-gui'
+
 local event = require("__flib__.event")
 local gui = require("__flib__.gui")
 local migration = require("__flib__.migration")
 
 
-local v = require '__AutoTrash__/semver'
-local conversion = require "__AutoTrash__/migration"
+local global_data = require("scripts.global-data")
+local player_data = require("scripts.player-data")
+local migrations = require("scripts.migrations")
 
 local lib_control = require '__AutoTrash__/lib_control'
 local GUI = require "__AutoTrash__/gui"
@@ -37,20 +38,6 @@ local function requested_items(player)
         end
     end
     return requests
-end
-
-local default_settings = {
-    trash_above_requested = false,
-    trash_unrequested = false,
-    trash_network = false,
-    pause_trash = false,
-    pause_requests = false,
-}
-
-local function init_global()
-    global = global or {}
-    global._pdata = global._pdata or {}
-    global.unlocked_by_force = global.unlocked_by_force or {}
 end
 
 local function on_nth_tick()
@@ -109,48 +96,20 @@ local function register_conditional_events()
     event.on_nth_tick(settings.global["autotrash_update_rate"].value + 1, on_nth_tick)
 end
 
-local function init_player(player, init_gui)
-    local pdata = global._pdata[player.index] or {}
-    global._pdata[player.index] = {
-            config_new = pdata.config_new or {config = {}, c_requests = 0, max_slot = 0},
-            config_tmp = pdata.config_tmp or {config = {}, c_requests = 0, max_slot = 0},
-            selected = pdata.selected or false,
-
-            main_network = pdata.main_network or false,
-            current_network = pdata.current_network or nil,
-            storage_new = pdata.storage_new or {},
-            temporary_requests = pdata.temporary_requests or {},
-            temporary_trash = pdata.temporary_trash or {},
-            settings = pdata.settings or util.table.deepcopy(default_settings),
-            dirty = pdata.dirty or false,
-            selected_presets = pdata.selected_presets or {},
-            death_presets = pdata.death_presets or {},
-
-            gui_actions = pdata.gui_actions or {},
-            gui_elements = pdata.gui_elements or {},
-        }
-    if init_gui then
-        GUI.init(player)
-    end
-    register_conditional_events()
-end
-
-local function init_players(resetGui, init_gui)
-    for i, player in pairs(game.players) do
-        if resetGui then
-            GUI.delete(global._pdata[i])
-        end
-        init_player(player, init_gui)
-    end
-end
-
 local function on_load()
     register_conditional_events()
+    gui.build_lookup_tables()
 end
 
 local function on_init()
-    init_global()
-    on_load()
+    gui.init()
+
+    global_data.init()
+    for i in pairs(game.players) do
+        player_data.init(i)
+    end
+    register_conditional_events()
+    gui.build_lookup_tables()
 end
 
 local function on_pre_player_removed(event)
@@ -184,99 +143,97 @@ local function remove_invalid_items(pdata, tbl, unselect)
     end
 end
 
-local function on_configuration_changed(data)
-    --log(serpent.block(data))
-    if not data then return end
-    if data.mod_changes and data.mod_changes.AutoTrash then
-        local newVersion = data.mod_changes.AutoTrash.new_version
-        newVersion = v(newVersion)
-        local oldVersion = data.mod_changes.AutoTrash.old_version
-        if not oldVersion then
-            init_global()
-            for player_index, player in pairs(game.players) do
-                init_player(player, true)
-                if player.character and player.force.technologies["logistic-robotics"].researched then
-                    local pdata = global._pdata[player_index]
-                    local status, err = pcall(function()
-                        GUI.close(player, pdata)
-                        pdata.config_tmp = lib_control.combine_from_vanilla(player)
-                        if next(pdata.config_tmp.config) then
-                            pdata.storage_new["at_imported"] = util.table.deepcopy(pdata.config_tmp)
-                            pdata.selected_presets = {at_imported = true}
-                            GUI.open_config_frame(player, pdata)
-                            GUI.mark_dirty(pdata, true)
-                        end
-                    end)
-                    if not status then
-                        GUI.close(player, pdata)
-                        pdata.config_tmp = nil
-                        pdata.storage_new["at_imported"] = nil
-                        pdata.selected_presets = {}
-                        init_player(player)
-                        debugDump(err, player_index, true)
-                    end
+local migrations = {
+    -- ["4.1.11"] = function()
+    --     log("Foo")
+    -- end,
+    -- ["4.1.12"] = function()
+    --     log("Foo")
+    -- end,
+    ["4.1.2"] = function()
+        log("Resetting all AutoTrash settings")
+        global = {}
+        global_data.init()
+        for player_index in pairs(game.players) do
+            player_data.init(player_index)
+        end
+    end,
+    ["5.1.0"] = function()
+        for _, pdata in pairs(global._pdata) do
+            pdata.infinite = nil
+        end
+    end,
+    ["5.2.0"] = function()
+        for i, pdata in pairs(global._pdata) do
+            GUI.close(game.get_player(i), global._pdata[i])
+            pdata.gui_location = nil
+        end
+    end,
+    ["5.2.2"] = function()
+        global.unlocked_by_force = {}
+        for _, force in pairs(game.forces) do
+            if force.character_logistic_requests then
+                for _, player in pairs(force.players) do
+                    GUI.init(player)
                 end
+                global.unlocked_by_force[force.name] = true
             end
         end
-        oldVersion = oldVersion and v(oldVersion)
-        log("Updating AutoTrash from " .. tostring(oldVersion) .. " to " .. tostring(newVersion))
-        if oldVersion then
-            if oldVersion < v'3.0.0' then
-                log("Resetting all AutoTrash settings")
-                global = nil
-                init_global()
-                init_players(false, true)
-            end
+    end,
+    ["5.2.3"] = function()
+        gui.init()
+        gui.build_lookup_tables()
+    end,
+}
 
-            if oldVersion >= v'3.0.0' and oldVersion < v'4.1.0' then
-                conversion.to_4_1_2(GUI, init_global, init_player, register_conditional_events)
+local function on_configuration_changed(data)
+    for pi in pairs(game.players) do
+        local pdata = global._pdata[pi]
+        if pdata then
+            if pdata.config_new and pdata.config_tmp then
+                remove_invalid_items(pdata, pdata.config_new)
+                remove_invalid_items(pdata, pdata.config_tmp, true)
             end
-
-            if oldVersion < v'4.1.11' then
-                local player
-                for i, pdata in pairs(global._pdata) do
-                    player = game.get_player(i)
-                    pdata.current_network = get_network_entity(player)
-                    if pdata.main_network and (not pdata.main_network.valid or pdata.main_network.type == "character") then
-                        pdata.main_network = nil
-                        player.print("Autotrash main network has been unset")
-                    end
-                end
-            end
-
-            if oldVersion < v'5.1.0' then
-                for _, pdata in pairs(global._pdata) do
-                    pdata.infinite = nil
-                end
-            end
-
-            if oldVersion < v'5.2.0' then
-                for i, pdata in pairs(global._pdata) do
-                    GUI.close(game.get_player(i), global._pdata[i])
-                    pdata.gui_location = nil
-                end
-            end
-
-            if oldVersion < v'5.2.2' then
-                init_global()
-                for _, force in pairs(game.forces) do
-                    if force.character_logistic_requests then
-                        for _, player in pairs(force.players) do
-                            GUI.init(player)
-                        end
-                        global.unlocked_by_force[force.name] = true
-                    end
+            if pdata.storage_new then
+                for _, stored in pairs(pdata.storage_new) do
+                    remove_invalid_items(pdata, stored)
                 end
             end
         end
     end
 
-    init_global()
-    init_players()
-    on_load()
-    local pdata
+    if migration.on_config_changed(data, migrations) then
+        gui.check_filter_validity()
+    else
+        for player_index, player in pairs(game.players) do
+            player_data.init(player_index)
+            if player.character and player.force.technologies["logistic-robotics"].researched then
+                local pdata = global._pdata[player_index]
+                local status, err = pcall(function()
+                    GUI.close(player, pdata)
+                    pdata.config_tmp = lib_control.combine_from_vanilla(player)
+                    if next(pdata.config_tmp.config) then
+                        pdata.storage_new["at_imported"] = util.table.deepcopy(pdata.config_tmp)
+                        pdata.selected_presets = {at_imported = true}
+                        GUI.open_config_frame(player, pdata)
+                        GUI.mark_dirty(pdata, true)
+                    end
+                end)
+                if not status then
+                    GUI.close(player, pdata)
+                    pdata.config_tmp = nil
+                    pdata.storage_new["at_imported"] = nil
+                    pdata.selected_presets = {}
+                    player_data.init(player_index)
+                    debugDump(err, player_index, true)
+                end
+            end
+        end
+    end
+
+    register_conditional_events()
     for pi, player in pairs(game.players) do
-        pdata = global._pdata[pi]
+        local pdata = global._pdata[pi]
         remove_invalid_items(pdata, pdata.config_new)
         remove_invalid_items(pdata, pdata.config_tmp, true)
         for _, stored in pairs(pdata.storage_new) do
@@ -289,7 +246,7 @@ local function on_configuration_changed(data)
 end
 
 local function on_player_created(event)
-    init_player(game.get_player(event.player_index), true)
+    player_data.init(event.player_index)
 end
 
 local trash_blacklist = {
@@ -377,7 +334,7 @@ local function on_player_changed_position(event)
     local pdata = global._pdata[event.player_index]
     --Rocket rush scenario might teleport before AutoTrash gets a chance to init?!
     if not pdata then
-        init_player(player, true)
+        player_data.init(event.player_index)
     end
     local current = (pdata.current_network and pdata.current_network.valid) and pdata.current_network.logistic_network
     local maybe_new = get_network_entity(player)
@@ -633,18 +590,17 @@ end
 event.register("autotrash_trash_cursor", autotrash_trash_cursor)
 
 local at_commands = {
-    reload = function()
-        game.reload_mods()
+    -- reload = function()
+    --     game.reload_mods()
 
-        local button_flow = mod_gui.get_button_flow(game.player)[GUI.defines.main_button]
-        if button_flow and button_flow.valid then
-            GUI.deregister_action(button_flow, global._pdata[game.player.index], true)
-        end
+    --     local button_flow = mod_gui.get_button_flow(game.player)[GUI.defines.main_button]
+    --     if button_flow and button_flow.valid then
+    --         GUI.deregister_action(button_flow, global._pdata[game.player.index], true)
+    --     end
 
-        init_global()
-        init_players(false, true)
-        game.player.print("Mods reloaded")
-    end,
+    --     init_global()
+    --     game.player.print("Mods reloaded")
+    -- end,
 
     hide = function(args)
         local button = global._pdata[args.player_index].gui_elements.main_button
@@ -673,7 +629,7 @@ local at_commands = {
         if not status then
             GUI.close(player, pdata)
             pdata.config_tmp = nil
-            init_player(player, true)
+            player_data.init(player_index)
             debugDump(err, player_index, true)
         end
     end
@@ -681,11 +637,6 @@ local at_commands = {
 
 local comms = commands.commands
 
-if not comms.reload_mods then
-    commands.add_command("reload_mods", "", at_commands.reload)
-else
-    commands.add_command("autotrash_reload_mods", "", at_commands.reload)
-end
 local command_prefix = "at_"
 if comms.at_hide or comms.at_show then
     command_prefix = "autotrash_"
