@@ -49,7 +49,7 @@ local function init_global()
     global.unlocked_by_force = global.unlocked_by_force or {}
 end
 
-local function on_nth_tick(event)--luacheck: ignore
+local function on_nth_tick()
     local pdata
     for i, p in pairs(game.players) do
         if p.character then
@@ -129,7 +129,6 @@ local function init_player(player, init_gui)
         GUI.init(player)
     end
     register_conditional_events()
-    --saveVar(global, "post_init")
 end
 
 local function init_players(resetGui, init_gui)
@@ -227,7 +226,6 @@ local function on_configuration_changed(data)
 
             if oldVersion >= v'3.0.0' and oldVersion < v'4.1.0' then
                 conversion.to_4_1_2(GUI, init_global, init_player, register_conditional_events)
-                --saveVar(global, "storage_post")
             end
 
             if oldVersion < v'4.1.11' then
@@ -243,7 +241,7 @@ local function on_configuration_changed(data)
             end
 
             if oldVersion < v'5.1.0' then
-                for i, pdata in pairs(global._pdata) do
+                for _, pdata in pairs(global._pdata) do
                     pdata.infinite = nil
                 end
             end
@@ -301,7 +299,7 @@ local trash_blacklist = {
 
 --that's a bad event to handle unrequested, since adding stuff to the trash filters immediately triggers the next on_main_inventory_changed event
 -- on_nth_tick might work better or only registering when some player has trash_unrequested set to true
-local function on_player_main_inventory_changed(event) --luacheck: ignore
+local function on_player_main_inventory_changed(event)
     local player = game.get_player(event.player_index)
     if not (player.character) then return end
     local pdata = global._pdata[event.player_index]
@@ -345,23 +343,6 @@ end
 --TODO Display paused icons/checkboxes without clearing the requests?
 -- Vanilla now pauses logistic requests and trash when dying
 
--- local function on_pre_player_died(event)
---     local status, err = pcall(function()
---     local player = game.get_player(event.player_index)
---     if player.mod_settings["autotrash_pause_on_death"].value then
---         local pdata = global._pdata[event.player_index]
---         lib_control.pause_requests(player, pdata)
---         GUI.update_status_display(player, pdata)
---         GUI.update_main_button(pdata)
---         GUI.close(player, pdata, true)
---         GUI.close_quick_presets(pdata)
---     end
---     end)
---     if not status then
---         debugDump(err, event.player_index, true)
---     end
--- end
-
 local function on_player_respawned(event)
     local status, err = pcall(function()
     local pdata = global._pdata[event.player_index]
@@ -400,7 +381,6 @@ local function on_player_changed_position(event)
         maybe_new = maybe_new.logistic_network
     end
     if maybe_new ~= current then
-        --log("Network changed")
         GUI.update_button_styles(player, pdata)
         pdata.current_network = get_network_entity(player)
     end
@@ -575,12 +555,6 @@ local function on_runtime_mod_setting_changed(event)
             GUI.close_quick_presets(pdata)
         end
     end
-    -- if event.setting == "autotrash_threshold" then
-    --     local settings = pdata.settings
-    --     if not settings.pause_trash and settings.trash_above_requested then
-    --         lib_control.set_requests(player, pdata)
-    --     end
-    -- end
     if event.setting == "autotrash_status_count" then
         GUI.update_status_display(player, pdata)
     end
@@ -636,37 +610,6 @@ script.on_event(defines.events.on_gui_location_changed, function(e)
         pdata.gui_location = e.element.location
     end
 end)
-
--- local function gui_name(i)--luacheck: ignore
---     for name, k in pairs(defines.gui_type) do
---         if k == i then return name end
---     end
--- end
-
--- script.on_event(defines.events.on_gui_closed, function(e)
---     log{"","closed ", e.tick, " type: ", gui_name(e.gui_type)}
---     if not e.player_index then return end
--- end)
--- script.on_event(defines.events.on_gui_opened, function(e)
---     local pdata = global._pdata[e.player_index]
---     if pdata.close_self then
---         local player = game.get_player(e.player_index)
---         --log{"","opened ", e.tick, " self: ", tostring(player.opened_self), " opened: ", tostring(player.opened), " type: ", gui_name(player.opened_gui_type)}
---         player.opened = defines.gui_type.none
---         pdata.close_self = nil
---     end
--- end)
-
--- script.on_event("autotrash_close_gui", function(e)
---     local player = game.get_player(e.player_index)
---     --log{"","custom ", e.tick, " self: ", tostring(player.opened_self), " opened: ", tostring(player.opened), " type: ", gui_name(player.opened_gui_type)}
---     local pdata = global._pdata[e.player_index]
---     if not (pdata.gui_elements.config_frame and pdata.gui_elements.config_frame.valid) then return end
---     if not (player.opened or player.opened_self) then
---         GUI.close(player, pdata)
---         pdata.close_self = true
---     end
--- end)
 
 local function autotrash_trash_cursor(event)
     local status, err = pcall(function()
