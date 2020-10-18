@@ -8,6 +8,7 @@ local migration = require("__flib__.migration")
 local global_data = require("scripts.global-data")
 local player_data = require("scripts.player-data")
 local migrations = require("scripts.migrations")
+local at_gui = require("scripts.gui")
 
 local lib_control = require '__AutoTrash__/lib_control'
 local GUI = require "__AutoTrash__/gui"
@@ -45,8 +46,8 @@ local function on_nth_tick()
     for i, p in pairs(game.players) do
         if p.character then
             pdata = global._pdata[i]
-            GUI.update_button_styles(p, pdata)
-            GUI.update_status_display(p, pdata)
+            -- GUI.update_button_styles(p, pdata)
+            -- GUI.update_status_display(p, pdata)
         end
     end
 end
@@ -144,12 +145,6 @@ local function remove_invalid_items(pdata, tbl, unselect)
 end
 
 local migrations = {
-    -- ["4.1.11"] = function()
-    --     log("Foo")
-    -- end,
-    -- ["4.1.12"] = function()
-    --     log("Foo")
-    -- end,
     ["4.1.2"] = function()
         log("Resetting all AutoTrash settings")
         global = {}
@@ -163,26 +158,61 @@ local migrations = {
             pdata.infinite = nil
         end
     end,
-    ["5.2.0"] = function()
-        for i, pdata in pairs(global._pdata) do
-            GUI.close(game.get_player(i), global._pdata[i])
-            pdata.gui_location = nil
-        end
-    end,
     ["5.2.2"] = function()
         global.unlocked_by_force = {}
+    end,
+    ["5.2.3"] = function()
+        for player_index, player in pairs(game.players) do
+            local pdata = global._pdata[player_index]
+            local psettings = pdata.settings
+            global._pdata[player_index].flags = {
+                gui_open = false,
+                trash_above_requested = psettings.trash_above_requested or false,
+                trash_unrequested = psettings.trash_unrequested or false,
+                trash_network = psettings.trash_network or false,
+                pause_trash = psettings.pause_trash or false,
+                pause_requests = psettings.pause_requests or false,
+            }
+            player_data.update_settings(player, pdata)
+            if player.gui.left.mod_gui_frame_flow and player.gui.left.mod_gui_frame_flow.valid then
+                for _, egui in pairs(player.gui.left.mod_gui_frame_flow.children) do
+                    if egui.get_mod() == "AutoTrash" then
+                        egui.destroy()
+                    end
+                end
+            end
+                for _, egui in pairs(player.gui.screen.children) do
+                    if egui.get_mod() == "AutoTrash" then
+                        egui.destroy()
+                    end
+                end
+        end
+
+        gui.init()
+        gui.build_lookup_tables()
+        for player_index, pdata in pairs(global._pdata) do
+            for name, element in pairs(pdata.gui_elements) do
+                if element and element.valid then
+                    if name ~= "main_button" then
+                        element.destroy()
+                    else
+                        gui.update_filters("mod_gui_button", player_index, {element.index}, "add")
+                    end
+                end
+            end
+            pdata.gui_actions = nil
+            pdata.gui_elements = nil
+            pdata.gui_location = nil
+        end
+
         for _, force in pairs(game.forces) do
             if force.character_logistic_requests then
                 for _, player in pairs(force.players) do
-                    GUI.init(player)
+                    at_gui.init(player, global._pdata[player.index])
                 end
                 global.unlocked_by_force[force.name] = true
             end
         end
-    end,
-    ["5.2.3"] = function()
-        gui.init()
-        gui.build_lookup_tables()
     end,
 }
 
@@ -239,9 +269,9 @@ local function on_configuration_changed(data)
         for _, stored in pairs(pdata.storage_new) do
             remove_invalid_items(pdata, stored)
         end
-        GUI.init(player)
-        GUI.update_buttons(player, pdata)
-        GUI.update_status_display(player, pdata)
+        -- GUI.init(player)
+        -- GUI.update_buttons(player, pdata)
+        -- GUI.update_status_display(player, pdata)
     end
 end
 
@@ -264,8 +294,8 @@ local function on_player_main_inventory_changed(event)
     local player = game.get_player(event.player_index)
     if not (player.character) then return end
     local pdata = global._pdata[event.player_index]
-    local settings = pdata.settings
-    if settings.pause_trash or not settings.trash_unrequested then return end
+    local flags = pdata.flags
+    if flags.pause_trash or not flags.trash_unrequested then return end
     set_requests(player, pdata)
 end
 
@@ -345,25 +375,25 @@ local function on_player_changed_position(event)
         GUI.update_button_styles(player, pdata)
         pdata.current_network = get_network_entity(player)
     end
-    if not pdata.settings.trash_network then
+    if not pdata.flags.trash_network then
         return
     end
     local is_in_network, invalid = in_network(player, pdata)
     if invalid then
         GUI.update_settings(pdata)
     end
-    local paused = pdata.settings.pause_trash
+    local paused = pdata.flags.pause_trash
     if not is_in_network and not paused then
         pause_trash(player, pdata)
         GUI.update_main_button(pdata)
-        if player.mod_settings["autotrash_display_messages"].value then
+        if pdata.settings.display_messages then
             display_message(player, "AutoTrash paused")
         end
         return
     elseif is_in_network and paused then
         unpause_trash(player, pdata)
         GUI.update_main_button(pdata)
-        if player.mod_settings["autotrash_display_messages"].value then
+        if pdata.settings.display_messages then
             display_message(player, "AutoTrash unpaused")
         end
     end
@@ -462,7 +492,7 @@ end
 local function toggle_autotrash_pause(player)
     local status, err = pcall(function()
     local pdata = global._pdata[player.index]
-    if pdata.settings.pause_trash then
+    if pdata.flags.pause_trash then
         unpause_trash(player, pdata)
     else
         pause_trash(player, pdata)
@@ -478,7 +508,7 @@ end
 local function toggle_autotrash_pause_requests(player)
     local status, err = pcall(function()
     local pdata = global._pdata[player.index]
-    if pdata.settings.pause_requests then
+    if pdata.flags.pause_requests then
         lib_control.unpause_requests(player, pdata)
     else
         lib_control.pause_requests(player, pdata)
@@ -507,9 +537,12 @@ local function on_runtime_mod_setting_changed(event)
     local player = game.get_player(player_index)
     local pdata = global._pdata[player_index]
     if not (player_index and pdata) then return end
+    player_data.update_settings(player, pdata)
     if gui_settings[event.setting] then
         if player.character then
-            GUI.create_buttons(player, pdata)
+            if pdata.flags.gui_open then
+                at_gui.update_buttons(player, pdata, player.character_logistic_slot_count)
+            end
         else
             GUI.close(player, pdata, true)
             GUI.close_quick_presets(pdata)
@@ -530,12 +563,14 @@ local function on_runtime_mod_setting_changed(event)
     end
 end
 
-event.on_gui_click(GUI.generic_event)
-event.on_gui_checked_state_changed(GUI.generic_event)
-event.on_gui_elem_changed(GUI.generic_event)
-event.on_gui_value_changed(GUI.generic_event)
-event.on_gui_text_changed(GUI.generic_event)
-event.on_gui_selection_state_changed(GUI.generic_event)
+gui.register_handlers()
+
+-- event.on_gui_click(GUI.generic_event)
+-- event.on_gui_checked_state_changed(GUI.generic_event)
+-- event.on_gui_elem_changed(GUI.generic_event)
+-- event.on_gui_value_changed(GUI.generic_event)
+-- event.on_gui_text_changed(GUI.generic_event)
+-- event.on_gui_selection_state_changed(GUI.generic_event)
 
 event.on_runtime_mod_setting_changed(on_runtime_mod_setting_changed)
 
@@ -564,11 +599,11 @@ event.register("autotrash_pause_requests", function(e)
 end)
 
 event.on_gui_location_changed(function(e)
-    local pdata = global._pdata[e.player_index]
-    if not (e.player_index and pdata) then return end
-    if e.element == pdata.gui_elements.container then
-        pdata.gui_location = e.element.location
-    end
+    -- local pdata = global._pdata[e.player_index]
+    -- if not (e.player_index and pdata) then return end
+    -- if e.element == pdata.gui_elements.container then
+    --     pdata.gui_location = e.element.location
+    -- end
 end)
 
 local function autotrash_trash_cursor(event)

@@ -32,16 +32,16 @@ end
 local function set_requests(player, pdata)
     local character = player.character
     if not character then return end
-    local settings = pdata.settings
+    local flags = pdata.flags
     local config_new = pdata.config_new
     local storage = config_new.config
     local slot_count = player.character_logistic_slot_count
     local set_request_slot = character.set_personal_logistic_slot
     local clear_request_slot = character.clear_personal_logistic_slot
-    local trash_paused = settings.pause_trash
-    local trash_above_requested = settings.trash_above_requested
-    local requests_paused = settings.pause_requests
-    local contents = settings.trash_unrequested and player.get_main_inventory().get_contents()
+    local trash_paused = flags.pause_trash
+    local trash_above_requested = flags.trash_above_requested
+    local requests_paused = flags.pause_requests
+    local contents = flags.trash_unrequested and player.get_main_inventory().get_contents()
     local req
 
     if config_new.max_slot > slot_count then
@@ -100,25 +100,25 @@ end
 local function pause_requests(player, pdata)
     local character = player.character
     if not character then return end
-    pdata.settings.pause_requests = true
+    pdata.flags.pause_requests = true
     set_requests(player, pdata)
 end
 
 local function unpause_requests(player, pdata)
     if not player.character then return end
-    pdata.settings.pause_requests = false
+    pdata.flags.pause_requests = false
     set_requests(player, pdata)
 end
 
 local function pause_trash(player, pdata)
     if not player.character then return end
-    pdata.settings.pause_trash = true
+    pdata.flags.pause_trash = true
     set_requests(player, pdata)
 end
 
 local function unpause_trash(player, pdata)
     if not player.character then return end
-    pdata.settings.pause_trash = false
+    pdata.flags.pause_trash = false
     set_requests(player, pdata)
 end
 
@@ -143,7 +143,7 @@ local function get_network_entity(player)
 end
 
 local function in_network(player, pdata)
-    if not pdata.settings.trash_network then
+    if not pdata.flags.trash_network then
         return true
     end
     local currentNetwork = get_non_equipment_network(player)
