@@ -184,6 +184,46 @@ styles["at_slider_table"] = {
     minimal_height = 60
 }
 
+styles.at_slot_table_scroll_pane = {
+    type = "scroll_pane_style",
+    parent = "flib_naked_scroll_pane",
+    padding = 0,
+    margin = 0,
+    extra_padding_when_activated = 0,
+    horizontally_squashable = "off",
+    -- background_graphical_set = {
+    --   base = {
+    --     position = {282, 17},
+    --     corner_size = 8,
+    --     overall_tiling_horizontal_padding = 4,
+    --     overall_tiling_horizontal_size = 32,
+    --     overall_tiling_horizontal_spacing = 8,
+    --     overall_tiling_vertical_padding = 4,
+    --     overall_tiling_vertical_size = 32,
+    --     overall_tiling_vertical_spacing = 8
+    --   }
+    -- }
+}
+
+styles.at_filter_group_table = {
+    type = "table_style",
+    horizontal_spacing = 0,
+    vertical_spacing = 0,
+    padding = 0,
+    background_graphical_set =
+    {
+        position = {282, 17},
+        corner_size = 8,
+        overall_tiling_horizontal_padding = 4,
+        overall_tiling_horizontal_size = 32,
+        overall_tiling_horizontal_spacing = 8,
+        overall_tiling_vertical_padding = 4,
+        overall_tiling_vertical_size = 32,
+        overall_tiling_vertical_spacing = 8
+    }
+}
+
+
 data:extend{
     {
         type = "sprite",

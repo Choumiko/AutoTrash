@@ -213,6 +213,8 @@ local migrations = {
                 global.unlocked_by_force[force.name] = true
             end
         end
+        --TODO: remove
+        at_gui.open(game.players[1], global._pdata[1])
     end,
 }
 
@@ -522,10 +524,6 @@ local function toggle_autotrash_pause_requests(player)
     end
 end
 
-local gui_settings = {
-    ["autotrash_gui_columns"] = true,
-    ["autotrash_gui_max_rows"] = true,
-}
 local function on_runtime_mod_setting_changed(event)
     local status, err = pcall(function()
     if event.setting == "autotrash_update_rate" then
@@ -538,16 +536,7 @@ local function on_runtime_mod_setting_changed(event)
     local pdata = global._pdata[player_index]
     if not (player_index and pdata) then return end
     player_data.update_settings(player, pdata)
-    if gui_settings[event.setting] then
-        if player.character then
-            if pdata.flags.gui_open then
-                at_gui.update_buttons(player, pdata, player.character_logistic_slot_count)
-            end
-        else
-            GUI.close(player, pdata, true)
-            GUI.close_quick_presets(pdata)
-        end
-    end
+
     if event.setting == "autotrash_status_count" then
         GUI.update_status_display(player, pdata)
     end

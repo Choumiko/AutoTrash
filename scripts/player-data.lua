@@ -35,7 +35,6 @@ end
 function player_data.update_settings(player, pdata)
     local player_settings = player.mod_settings
     local settings = {
-        slot_rows = player_settings["autotrash_gui_max_rows"].value,
         status_count = player_settings["autotrash_status_count"].value,
         status_columns = player_settings["autotrash_status_columns"].value,
         display_messages = player_settings["autotrash_display_messages"].value,
