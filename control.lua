@@ -173,6 +173,13 @@ local migrations = {
                 pause_trash = psettings.pause_trash or false,
                 pause_requests = psettings.pause_requests or false,
             }
+            pdata.presets = pdata.storage_new
+            if pdata.presets then
+                for _, stored in pairs(pdata.presets) do
+                    remove_invalid_items(pdata, stored)
+                end
+            end
+            pdata.storage_new = nil
             player_data.update_settings(player, pdata)
             if player.gui.left.mod_gui_frame_flow and player.gui.left.mod_gui_frame_flow.valid then
                 for _, egui in pairs(player.gui.left.mod_gui_frame_flow.children) do
@@ -181,11 +188,11 @@ local migrations = {
                     end
                 end
             end
-                for _, egui in pairs(player.gui.screen.children) do
-                    if egui.get_mod() == "AutoTrash" then
-                        egui.destroy()
-                    end
+            for _, egui in pairs(player.gui.screen.children) do
+                if egui.get_mod() == "AutoTrash" then
+                    egui.destroy()
                 end
+            end
         end
 
         gui.init()
@@ -214,6 +221,9 @@ local migrations = {
             end
         end
         --TODO: remove
+        global._pdata[1].presets["preset2"]["config"][14] = global._pdata[1].presets["preset2"]["config"][7]
+        global._pdata[1].presets["preset2"]["config"][7] = nil
+        global._pdata[1].presets["preset2"].max_slot = 14
         at_gui.open(game.players[1], global._pdata[1])
     end,
 }
@@ -226,8 +236,8 @@ local function on_configuration_changed(data)
                 remove_invalid_items(pdata, pdata.config_new)
                 remove_invalid_items(pdata, pdata.config_tmp, true)
             end
-            if pdata.storage_new then
-                for _, stored in pairs(pdata.storage_new) do
+            if pdata.presets then
+                for _, stored in pairs(pdata.presets) do
                     remove_invalid_items(pdata, stored)
                 end
             end
@@ -245,7 +255,7 @@ local function on_configuration_changed(data)
                     GUI.close(player, pdata)
                     pdata.config_tmp = lib_control.combine_from_vanilla(player)
                     if next(pdata.config_tmp.config) then
-                        pdata.storage_new["at_imported"] = util.table.deepcopy(pdata.config_tmp)
+                        pdata.presets["at_imported"] = util.table.deepcopy(pdata.config_tmp)
                         pdata.selected_presets = {at_imported = true}
                         GUI.open_config_frame(player, pdata)
                         GUI.mark_dirty(pdata, true)
@@ -254,7 +264,7 @@ local function on_configuration_changed(data)
                 if not status then
                     GUI.close(player, pdata)
                     pdata.config_tmp = nil
-                    pdata.storage_new["at_imported"] = nil
+                    pdata.presets["at_imported"] = nil
                     pdata.selected_presets = {}
                     player_data.init(player_index)
                     debugDump(err, player_index, true)
@@ -268,7 +278,7 @@ local function on_configuration_changed(data)
         local pdata = global._pdata[pi]
         remove_invalid_items(pdata, pdata.config_new)
         remove_invalid_items(pdata, pdata.config_tmp, true)
-        for _, stored in pairs(pdata.storage_new) do
+        for _, stored in pairs(pdata.presets) do
             remove_invalid_items(pdata, stored)
         end
         -- GUI.init(player)
@@ -344,7 +354,7 @@ local function on_player_respawned(event)
         local player = game.get_player(event.player_index)
         local tmp = {config = {}, max_slot = 0, c_requests = 0}
         for key, _ in pairs(selected_presets) do
-            presets.merge(tmp, pdata.storage_new[key])
+            presets.merge(tmp, pdata.presets[key])
         end
         GUI.close(player, pdata)
         pdata.config_tmp = tmp

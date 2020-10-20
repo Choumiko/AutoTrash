@@ -10,6 +10,7 @@ local convert_to_slider = lib_control.convert_to_slider
 local convert_from_slider = lib_control.convert_from_slider
 local display_message = lib_control.display_message
 local item_prototype = lib_control.item_prototype
+local presets = require("presets")
 
 local at_gui = {}
 
@@ -96,10 +97,12 @@ at_gui.templates = {
         }}
     end,
 
-    preset = function(preset_name)
+    preset = function(preset_name, pdata)
+        local style = pdata.selected_presets[preset_name] and "at_preset_button_selected" or "at_preset_button"
+        local rip_style = pdata.death_presets[preset_name] and "at_preset_button_small_selected" or "at_preset_button_small"
         return {type = "flow", direction = "horizontal", name = preset_name, children = {
-            {type = "button", style = "at_preset_button", caption = preset_name, name = preset_name, handlers = "presets.load"},
-            {type = "sprite-button", style = "at_preset_button_small", sprite = "autotrash_rip", tooltip = {"autotrash_tooltip_rip"}},
+            {type = "button", style = style, caption = preset_name, name = preset_name, handlers = "presets.load"},
+            {type = "sprite-button", style = rip_style, sprite = "autotrash_rip", tooltip = {"autotrash_tooltip_rip"}},
             {type = "sprite-button", style = "at_delete_preset", sprite = "utility/trash"},
         }}
     end,
@@ -108,7 +111,7 @@ at_gui.templates = {
         local ret = {}
         local i = 1
         for name in pairs(pdata.presets) do
-            ret[i] = gui.templates.preset(name)
+            ret[i] = gui.templates.preset(name, pdata)
             i = i + 1
         end
         ret[#ret+1] = {template = "pushers.horizontal"}
@@ -149,7 +152,7 @@ at_gui.handlers = {
                     if not elem_value then
                         pdata.selected = false
                         pdata.gui.slot_table.children[old_selected].style = "at_button_slot"
-                        at_gui.toggle_sliders(player, pdata, false)
+                        at_gui.toggle_sliders(pdata, false)
                         return
                     end
                 elseif e.button == defines.mouse_button_type.left then
@@ -162,7 +165,7 @@ at_gui.handlers = {
                     end
                     e.element.style = "at_button_slot_selected"
                     e.element.locked = false
-                    at_gui.toggle_sliders(player, pdata, (elem_value and true or false))
+                    at_gui.toggle_sliders(pdata, (elem_value and true or false))
                 end
             end,
             on_gui_elem_changed = function(e)
@@ -183,7 +186,7 @@ at_gui.handlers = {
                             if item_config then
                                 e.element.elem_value = item_config.name
                             end
-                            at_gui.toggle_sliders(player, pdata, true)
+                            at_gui.toggle_sliders(pdata, true)
                             return
                         end
                     end
@@ -200,7 +203,7 @@ at_gui.handlers = {
                         config_tmp.c_requests = config_tmp.c_requests + 1
                     end
                     e.element.style = "at_button_slot_selected"
-                    at_gui.toggle_sliders(player, pdata, true)
+                    at_gui.toggle_sliders(pdata, true)
                 else
                     local config_tmp = pdata.config_tmp
                     config_tmp.config[index] = nil
@@ -213,7 +216,7 @@ at_gui.handlers = {
                             end
                         end
                     end
-                    at_gui.toggle_sliders(player, pdata, false)
+                    at_gui.toggle_sliders(pdata, false)
                 end
             end
         },
@@ -239,18 +242,34 @@ at_gui.handlers = {
                 local player = game.get_player(e.player_index)
                 local pdata = global._pdata[e.player_index]
                 local name = e.element.caption
-                pdata.selected_presets = {[name] = true}
-                pdata.config_tmp = table.deep_copy(pdata.presets[name])
-                pdata.selected = false
-                pdata.gui.preset_textfield.text = name
-                local slots = player.character_logistic_slot_count
-                local diff = pdata.config_tmp.max_slot - slots
-                if diff > 0 then
-                    local inc = math.ceil(diff / 10) * 10
-                    at_gui.increase_slots(player, pdata, slots + inc, slots)
+                if not e.shift and not e.control then
+                    pdata.selected_presets = {[name] = true}
+                    pdata.config_tmp = table.deep_copy(pdata.presets[name])
+                    pdata.selected = false
+                    pdata.gui.preset_textfield.text = name
+                    local slots = player.character_logistic_slot_count
+                    local diff = pdata.config_tmp.max_slot - slots
+                    if diff > 0 then
+                        local inc = math.ceil(diff / 10) * 10
+                        at_gui.increase_slots(player, pdata, slots + inc, slots)
+                    end
+                else
+                    local selected_presets = pdata.selected_presets
+                    if not selected_presets[name] then
+                        selected_presets[name] = true
+                    else
+                        selected_presets[name] = nil
+                    end
+                    local tmp = {config = {}, max_slot = 0, c_requests = 0}
+                    for key, _ in pairs(selected_presets) do
+                        presets.merge(tmp, pdata.presets[key])
+                    end
+                    pdata.config_tmp = tmp
+                    pdata.selected = false
                 end
-                at_gui.update_buttons(player, pdata)
-                at_gui.toggle_sliders(player, pdata, false)
+                at_gui.update_buttons(pdata)
+                at_gui.update_presets(pdata)
+                at_gui.toggle_sliders(pdata, false)
             end
         },
     }
@@ -299,7 +318,7 @@ at_gui.increase_slots = function(player, pdata, slots, old_slots)
     pdata.gui.main.config_rows.scroll_to_bottom()
 end
 
-at_gui.update_buttons = function(player, pdata)
+at_gui.update_buttons = function(pdata)
     local children = pdata.gui.slot_table.children
     for i=1, #children-1 do
         at_gui.update_button(pdata, i, children[i])
@@ -322,7 +341,7 @@ at_gui.update_button = function(pdata, i, button)
     button.style = (i == pdata.selected) and "at_button_slot_selected" or "at_button_slot"
 end
 
-at_gui.toggle_sliders = function(player, pdata, visible)
+at_gui.toggle_sliders = function(pdata, visible)
     if visible and pdata.selected then
         local sliders = pdata.gui.sliders
         local item_config = pdata.config_tmp.config[pdata.selected]
@@ -336,6 +355,25 @@ at_gui.toggle_sliders = function(player, pdata, visible)
     end
     for _, child in pairs(pdata.gui.sliders.table.children) do
         child.visible = visible
+    end
+end
+
+at_gui.update_presets = function(pdata)
+    local children = pdata.gui.presets_flow.children
+    local selected_presets = pdata.selected_presets
+    local death_presets = pdata.death_presets
+    for i=1, #children-2 do
+        local preset = children[i].children[1]
+        local rip = children[i].children[2]
+        local preset_name = preset.caption
+        preset.style = selected_presets[preset_name] and "at_preset_button_selected" or "at_preset_button"
+        rip.style = death_presets[preset_name] and "at_preset_button_small_selected" or "at_preset_button_small"
+    end
+    local s = table_size(selected_presets)
+    if s == 1 then
+        pdata.gui.preset_textfield.text = next(selected_presets)
+    elseif s > 1 then
+        pdata.gui.preset_textfield.text = ""
     end
 end
 
@@ -425,7 +463,7 @@ function at_gui.create_main_window(player, pdata)
                             }},
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
                                 {type = "scroll-pane", style_mods = {extra_right_padding_when_activated = -4}, children = {
-                                    {type = "flow", direction = "vertical", style_mods = {left_padding = 4, top_padding = 8, width = 230}, children =
+                                    {type = "flow", direction = "vertical", save_as = "presets_flow", style_mods = {left_padding = 4, top_padding = 8, width = 230}, children =
                                         gui.templates.presets(pdata),
                                     }
                                 }}
@@ -441,7 +479,7 @@ function at_gui.create_main_window(player, pdata)
     gui_data.main.window.force_auto_center()
     gui_data.main.window.visible = false
     pdata.gui = gui_data
-    at_gui.toggle_sliders(player, pdata, false)
+    at_gui.toggle_sliders(pdata, false)
 end
 
 
