@@ -1,4 +1,5 @@
 local gui = require("__flib__.gui")
+local table =require("__flib__.table")
 local constants = require("constants")
 
 local lib_control = require '__AutoTrash__.lib_control'
@@ -15,33 +16,33 @@ local at_gui = {}
 at_gui.templates = {
     slot_table = {
         main = function(btns, pdata)
-        local ret = {type = "table", column_count = constants.slot_columns, style = "at_filter_group_table", save_as = "slot_table",
-            style_mods = {minimal_height = constants.slot_table_height}, children = {}}
-        for i=1, btns do
+            local ret = {type = "table", column_count = constants.slot_columns, style = "at_filter_group_table", save_as = "slot_table",
+                style_mods = {minimal_height = constants.slot_table_height}, children = {}}
+            for i=1, btns do
                 ret.children[i] = gui.templates.slot_table.button(i, pdata)
-        end
-        ret.children[btns+1] = {type = "flow", name = "count_change", direction="vertical", style_mods = {vertical_spacing=0}, children={
-            {type = "button", caption="-", handlers="slots.decrease", style = "slot_count_change_button"},
-            {type = "button", caption="+", handlers = "slots.increase", style = "slot_count_change_button"}
-        }}
-        return ret
-    end,
+            end
+            ret.children[btns+1] = {type = "flow", name = "count_change", direction="vertical", style_mods = {vertical_spacing=0}, children={
+                {type = "button", caption="-", handlers="slots.decrease", style = "slot_count_change_button"},
+                {type = "button", caption="+", handlers = "slots.increase", style = "slot_count_change_button"}
+            }}
+            return ret
+        end,
         button = function(i, pdata)
-        local style = (i == pdata.selected) and "at_button_slot_selected" or "at_button_slot"
-        local config = pdata.config_tmp.config[i]
-        local req = config and config.request or "0"
-        local trash = config and config.trash or "∞"
-        return {type = "choose-elem-button", name = i, elem_mods = {elem_value = config and config.name, locked = config and i ~= pdata.selected}, handlers = "slots.item_button", elem_type = "item", style = style, children = {
-            {type = "label", style = "at_request_label_top", ignored_by_interaction = true, caption = config and req or ""},
-            {type = "label", style = "at_request_label_bottom", ignored_by_interaction = true, caption = config and trash or ""}
-        }}
-    end,
+            local style = (i == pdata.selected) and "at_button_slot_selected" or "at_button_slot"
+            local config = pdata.config_tmp.config[i]
+            local req = config and config.request or "0"
+            local trash = config and config.trash or "∞"
+            return {type = "choose-elem-button", name = i, elem_mods = {elem_value = config and config.name, locked = config and i ~= pdata.selected}, handlers = "slots.item_button", elem_type = "item", style = style, children = {
+                {type = "label", style = "at_request_label_top", ignored_by_interaction = true, caption = config and req or ""},
+                {type = "label", style = "at_request_label_bottom", ignored_by_interaction = true, caption = config and trash or ""}
+            }}
+        end,
         count_change = function()
-        return {type = "flow", name = "count_change", direction="vertical", style_mods = {vertical_spacing=0}, children={
-            {type = "button", caption="-", handlers="slots.decrease", style = "slot_count_change_button"},
-            {type = "button", caption="+", handlers = "slots.increase", style = "slot_count_change_button"}
-        }}
-    end,
+            return {type = "flow", name = "count_change", direction="vertical", style_mods = {vertical_spacing=0}, children={
+                {type = "button", caption="-", handlers="slots.decrease", style = "slot_count_change_button"},
+                {type = "button", caption="+", handlers = "slots.increase", style = "slot_count_change_button"}
+            }}
+        end,
     },
     frame_action_button = {type = "sprite-button", style = "frame_action_button", mouse_button_filter={"left"}},
     pushers = {
@@ -97,16 +98,18 @@ at_gui.templates = {
 
     preset = function(preset_name)
         return {type = "flow", direction = "horizontal", name = preset_name, children = {
-            {type = "button", style = "at_preset_button", caption = preset_name, name = preset_name},
+            {type = "button", style = "at_preset_button", caption = preset_name, name = preset_name, handlers = "presets.load"},
             {type = "sprite-button", style = "at_preset_button_small", sprite = "autotrash_rip", tooltip = {"autotrash_tooltip_rip"}},
             {type = "sprite-button", style = "at_delete_preset", sprite = "utility/trash"},
         }}
     end,
 
-    presets = function()
+    presets = function(pdata)
         local ret = {}
-        for i=1, 15 do
-            ret[i] = gui.templates.preset("Test " .. i)
+        local i = 1
+        for name in pairs(pdata.presets) do
+            ret[i] = gui.templates.preset(name)
+            i = i + 1
         end
         ret[#ret+1] = {template = "pushers.horizontal"}
         ret[#ret+1] = {template = "pushers.vertical"}
@@ -226,15 +229,28 @@ at_gui.handlers = {
             on_gui_click = function(e)
                 local player = game.get_player(e.player_index)
                 local old_slots = player.character_logistic_slot_count
-                local slots = old_slots <= 65519 and old_slots + 10 or 65529
-                at_gui.increase_slots(player, global._pdata[e.player_index], slots, old_slots)
+                at_gui.increase_slots(player, global._pdata[e.player_index], old_slots + 10, old_slots)
             end,
         },
     },
     presets = {
         load = {
             on_gui_click = function(e)
-
+                local player = game.get_player(e.player_index)
+                local pdata = global._pdata[e.player_index]
+                local name = e.element.caption
+                pdata.selected_presets = {[name] = true}
+                pdata.config_tmp = table.deep_copy(pdata.presets[name])
+                pdata.selected = false
+                pdata.gui.preset_textfield.text = name
+                local slots = player.character_logistic_slot_count
+                local diff = pdata.config_tmp.max_slot - slots
+                if diff > 0 then
+                    local inc = math.ceil(diff / 10) * 10
+                    at_gui.increase_slots(player, pdata, slots + inc, slots)
+                end
+                at_gui.update_buttons(player, pdata)
+                at_gui.toggle_sliders(player, pdata, false)
             end
         },
     }
@@ -262,6 +278,7 @@ at_gui.decrease_slots = function(player, pdata, slots, old_slots)
 end
 
 at_gui.increase_slots = function(player, pdata, slots, old_slots)
+    slots = slots <= 65529 and slots or 65529
     player.character_logistic_slot_count = slots
     local cols = constants.slot_columns
     local rows = constants.slot_rows
@@ -280,6 +297,29 @@ at_gui.increase_slots = function(player, pdata, slots, old_slots)
 
     pdata.gui.main.config_rows.style.width = width
     pdata.gui.main.config_rows.scroll_to_bottom()
+end
+
+at_gui.update_buttons = function(player, pdata)
+    local children = pdata.gui.slot_table.children
+    for i=1, #children-1 do
+        at_gui.update_button(pdata, i, children[i])
+    end
+end
+
+at_gui.update_button = function(pdata, i, button)
+    local req = pdata.config_tmp.config[i]
+    if req then
+        button.children[1].caption = format_number(format_request(req), true)
+        button.children[2].caption = format_number(format_trash(req), true)
+        button.elem_value = req.name
+        button.locked = i ~= pdata.selected
+    else
+        button.children[1].caption = ""
+        button.children[2].caption = ""
+        button.elem_value = nil
+        button.locked = false
+    end
+    button.style = (i == pdata.selected) and "at_button_slot_selected" or "at_button_slot"
 end
 
 at_gui.toggle_sliders = function(player, pdata, visible)
@@ -379,14 +419,14 @@ function at_gui.create_main_window(player, pdata)
                         }},
                         {type = "flow", direction="vertical", style_mods = {maximal_width = 274, padding= 12, top_padding = 8, vertical_spacing = 12}, children = {
                             {type = "flow", children = {
-                                {type = "textfield", style = "at_save_as_textfield", text = ""},
+                                {type = "textfield", style = "at_save_as_textfield", save_as = "preset_textfield", text = ""},
                                 {template = "pushers.horizontal"},
                                 {type = "button", caption = {"gui-save-game.save"}, style = "at_save_button"}
                             }},
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
                                 {type = "scroll-pane", style_mods = {extra_right_padding_when_activated = -4}, children = {
                                     {type = "flow", direction = "vertical", style_mods = {left_padding = 4, top_padding = 8, width = 230}, children =
-                                        gui.templates.presets("Test1"),
+                                        gui.templates.presets(pdata),
                                     }
                                 }}
                             }},
