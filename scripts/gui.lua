@@ -13,11 +13,12 @@ local item_prototype = lib_control.item_prototype
 local at_gui = {}
 
 at_gui.templates = {
-    slot_table = function(btns, pdata)
+    slot_table = {
+        main = function(btns, pdata)
         local ret = {type = "table", column_count = constants.slot_columns, style = "at_filter_group_table", save_as = "slot_table",
             style_mods = {minimal_height = constants.slot_table_height}, children = {}}
         for i=1, btns do
-            ret.children[i] = gui.templates.slot_table_button(i, pdata)
+                ret.children[i] = gui.templates.slot_table.button(i, pdata)
         end
         ret.children[btns+1] = {type = "flow", name = "count_change", direction="vertical", style_mods = {vertical_spacing=0}, children={
             {type = "button", caption="-", handlers="slots.decrease", style = "slot_count_change_button"},
@@ -25,7 +26,7 @@ at_gui.templates = {
         }}
         return ret
     end,
-    slot_table_button = function(i, pdata)
+        button = function(i, pdata)
         local style = (i == pdata.selected) and "at_button_slot_selected" or "at_button_slot"
         local config = pdata.config_tmp.config[i]
         local req = config and config.request or "0"
@@ -35,12 +36,13 @@ at_gui.templates = {
             {type = "label", style = "at_request_label_bottom", ignored_by_interaction = true, caption = config and trash or ""}
         }}
     end,
-    slot_table_count_change = function()
+        count_change = function()
         return {type = "flow", name = "count_change", direction="vertical", style_mods = {vertical_spacing=0}, children={
             {type = "button", caption="-", handlers="slots.decrease", style = "slot_count_change_button"},
             {type = "button", caption="+", handlers = "slots.increase", style = "slot_count_change_button"}
         }}
     end,
+    },
     frame_action_button = {type = "sprite-button", style = "frame_action_button", mouse_button_filter={"left"}},
     pushers = {
         horizontal = {type = "empty-widget", style_mods = {horizontally_stretchable = true}},
@@ -272,9 +274,9 @@ at_gui.increase_slots = function(player, pdata, slots, old_slots)
     gui.update_filters("slots.increase", player.index, nil, "remove")
     slot_table.count_change.destroy()
     for i = old_slots+1, slots do
-        gui.build(slot_table, {gui.templates.slot_table_button(i, pdata)})
+        gui.build(slot_table, {gui.templates.slot_table.button(i, pdata)})
     end
-    gui.build(slot_table, {gui.templates.slot_table_count_change()})
+    gui.build(slot_table, {gui.templates.slot_table.count_change()})
 
     pdata.gui.main.config_rows.style.width = width
     pdata.gui.main.config_rows.scroll_to_bottom()
@@ -334,7 +336,7 @@ function at_gui.create_main_window(player, pdata)
                                         --height = height,
                                     },
                                     children = {
-                                        gui.templates.slot_table(btns, pdata),
+                                        gui.templates.slot_table.main(btns, pdata),
                                     }
                                 }
                             }},
