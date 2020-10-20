@@ -240,7 +240,7 @@ local function debugDump(var, player, force)
 end
 
 local function display_message(player, message, sound)
-    player.surface.create_entity{name = "flying-text", position = player.position, text = message, color = {r=1, g=1, b=1}}
+    player.print(message)
     if sound then
         if sound == "success" then
             player.play_sound{path = "utility/console_message", position = player.position}

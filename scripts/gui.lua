@@ -1,43 +1,55 @@
 local gui = require("__flib__.gui")
 local constants = require("constants")
 
+local lib_control = require '__AutoTrash__.lib_control'
+local format_number = lib_control.format_number
+local format_request = lib_control.format_request
+local format_trash = lib_control.format_trash
+local convert_to_slider = lib_control.convert_to_slider
+local convert_from_slider = lib_control.convert_from_slider
+local display_message = lib_control.display_message
+local item_prototype = lib_control.item_prototype
 
 local at_gui = {}
 
 at_gui.templates = {
-    many_buttons = function(height, btns)
-        local ret = {type = "table", column_count = constants.slot_columns, style = "at_filter_group_table", save_as = "foo", style_mods = {minimal_height = height}, children = {}}
+    slot_table = function(btns, pdata)
+        local ret = {type = "table", column_count = constants.slot_columns, style = "at_filter_group_table", save_as = "slot_table",
+            style_mods = {minimal_height = constants.slot_table_height}, children = {}}
         for i=1, btns do
-            ret.children[i] = {type = "choose-elem-button", handlers = "slots.item_button", elem_type = "item", style = "at_button_slot"}
+            ret.children[i] = gui.templates.slot_table_button(i, pdata)
         end
-        ret.children[btns+1] = {type = "flow", direction="vertical", style_mods = {vertical_spacing=0}, children={
+        ret.children[btns+1] = {type = "flow", name = "count_change", direction="vertical", style_mods = {vertical_spacing=0}, children={
             {type = "button", caption="-", handlers="slots.decrease", style = "slot_count_change_button"},
             {type = "button", caption="+", handlers = "slots.increase", style = "slot_count_change_button"}
         }}
         return ret
+    end,
+    slot_table_button = function(i, pdata)
+        local style = (i == pdata.selected) and "at_button_slot_selected" or "at_button_slot"
+        local config = pdata.config_tmp.config[i]
+        local req = config and config.request or "0"
+        local trash = config and config.trash or "∞"
+        return {type = "choose-elem-button", name = i, elem_mods = {elem_value = config and config.name, locked = config and i ~= pdata.selected}, handlers = "slots.item_button", elem_type = "item", style = style, children = {
+            {type = "label", style = "at_request_label_top", ignored_by_interaction = true, caption = config and req or ""},
+            {type = "label", style = "at_request_label_bottom", ignored_by_interaction = true, caption = config and trash or ""}
+        }}
+    end,
+    slot_table_count_change = function()
+        return {type = "flow", name = "count_change", direction="vertical", style_mods = {vertical_spacing=0}, children={
+            {type = "button", caption="-", handlers="slots.decrease", style = "slot_count_change_button"},
+            {type = "button", caption="+", handlers = "slots.increase", style = "slot_count_change_button"}
+        }}
     end,
     frame_action_button = {type = "sprite-button", style = "frame_action_button", mouse_button_filter={"left"}},
     pushers = {
         horizontal = {type = "empty-widget", style_mods = {horizontally_stretchable = true}},
         vertical = {type = "empty-widget", style_mods = {vertically_stretchable = true}}
     },
-    slot_table = function(btns, width, height)
-        return (
-                {type = "scroll-pane", style = "at_slot_table_scroll_pane", name = "config_rows", save_as = "main.config_rows",
-                    style_mods = {width = width,
-                        --height = height,
-                        horizontally_stretchable = true,
-                    },
-                    children = {
-                        gui.templates.many_buttons(height, btns),
-                    },
-            }
-        )
-    end,
 
     settings = function(flags, pdata)
-        return {type = "frame", style = "deep_frame_in_shallow_frame", children = {
-            {type = "flow", direction = "vertical", style_mods = {top_padding = 8, left_padding = 8}, children = {
+        return {type = "frame", style = "bordered_frame", style_mods = {right_padding = 8, horizontally_stretchable = "on"}, children = {
+            {type = "flow", direction = "vertical", children = {
                 {
                     type = "checkbox",
                     --name = gui_defines.trash_above_requested,
@@ -87,7 +99,17 @@ at_gui.templates = {
             {type = "sprite-button", style = "at_preset_button_small", sprite = "autotrash_rip", tooltip = {"autotrash_tooltip_rip"}},
             {type = "sprite-button", style = "at_delete_preset", sprite = "utility/trash"},
         }}
-    end
+    end,
+
+    presets = function()
+        local ret = {}
+        for i=1, 15 do
+            ret[i] = gui.templates.preset("Test " .. i)
+        end
+        ret[#ret+1] = {template = "pushers.horizontal"}
+        ret[#ret+1] = {template = "pushers.vertical"}
+        return ret
+    end,
 }
 gui.add_templates(at_gui.templates)
 
@@ -113,15 +135,89 @@ at_gui.handlers = {
     slots = {
         item_button = {
             on_gui_click = function(e)
-
+                local player = game.get_player(e.player_index)
+                local pdata = global._pdata[e.player_index]
+                local elem_value = e.element.elem_value
+                local old_selected = pdata.selected
+                local index = tonumber(e.element.name)
+                if e.button == defines.mouse_button_type.right then
+                    if not elem_value then
+                        pdata.selected = false
+                        pdata.gui.slot_table.children[old_selected].style = "at_button_slot"
+                        at_gui.toggle_sliders(player, pdata, false)
+                        return
+                    end
+                elseif e.button == defines.mouse_button_type.left then
+                    if not elem_value or old_selected == index then return end
+                    pdata.selected = index
+                    if old_selected then
+                        local old = pdata.gui.slot_table.children[old_selected]
+                        old.style = "at_button_slot"
+                        old.locked = old.elem_value and true or false
+                    end
+                    e.element.style = "at_button_slot_selected"
+                    e.element.locked = false
+                    at_gui.toggle_sliders(player, pdata, (elem_value and true or false))
+                end
             end,
+            on_gui_elem_changed = function(e)
+                local player = game.get_player(e.player_index)
+                local pdata = global._pdata[e.player_index]
+                local elem_value = e.element.elem_value
+                local old_selected = pdata.selected
+                local index = tonumber(e.element.name)
+                if elem_value then
+                    local item_config = pdata.config_tmp.config[index]
+                    if item_config and elem_value == item_config.name then return end
+                    for i, v in pairs(pdata.config_tmp.config) do
+                        if i ~= index and elem_value == v.name then
+                            display_message(player, {"", {"cant-set-duplicate-request", item_prototype(elem_value).localised_name}}, true)
+                            pdata.selected = i
+                            pdata.gui.slot_table.children[i].style = "at_button_slot_selected"
+                            pdata.gui.main.config_rows.scroll_to_element(pdata.gui.slot_table.children[i], "top-third")
+                            if item_config then
+                                e.element.elem_value = item_config.name
+                            end
+                            at_gui.toggle_sliders(player, pdata, true)
+                            return
+                        end
+                    end
+                    pdata.selected = index
+                    local request_amount = item_prototype(elem_value).default_request_amount
+                    local trash_amount = pdata.settings.trash_equals_requests and request_amount or false
+                    local config_tmp = pdata.config_tmp
+                    config_tmp.config[index] = {
+                        name = elem_value, request = request_amount,
+                        trash = trash_amount, slot = index
+                    }
+                    config_tmp.max_slot = index > config_tmp.max_slot and index or config_tmp.max_slot
+                    if config_tmp.config[index].request > 0 then
+                        config_tmp.c_requests = config_tmp.c_requests + 1
+                    end
+                    e.element.style = "at_button_slot_selected"
+                    at_gui.toggle_sliders(player, pdata, true)
+                else
+                    local config_tmp = pdata.config_tmp
+                    config_tmp.config[index] = nil
+                    if index == config_tmp.max_slot then
+                        config_tmp.max_slot = 0
+                        for i = index-1, 1, -1 do
+                            if config_tmp.config[i] then
+                                config_tmp.max_slot = i
+                                break
+                            end
+                        end
+                    end
+                    at_gui.toggle_sliders(player, pdata, false)
+                end
+            end
         },
         decrease = {
             on_gui_click = function (e)
                 local player = game.get_player(e.player_index)
                 local old_slots = player.character_logistic_slot_count
                 local slots = old_slots > 9 and old_slots - 10 or old_slots
-                at_gui.update_buttons(player, global._pdata[e.player_index], slots)
+                at_gui.decrease_slots(player, global._pdata[e.player_index], slots, old_slots)
             end,
         },
         increase = {
@@ -129,38 +225,90 @@ at_gui.handlers = {
                 local player = game.get_player(e.player_index)
                 local old_slots = player.character_logistic_slot_count
                 local slots = old_slots <= 65519 and old_slots + 10 or 65529
-                at_gui.update_buttons(player, global._pdata[e.player_index], slots)
+                at_gui.increase_slots(player, global._pdata[e.player_index], slots, old_slots)
             end,
         },
+    },
+    presets = {
+        load = {
+            on_gui_click = function(e)
 
+            end
+        },
     }
 }
 gui.add_handlers(at_gui.handlers)
 
-at_gui.update_buttons = function(player, pdata, slots)
+at_gui.decrease_slots = function(player, pdata, slots, old_slots)
+    if slots < pdata.config_tmp.max_slot then return end
     player.character_logistic_slot_count = slots
-    local rows = pdata.settings.slot_rows
     local cols = constants.slot_columns
-    local width = (slots <= (rows*cols)) and cols*40 or (cols * 40 + 12)
-    gui.update_filters("slots", player.index, nil, "remove")
-    pdata.gui.main.config_rows.clear()
+    local rows = constants.slot_rows
+    local width = constants.slot_table_width
+    width = (slots <= (rows*cols)) and width or (width + 12)
+    local slot_table = pdata.gui.slot_table
+    for i = old_slots, slots+1, -1 do
+        local btn = slot_table.children[i]
+        gui.update_filters("slots.item_button", player.index, {btn.index}, "remove")
+        btn.destroy()
+    end
+    if slots == 9 then
+        slot_table.count_change.children[1].enabled = false
+    end
     pdata.gui.main.config_rows.style.width = width
-    pdata.gui.main.config_rows.style.height = rows * 40
-    gui.build(pdata.gui.main.config_rows, {gui.templates.many_buttons(rows*40, slots)})
     pdata.gui.main.config_rows.scroll_to_bottom()
 end
 
-function at_gui.create_main_window(player, pdata)
+at_gui.increase_slots = function(player, pdata, slots, old_slots)
+    player.character_logistic_slot_count = slots
     local cols = constants.slot_columns
-    local rows = pdata.settings.slot_rows
-    local btns = player.character_logistic_slot_count
-    local width = cols * 40
-    local height = rows * 40
-    width = (btns <= (rows*cols)) and width or (width + 12)
+    local rows = constants.slot_rows
+    local width = constants.slot_table_width
+    width = (slots <= (rows*cols)) and width or (width + 12)
+
+
+    local slot_table = pdata.gui.slot_table
+    gui.update_filters("slots.decrease", player.index, nil, "remove")
+    gui.update_filters("slots.increase", player.index, nil, "remove")
+    slot_table.count_change.destroy()
+    for i = old_slots+1, slots do
+        gui.build(slot_table, {gui.templates.slot_table_button(i, pdata)})
+    end
+    gui.build(slot_table, {gui.templates.slot_table_count_change()})
+
+    pdata.gui.main.config_rows.style.width = width
+    pdata.gui.main.config_rows.scroll_to_bottom()
+end
+
+at_gui.toggle_sliders = function(player, pdata, visible)
+    if visible and pdata.selected then
+        local sliders = pdata.gui.sliders
+        local item_config = pdata.config_tmp.config[pdata.selected]
+        if item_config then
+            sliders.request.slider_value = convert_to_slider(item_config.request)
+            sliders.request_text.text = format_request(item_config) or 0
+
+            sliders.trash.slider_value = item_config.trash and convert_to_slider(item_config.trash) or 42
+            sliders.trash_text.text = format_trash(item_config) or "∞"
+        end
+    end
+    for _, child in pairs(pdata.gui.sliders.table.children) do
+        child.visible = visible
+    end
+end
+
+function at_gui.create_main_window(player, pdata)
     local flags = pdata.flags
+    pdata.selected = false
+    local cols = constants.slot_columns
+    local rows = constants.slot_rows
+    local btns = player.character_logistic_slot_count
+    local width = constants.slot_table_width
+    local height = constants.slot_table_height
+    width = (btns <= (rows*cols)) and width or (width + 12)
     local gui_data = gui.build(player.gui.screen,{
-        {type = "frame", style = "outer_frame", handlers = "main.window", save_as = "main.window", style_mods = {maximal_height = 650}, children = {
-            {type = "frame", style = "inner_frame_in_outer_frame", direction = "vertical", children = {
+        {type = "frame", style = "outer_frame", handlers = "main.window", save_as = "main.window", children = {
+            {type = "frame", style = "inner_frame_in_outer_frame", direction = "vertical", style_mods = {maximal_height = 656}, children = {
                 {type = "flow", save_as = "main.titlebar.flow", children = {
                     {type = "label", style = "frame_title", caption = "Auto Trash", elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
@@ -174,39 +322,42 @@ function at_gui.create_main_window(player, pdata)
                             {template = "pushers.horizontal"},
                             {type = "sprite-button", style = "tool_button_green", style_mods = {padding = 0},
                                 sprite = "utility/check_mark_white", tooltip = {"module-inserter-config-button-apply"}},
-                            {type = "sprite-button", style = "tool_button_red", sprite = "utility/trash", tooltip = {"module-inserter-config-button-clear-all"}},
+                            {type = "sprite-button", style = "tool_button_red", sprite = "utility/reset_white"},
+                            {type = "sprite-button", style = "tool_button", sprite = "utility/export_slot", tooltip = {"autotrash_export_tt"}},
+                            {type = "sprite-button", style = "tool_button", sprite = "mi_import_string", tooltip = {"autotrash_import_tt"}}
                         }},
                         {type = "flow", direction="vertical", style_mods = {padding= 12, top_padding = 8, vertical_spacing = 10}, children = {
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
-                                gui.templates.slot_table(btns, width, height),
+                                {type = "scroll-pane", style = "at_slot_table_scroll_pane", name = "config_rows", save_as = "main.config_rows",
+                                    style_mods = {
+                                        width = width,
+                                        --height = height,
+                                    },
+                                    children = {
+                                        gui.templates.slot_table(btns, pdata),
+                                    }
+                                }
                             }},
-                            {type = "frame", style = "deep_frame_in_shallow_frame", children = {
-                                {type = "flow", direction = "vertical", style_mods = {left_padding = 8, top_padding = 8}, children = {
-                                    {type = "table", column_count = 2, children = {
+                            {type = "frame", style = "bordered_frame", style_mods = {right_padding = 8, horizontally_stretchable = "on"}, children = {
+                                {type = "flow", direction = "vertical", children = {
+                                    {type = "table", save_as = "sliders.table", style_mods = {minimal_height = 60}, column_count = 2, children = {
                                         {type = "flow", direction = "horizontal", children = {
                                             {type = "label", caption = {"auto-trash-request"}}
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
-                                            {type = "slider", minimum_value = 0, maximum_value = 42},
-                                            {type = "textfield", style = "slider_value_textfield"}
+                                            {type = "slider", save_as = "sliders.request", minimum_value = 0, maximum_value = 42},
+                                            {type = "textfield", save_as = "sliders.request_text", style = "slider_value_textfield"}
                                         }},
                                         {type = "flow", direction = "horizontal", children = {
                                             {type = "label", caption={"auto-trash-trash"}},
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
-                                            {type = "slider", minimum_value = 0, maximum_value = 42},
-                                            {type = "textfield", style = "slider_value_textfield"}
+                                            {type = "slider", save_as = "sliders.trash", minimum_value = 0, maximum_value = 42},
+                                            {type = "textfield", save_as = "sliders.trash_text", style = "slider_value_textfield"}
                                         }},
                                     }},
                                     {type = "drop-down", style = "at_quick_actions",
-                                        items = {
-                                            [1] = {"autotrash_quick_actions"},
-                                            [2] = {"autotrash_clear_requests"},
-                                            [3] = {"autotrash_clear_trash"},
-                                            [4] = {"autotrash_clear_both"},
-                                            [5] = {"autotrash_trash_to_requests"},
-                                            [6] = {"autotrash_requests_to_trash"}
-                                        },
+                                        items = constants.quick_actions,
                                         selected_index = 1,
                                         tooltip = {"autotrash_quick_actions_tt"}
                                     },
@@ -221,8 +372,8 @@ function at_gui.create_main_window(player, pdata)
                         {type = "frame", style = "subheader_frame", children={
                             {type = "label", style = "subheader_caption_label", caption = "Presets"},
                             {template = "pushers.horizontal"},
-                            {type = "sprite-button", style = "tool_button", sprite = "mi_import_string", tooltip = {"module-inserter-import_tt"}},
                             {type = "sprite-button", style = "tool_button", sprite = "utility/export_slot", tooltip = {"module-inserter-export_tt"}},
+                            {type = "sprite-button", style = "tool_button", sprite = "mi_import_string", tooltip = {"module-inserter-import_tt"}},
                         }},
                         {type = "flow", direction="vertical", style_mods = {maximal_width = 274, padding= 12, top_padding = 8, vertical_spacing = 12}, children = {
                             {type = "flow", children = {
@@ -231,24 +382,10 @@ function at_gui.create_main_window(player, pdata)
                                 {type = "button", caption = {"gui-save-game.save"}, style = "at_save_button"}
                             }},
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
-                                {type = "scroll-pane", style_mods = {extra_right_padding_when_activated = 0}, children = {
-                                    {type = "flow", direction = "vertical", style_mods = {left_padding = 4, top_padding = 4, width = 230}, children = {
-                                        gui.templates.preset("Test1"),
-                                        gui.templates.preset("Test2"),
-                                        gui.templates.preset("Test3"),
-                                        gui.templates.preset("Test4"),
-                                        gui.templates.preset("Test5"),
-                                        gui.templates.preset("Test6"),
-                                        gui.templates.preset("Test7"),
-                                        gui.templates.preset("Test8"),
-                                        gui.templates.preset("Test9"),
-                                        gui.templates.preset("Test10"),
-                                        gui.templates.preset("Test11"),
-                                        -- gui.templates.preset("Test12"),
-                                        -- gui.templates.preset("Test13"),
-                                        {template = "pushers.horizontal"},
-                                        {template = "pushers.vertical"}
-                                    }}
+                                {type = "scroll-pane", style_mods = {extra_right_padding_when_activated = -4}, children = {
+                                    {type = "flow", direction = "vertical", style_mods = {left_padding = 4, top_padding = 8, width = 230}, children =
+                                        gui.templates.presets("Test1"),
+                                    }
                                 }}
                             }},
                         }}
@@ -262,6 +399,7 @@ function at_gui.create_main_window(player, pdata)
     gui_data.main.window.force_auto_center()
     gui_data.main.window.visible = false
     pdata.gui = gui_data
+    at_gui.toggle_sliders(player, pdata, false)
 end
 
 
