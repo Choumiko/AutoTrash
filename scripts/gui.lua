@@ -102,8 +102,8 @@ at_gui.templates = {
         local rip_style = pdata.death_presets[preset_name] and "at_preset_button_small_selected" or "at_preset_button_small"
         return {type = "flow", direction = "horizontal", name = preset_name, children = {
             {type = "button", style = style, caption = preset_name, name = preset_name, handlers = "presets.load"},
-            {type = "sprite-button", style = rip_style, sprite = "autotrash_rip", tooltip = {"autotrash_tooltip_rip"}},
-            {type = "sprite-button", style = "at_delete_preset", sprite = "utility/trash"},
+            {type = "sprite-button", style = rip_style, sprite = "autotrash_rip", handlers = "presets.change_death_preset", tooltip = {"autotrash_tooltip_rip"}},
+            {type = "sprite-button", style = "at_delete_preset", sprite = "utility/trash", handlers = "presets.delete"},
         }}
     end,
 
@@ -114,8 +114,6 @@ at_gui.templates = {
             ret[i] = gui.templates.preset(name, pdata)
             i = i + 1
         end
-        ret[#ret+1] = {template = "pushers.horizontal"}
-        ret[#ret+1] = {template = "pushers.vertical"}
         return ret
     end,
 }
@@ -237,6 +235,33 @@ at_gui.handlers = {
         },
     },
     presets = {
+        save = {
+            on_gui_click = function(e)
+                local player = game.get_player(e.player_index)
+                local pdata = global._pdata[e.player_index]
+                local textfield = pdata.gui.preset_textfield
+                local name = textfield.text
+                if name == "" then
+                    display_message(player, {"auto-trash-storage-name-not-set"}, true)
+                    textfield.focus()
+                    return
+                end
+                if pdata.presets[name] then
+                    if not pdata.settings.overwrite then
+                        display_message(player, {"auto-trash-storage-name-in-use"}, true)
+                        textfield.focus()
+                        return
+                    end
+                    display_message(player, "Preset " .. name .." updated", "success")
+                else
+                    gui.build(pdata.gui.presets_flow, {gui.templates.preset(name, pdata)})
+                end
+
+                pdata.presets[name] = table.deep_copy(pdata.config_tmp)
+                pdata.selected_presets = {[name] = true}
+                at_gui.update_presets(pdata)
+            end
+        },
         load = {
             on_gui_click = function(e)
                 local player = game.get_player(e.player_index)
@@ -272,6 +297,36 @@ at_gui.handlers = {
                 at_gui.toggle_sliders(pdata, false)
             end
         },
+        delete = {
+            on_gui_click = function(e)
+                local pdata = global._pdata[e.player_index]
+                local parent = e.element.parent
+                local name = parent.name
+                gui.update_filters("presets", e.player_index, {e.element.index, parent.children[1].index, parent.children[2].index}, "remove")
+                parent.destroy()
+                pdata.selected_presets[name] = nil
+                pdata.death_presets[name] = nil
+                pdata.presets[name] = nil
+                at_gui.update_presets(pdata)
+        end
+        },
+        change_death_preset = {
+            on_gui_click = function(e)
+                local pdata = global._pdata[e.player_index]
+                local name = e.element.parent.name
+                if not (e.shift or e.control) then
+                    pdata.death_presets = {[name] = true}
+                else
+                    local selected_presets = pdata.death_presets
+                    if not selected_presets[name] then
+                        selected_presets[name] = true
+                    else
+                        selected_presets[name] = nil
+                    end
+                end
+                at_gui.update_presets(pdata)
+            end,
+        }
     }
 }
 gui.add_handlers(at_gui.handlers)
@@ -362,7 +417,7 @@ at_gui.update_presets = function(pdata)
     local children = pdata.gui.presets_flow.children
     local selected_presets = pdata.selected_presets
     local death_presets = pdata.death_presets
-    for i=1, #children-2 do
+    for i=1, #children do
         local preset = children[i].children[1]
         local rip = children[i].children[2]
         local preset_name = preset.caption
@@ -411,7 +466,6 @@ function at_gui.create_main_window(player, pdata)
                                 {type = "scroll-pane", style = "at_slot_table_scroll_pane", name = "config_rows", save_as = "main.config_rows",
                                     style_mods = {
                                         width = width,
-                                        --height = height,
                                     },
                                     children = {
                                         gui.templates.slot_table.main(btns, pdata),
@@ -459,13 +513,13 @@ function at_gui.create_main_window(player, pdata)
                             {type = "flow", children = {
                                 {type = "textfield", style = "at_save_as_textfield", save_as = "preset_textfield", text = ""},
                                 {template = "pushers.horizontal"},
-                                {type = "button", caption = {"gui-save-game.save"}, style = "at_save_button"}
+                                {type = "button", caption = {"gui-save-game.save"}, style = "at_save_button", handlers = "presets.save"}
                             }},
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
-                                {type = "scroll-pane", style_mods = {extra_right_padding_when_activated = -4}, children = {
-                                    {type = "flow", direction = "vertical", save_as = "presets_flow", style_mods = {left_padding = 4, top_padding = 8, width = 230}, children =
+                                {type = "scroll-pane", style_mods = {extra_top_padding_when_activated = 0, extra_left_padding_when_activated = 0, extra_right_padding_when_activated = 0}, children = {
+                                    {type = "flow", direction = "vertical", save_as = "presets_flow", style_mods = {vertically_stretchable = "on", left_padding = 8, top_padding = 8, width = 230}, children =
                                         gui.templates.presets(pdata),
-                                    }
+                                    },
                                 }}
                             }},
                         }}
@@ -474,12 +528,12 @@ function at_gui.create_main_window(player, pdata)
             }},
         }
     }})
-    log(serpent.block(pdata.gui))
     gui_data.main.titlebar.flow.drag_target = gui_data.main.window
     gui_data.main.window.force_auto_center()
     gui_data.main.window.visible = false
     pdata.gui = gui_data
     at_gui.toggle_sliders(pdata, false)
+    at_gui.update_presets(pdata)
 end
 
 
