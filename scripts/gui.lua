@@ -17,6 +17,27 @@ local function tonumber_max(n)
     return (n and n > constants.max_request) and constants.max_request or n
 end
 
+local function get_network_data(player)
+    local character = player.character
+    if not character then return end
+    local network = lib_control.get_non_equipment_network(player)--character and character.logistic_network--
+    local requester = character and character.get_logistic_point(defines.logistic_member_index.character_requester)
+    if not (network and network.valid and requester and requester.valid) then
+        return
+    end
+    local on_the_way = requester.targeted_items_deliver
+    local available = network.get_contents()
+    local item_count = player.get_main_inventory().get_contents()
+    local cursor_stack = player.cursor_stack
+    cursor_stack = (cursor_stack and cursor_stack.valid_for_read) and {[cursor_stack.name] = cursor_stack.count} or {}
+    local get_inventory, inventory = player.get_inventory, defines.inventory
+    local armor = get_inventory(inventory.character_armor).get_contents()
+    local gun = get_inventory(inventory.character_guns).get_contents()
+    local ammo = get_inventory(inventory.character_ammo).get_contents()
+
+    return available, on_the_way, item_count, cursor_stack, armor, gun, ammo
+end
+
 local at_gui = {}
 
 at_gui.templates = {
@@ -181,8 +202,8 @@ at_gui.handlers = {
                         end
                         at_gui.update_button(pdata, index, e.element)
                         at_gui.update_button(pdata, old_selected)
+                        at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
                         at_gui.update_sliders(pdata)
-                        --GUI.update_button_styles(player, pdata)--TODO: only update changed buttons
                         return
                     end
                     if not elem_value or old_selected == index then return end
@@ -192,6 +213,7 @@ at_gui.handlers = {
                         at_gui.update_button(pdata, old_selected, old)
                     end
                     at_gui.update_button(pdata, index, e.element)
+                    at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
                     at_gui.update_sliders(pdata)
                 end
             end,
@@ -213,7 +235,10 @@ at_gui.handlers = {
                             pdata.gui.main.config_rows.scroll_to_element(pdata.gui.slot_table.children[i], "top-third")
                             if item_config then
                                 e.element.elem_value = item_config.name
+                            else
+                                e.element.elem_value = nil
                             end
+                            at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
                             at_gui.update_sliders(pdata)
                             return
                         end
@@ -234,6 +259,7 @@ at_gui.handlers = {
                     if old_selected then
                         at_gui.update_button(pdata, old_selected, pdata.gui.slot_table.children[old_selected])
                     end
+                    at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
                     at_gui.update_sliders(pdata)
                 else
                     at_gui.clear_button(pdata, index, e.element)
@@ -519,6 +545,51 @@ at_gui.update_buttons = function(pdata)
     end
 end
 
+at_gui.get_button_style = function(i, selected, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo, paused)
+    if paused or not (available and on_the_way and item and item.request > 0) then
+        return (i == selected) and "at_button_slot_selected" or "at_button_slot"
+    end
+    if i == selected then
+        return "at_button_slot_selected"
+    end
+    local n, c = item.name, item.request
+    local diff = c - ((item_count[n] or 0) + (armor[n] or 0) + (gun[n] or 0) + (ammo[n] or 0) + (cursor_stack[n] or 0))
+
+    if diff <= 0 then
+        return "at_button_slot"
+    else
+        local diff2 = diff - (on_the_way[n] or 0) - (available[n] or 0)
+        if diff2 <= 0 then
+            return "at_button_slot_items_on_the_way", diff
+        elseif (on_the_way[n] and not available[n]) then
+        --item.name == "locomotive" then
+            return "at_button_slot_items_not_enough", diff
+        end
+        return "at_button_slot_items_not_available", diff
+    end
+end
+
+at_gui.update_button_styles = function(player, pdata)
+    local ruleset_grid = pdata.gui.slot_table
+    if not (ruleset_grid and ruleset_grid.valid) then return end
+    local selected = pdata.selected
+    local config = pdata.config_tmp
+    local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
+
+    if not (available and on_the_way and config.c_requests > 0 and not pdata.flags.pause_requests) then
+        for i, button in pairs(ruleset_grid.children) do
+            button.style = (i == selected) and "at_button_slot_selected" or "at_button_slot"
+        end
+        return true
+    end
+    config = config.config
+    local buttons = ruleset_grid.children
+    for i=1, #buttons-1 do
+        buttons[i].style = at_gui.get_button_style(i, selected, config[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+    end
+    return true
+end
+
 at_gui.update_button = function(pdata, i, button)
     if not (button and button.valid) then
         if not i then return end
@@ -699,6 +770,7 @@ function at_gui.create_main_window(player, pdata)
     gui_data.main.window.visible = false
     pdata.gui = gui_data
     pdata.selected = false
+    at_gui.update_button_styles(player, pdata)
     at_gui.update_sliders(pdata)
     at_gui.update_presets(pdata)
 end
