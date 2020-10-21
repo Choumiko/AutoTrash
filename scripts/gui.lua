@@ -149,8 +149,8 @@ at_gui.handlers = {
                 if e.button == defines.mouse_button_type.right then
                     if not elem_value then
                         pdata.selected = false
-                        pdata.gui.slot_table.children[old_selected].style = "at_button_slot"
-                        at_gui.toggle_sliders(pdata, false)
+                        at_gui.update_button(pdata, old_selected, pdata.gui.slot_table.children[old_selected])
+                        at_gui.update_sliders(pdata)
                         return
                     end
                 elseif e.button == defines.mouse_button_type.left then
@@ -158,12 +158,10 @@ at_gui.handlers = {
                     pdata.selected = index
                     if old_selected then
                         local old = pdata.gui.slot_table.children[old_selected]
-                        old.style = "at_button_slot"
-                        old.locked = old.elem_value and true or false
+                        at_gui.update_button(pdata, old_selected, old)
                     end
-                    e.element.style = "at_button_slot_selected"
-                    e.element.locked = false
-                    at_gui.toggle_sliders(pdata, (elem_value and true or false))
+                    at_gui.update_button(pdata, index, e.element)
+                    at_gui.update_sliders(pdata)
                 end
             end,
             on_gui_elem_changed = function(e)
@@ -179,12 +177,12 @@ at_gui.handlers = {
                         if i ~= index and elem_value == v.name then
                             display_message(player, {"", {"cant-set-duplicate-request", item_prototype(elem_value).localised_name}}, true)
                             pdata.selected = i
-                            pdata.gui.slot_table.children[i].style = "at_button_slot_selected"
+                            at_gui.update_button(pdata, i, pdata.gui.slot_table.children[i])
                             pdata.gui.main.config_rows.scroll_to_element(pdata.gui.slot_table.children[i], "top-third")
                             if item_config then
                                 e.element.elem_value = item_config.name
                             end
-                            at_gui.toggle_sliders(pdata, true)
+                            at_gui.update_sliders(pdata)
                             return
                         end
                     end
@@ -200,9 +198,13 @@ at_gui.handlers = {
                     if config_tmp.config[index].request > 0 then
                         config_tmp.c_requests = config_tmp.c_requests + 1
                     end
-                    e.element.style = "at_button_slot_selected"
-                    at_gui.toggle_sliders(pdata, true)
+                    at_gui.update_button(pdata, index, e.element)
+                    if old_selected then
+                        at_gui.update_button(pdata, old_selected, pdata.gui.slot_table.children[old_selected])
+                    end
+                    at_gui.update_sliders(pdata)
                 else
+                    pdata.selected = false
                     local config_tmp = pdata.config_tmp
                     config_tmp.config[index] = nil
                     if index == config_tmp.max_slot then
@@ -214,7 +216,7 @@ at_gui.handlers = {
                             end
                         end
                     end
-                    at_gui.toggle_sliders(pdata, false)
+                    at_gui.update_sliders(pdata)
                 end
             end
         },
@@ -294,7 +296,7 @@ at_gui.handlers = {
                 end
                 at_gui.update_buttons(pdata)
                 at_gui.update_presets(pdata)
-                at_gui.toggle_sliders(pdata, false)
+                at_gui.update_sliders(pdata)
             end
         },
         delete = {
@@ -396,8 +398,8 @@ at_gui.update_button = function(pdata, i, button)
     button.style = (i == pdata.selected) and "at_button_slot_selected" or "at_button_slot"
 end
 
-at_gui.toggle_sliders = function(pdata, visible)
-    if visible and pdata.selected then
+at_gui.update_sliders = function(pdata)
+    if pdata.selected then
         local sliders = pdata.gui.sliders
         local item_config = pdata.config_tmp.config[pdata.selected]
         if item_config then
@@ -408,6 +410,7 @@ at_gui.toggle_sliders = function(pdata, visible)
             sliders.trash_text.text = format_trash(item_config) or "∞"
         end
     end
+    local visible = pdata.selected and true or false
     for _, child in pairs(pdata.gui.sliders.table.children) do
         child.visible = visible
     end
@@ -532,7 +535,8 @@ function at_gui.create_main_window(player, pdata)
     gui_data.main.window.force_auto_center()
     gui_data.main.window.visible = false
     pdata.gui = gui_data
-    at_gui.toggle_sliders(pdata, false)
+    pdata.selected = false
+    at_gui.update_sliders(pdata)
     at_gui.update_presets(pdata)
 end
 
