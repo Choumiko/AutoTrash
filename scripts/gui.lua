@@ -127,19 +127,18 @@ gui.add_templates(at_gui.templates)
 at_gui.handlers = {
     mod_gui_button = {
         on_gui_click = function(e)
-            local pdata = global._pdata[e.player_index]
-            at_gui.toggle(game.get_player(e.player_index), pdata)
+            at_gui.toggle(global._pdata[e.player_index])
         end,
     },
     main = {
         close_button = {
             on_gui_click = function(e)
-                at_gui.close(game.get_player(e.player_index), global._pdata[e.player_index])
+                at_gui.close(global._pdata[e.player_index])
             end
         },
         window = {
             on_gui_closed = function(e)
-                at_gui.close(game.get_player(e.player_index), global._pdata[e.player_index])
+                at_gui.close(global._pdata[e.player_index])
             end
         }
     },
@@ -360,6 +359,49 @@ at_gui.handlers = {
                 at_gui.update_trash_config(tonumber_max(e.element.text) or false, pdata)
             end
         }
+    },
+    quick_actions = {
+        on_gui_selection_state_changed = function(e)
+            local pdata = global._pdata[e.player_index]
+            local element = e.element
+            local index = element.selected_index
+            if index == 1 then return end
+
+            local config_tmp = pdata.config_tmp
+            if index == 2 then
+                for _, config in pairs(config_tmp.config) do
+                    config.request = 0
+                end
+                config_tmp.c_requests = 0
+            elseif index == 3 then
+                for _, config in pairs(config_tmp.config) do
+                    config.trash = false
+                end
+            elseif index == 4 then
+                config_tmp.config = {}
+                config_tmp.max_slot = 0
+                config_tmp.c_requests = 0
+                pdata.selected = false
+            elseif index == 5 then
+                for _, config in pairs(config_tmp.config) do
+                    if config.request > 0 then
+                        config.trash = config.request
+                    end
+                end
+            elseif index == 6 then
+                local c = 0
+                for _, config in pairs(config_tmp.config) do
+                    if config.trash then
+                        config.request = config.trash
+                        c = config.request > 0 and c + 1 or c
+                    end
+                end
+                config_tmp.c_requests = c
+            end
+            element.selected_index = 1
+            at_gui.update_sliders(pdata)
+            at_gui.update_buttons(pdata)
+        end
     }
 }
 gui.add_handlers(at_gui.handlers)
@@ -585,7 +627,7 @@ function at_gui.create_main_window(player, pdata)
                                             {type = "textfield", save_as = "sliders.trash_text", handlers = "sliders.trash", style = "slider_value_textfield"}
                                         }},
                                     }},
-                                    {type = "drop-down", style = "at_quick_actions",
+                                    {type = "drop-down", style = "at_quick_actions", handlers = "quick_actions",
                                         items = constants.quick_actions,
                                         selected_index = 1,
                                         tooltip = {"autotrash_quick_actions_tt"}
@@ -651,7 +693,7 @@ function at_gui.destroy(player, pdata)
     pdata.gui_open = false
 end
 
-function at_gui.open(player, pdata)
+function at_gui.open(pdata)
     local window_frame = pdata.gui.main.window
     if window_frame and window_frame.valid then
         window_frame.visible = true
@@ -660,7 +702,7 @@ function at_gui.open(player, pdata)
     --player.opened = pdata.gui.window
 end
 
-function at_gui.close(player, pdata)
+function at_gui.close(pdata)
     local window_frame = pdata.gui.main.window
     if window_frame and window_frame.valid then
         window_frame.visible = false
@@ -670,11 +712,11 @@ function at_gui.close(player, pdata)
     --player.opened = nil
 end
 
-function at_gui.toggle(player, pdata)
+function at_gui.toggle(pdata)
     if pdata.flags.gui_open then
-        at_gui.close(player, pdata)
+        at_gui.close(pdata)
     else
-        at_gui.open(player, pdata)
+        at_gui.open(pdata)
     end
 end
 return at_gui
