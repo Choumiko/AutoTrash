@@ -23,13 +23,13 @@ end
 
 local function show_yarm(player, pdata)
     if remote.interfaces.YARM then
-        remote.call("YARM", "set_filter", player.index, pdata.settings.YARM_active_filter)
+        remote.call("YARM", "set_filter", player.index, pdata.flags.YARM_active_filter)
     end
 end
 
 local function hide_yarm(player, pdata)
     if remote.interfaces.YARM then
-        pdata.settings.YARM_active_filter = remote.call("YARM", "set_filter", player.index, "none")
+        pdata.flags.YARM_active_filter = remote.call("YARM", "set_filter", player.index, "none")
     end
 end
 
@@ -134,7 +134,7 @@ local gui_functions = {
         pdata.config_new = util.table.deepcopy(pdata.config_tmp)
         pdata.dirty = false
         pdata.gui_elements.reset_button.enabled = false
-        if player.mod_settings["autotrash_close_on_apply"].value then
+        if pdata.settings.close_on_apply then
             GUI.close(player, pdata)
         end
 
@@ -311,7 +311,7 @@ local gui_functions = {
         end
         if pdata.storage_new[name] then
             local player = event.player
-            if not player.mod_settings["autotrash_overwrite"].value then
+            if not pdata.settings.overwrite then
                 display_message(player, {"auto-trash-storage-name-in-use"}, true)
                 textfield.focus()
                 return
@@ -443,7 +443,7 @@ local gui_functions = {
                 if not found then
                     pdata.selected = params.slot
                     local request_amount = item_prototype(elem_value).default_request_amount
-                    local trash_amount = player.mod_settings["autotrash_trash_equals_requests"].value and request_amount or false
+                    local trash_amount = pdata.settings.trash_equals_requests and request_amount or false
 
                     config_tmp.config[params.slot] = {
                         name = elem_value, request = request_amount,
@@ -554,8 +554,8 @@ local gui_functions = {
 
     toggle_trash_option = function(event, pdata)
         if event.name ~= defines.events.on_gui_checked_state_changed then return end
-        local settings = pdata.settings
-        settings[event.element.name] = event.element.state
+        local flags = pdata.flags
+        flags[event.element.name] = event.element.state
         set_requests(event.player, pdata)
     end,
 
@@ -567,7 +567,7 @@ local gui_functions = {
             player.print("No main network set")
             element.state = false
         else
-            pdata.settings.trash_network = element.state
+            pdata.flags.trash_network = element.state
             if element.state and in_network(player, pdata) then
                 unpause_trash(player, pdata)
                 GUI.update_main_button(pdata)
@@ -904,12 +904,12 @@ function GUI.update_main_button(pdata)
     if not (mainButton and mainButton.valid) then
         return
     end
-    local settings = pdata.settings
-    if settings.pause_trash and not settings.pause_requests then
+    local flags = pdata.flags
+    if flags.pause_trash and not flags.pause_requests then
         mainButton.sprite = "autotrash_trash_paused"
-    elseif settings.pause_requests and not settings.pause_trash then
+    elseif flags.pause_requests and not flags.pause_trash then
         mainButton.sprite = "autotrash_requests_paused"
-    elseif settings.pause_trash and settings.pause_requests then
+    elseif flags.pause_trash and flags.pause_requests then
         mainButton.sprite = "autotrash_both_paused"
     else
         mainButton.sprite = "autotrash_trash"
@@ -920,13 +920,13 @@ end
 function GUI.update_settings(pdata)
     local frame = pdata.gui_elements.trash_options
     if not (frame and frame.valid) then return end
-    local settings = pdata.settings
+    local flags = pdata.flags
     local def = GUI.defines
-    frame[def.trash_unrequested].state = settings.trash_unrequested
-    frame[def.trash_above_requested].state = settings.trash_above_requested
-    frame[def.trash_network].state = settings.trash_network
-    frame[def.pause_trash].state = settings.pause_trash
-    frame[def.pause_requests].state = settings.pause_requests
+    frame[def.trash_unrequested].state = flags.trash_unrequested
+    frame[def.trash_above_requested].state = flags.trash_above_requested
+    frame[def.trash_network].state = flags.trash_network
+    frame[def.pause_trash].state = flags.pause_trash
+    frame[def.pause_requests].state = flags.pause_requests
     frame[def.network_button].caption = pdata.main_network and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
 end
 
@@ -1056,7 +1056,7 @@ function GUI.update_button_styles(player, pdata)
     local config = pdata.config_tmp
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
 
-    if not (available and on_the_way and config.c_requests > 0 and not pdata.settings.pause_requests) then
+    if not (available and on_the_way and config.c_requests > 0 and not pdata.flags.pause_requests) then
         for i, button in pairs(ruleset_grid.children) do
             button.style = (i == selected) and "at_button_slot_selected" or "at_button_slot"
         end
@@ -1079,7 +1079,7 @@ function GUI.update_buttons(player, pdata)
 
     for i, button in pairs(ruleset_grid.children) do
         GUI.update_button(pdata, i, selected, button)
-        button.style = GUI.get_button_style(i, selected, config[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo, pdata.settings.pause_requests)
+        button.style = GUI.get_button_style(i, selected, config[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo, pdata.flags.pause_requests)
     end
 end
 
@@ -1140,7 +1140,7 @@ function GUI.create_buttons(player, pdata, start)
             caption = ""
         }
         GUI.update_button(pdata, i, selected, button)
-        button.style = GUI.get_button_style(i, selected, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo, pdata.settings.pause_requests)
+        button.style = GUI.get_button_style(i, selected, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo, pdata.flags.pause_requests)
     end
     return slots
 end
@@ -1183,12 +1183,12 @@ function GUI.update_status_display(player, pdata)
     end
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
     status_table.clear()
-    if not (available and not pdata.settings.pause_requests) then
+    if not (available and not pdata.flags.pause_requests) then
         return true
     end
     local style
     local c = 0
-    local max_count = player.mod_settings["autotrash_status_count"].value
+    local max_count = pdata.settings.status_count
     local character = player.character
     local get_request_slot = character.get_request_slot
     local item, diff, button
@@ -1234,11 +1234,11 @@ function GUI.open_status_display(player, pdata)
     status_table = status_flow.add{
         type = "table",
         style = "at_request_status_table",
-        column_count = mod_settings["autotrash_status_columns"].value
+        column_count = pdata.settings.status_columns
     }
     gui_elements.status_table = status_table
 
-    local max_count, c = mod_settings["autotrash_status_count"].value, 0
+    local max_count, c = pdata.settings.status_count, 0
     local config_tmp = pdata.config_new.config
     local style, diff
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
@@ -1246,7 +1246,7 @@ function GUI.open_status_display(player, pdata)
     for i, item in pairs(config_tmp) do
             if c >= max_count then break end
             if item and item.request > 0 then
-                style, diff = GUI.get_button_style(i, false, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo, pdata.settings.pause_requests)
+                style, diff = GUI.get_button_style(i, false, config_tmp[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo, pdata.flags.pause_requests)
                 if style ~= "at_button_slot" then
                     button = status_table.add{
                         type = "sprite-button",
@@ -1310,7 +1310,7 @@ function GUI.open_config_frame(player, pdata)
         type = "scroll-pane",
         vertical_scroll_policy = "auto-and-reserve-space"
     }
-    scroll_pane.style.maximal_height = 40 * player.mod_settings["autotrash_gui_max_rows"].value + 9
+    scroll_pane.style.maximal_height = 40 * pdata.settings.slot_rows + 9
     gui_elements.config_scroll = scroll_pane
 
     local button_flow = config_flow_h.add{
@@ -1446,13 +1446,13 @@ function GUI.open_config_frame(player, pdata)
     }
     gui_elements.trash_options = trash_options
 
-    local settings = pdata.settings
+    local flags = pdata.flags
 
     GUI.register_action(pdata, trash_options.add{
                             type = "checkbox",
                             name = gui_defines.trash_above_requested,
                             caption = {"auto-trash-above-requested"},
-                            state = settings[gui_defines.trash_above_requested]
+                            state = flags[gui_defines.trash_above_requested]
                         },
                         {type = "toggle_trash_option"})
 
@@ -1460,7 +1460,7 @@ function GUI.open_config_frame(player, pdata)
                             type = "checkbox",
                             name = gui_defines.trash_unrequested,
                             caption = {"auto-trash-unrequested"},
-                            state = settings[gui_defines.trash_unrequested]
+                            state = flags[gui_defines.trash_unrequested]
                         },
                         {type = "toggle_trash_option"})
 
@@ -1468,7 +1468,7 @@ function GUI.open_config_frame(player, pdata)
                             type = "checkbox",
                             name = gui_defines.trash_network,
                             caption = {"auto-trash-in-main-network"},
-                            state = settings[gui_defines.trash_network]
+                            state = flags[gui_defines.trash_network]
                         },
                         {type = "toggle_trash_network"})
 
@@ -1477,7 +1477,7 @@ function GUI.open_config_frame(player, pdata)
                             name = gui_defines.pause_trash,
                             caption = {"auto-trash-config-button-pause"},
                             tooltip = {"auto-trash-tooltip-pause"},
-                            state = settings.pause_trash
+                            state = flags.pause_trash
                         },
                         {type = "toggle_pause_trash"})
 
@@ -1486,7 +1486,7 @@ function GUI.open_config_frame(player, pdata)
                             name = gui_defines.pause_requests,
                             caption = {"auto-trash-config-button-pause-requests"},
                             tooltip = {"auto-trash-tooltip-pause-requests"},
-                            state = settings.pause_requests
+                            state = flags.pause_requests
                         },
                         {type = "toggle_pause_requests"})
 
@@ -1607,7 +1607,7 @@ function GUI.close(player, pdata, no_reset)
         elements.container = nil
     end
     pdata.selected = false
-    if not no_reset and player.mod_settings["autotrash_reset_on_close"].value then
+    if not no_reset and pdata.settings.reset_on_close then
         pdata.config_tmp = util.table.deepcopy(pdata.config_new)
         pdata.dirty = false
     end
