@@ -159,6 +159,32 @@ at_gui.handlers = {
                     end
                     at_gui.clear_button(pdata, index, e.element)
                 elseif e.button == defines.mouse_button_type.left then
+                    if e.shift then
+                        local config_tmp = pdata.config_tmp
+                        local cursor_ghost = player.cursor_ghost
+                        if elem_value and not cursor_ghost and not player.cursor_stack.valid_for_read then
+                            pdata.selected = index
+                            player.cursor_ghost = elem_value
+                        elseif cursor_ghost and cursor_ghost.name == config_tmp.config[old_selected].name then
+                            if elem_value then--always true, even when shift clicking an empty button with a ghost, since it gets set before on_click
+                                local tmp = table.deep_copy(config_tmp.config[index])
+                                config_tmp.config[index] = table.deep_copy(config_tmp.config[old_selected])
+                                config_tmp.config[index].slot = index
+                                if tmp then
+                                    tmp.slot = old_selected
+                                end
+                                config_tmp.config[old_selected] = tmp
+                                player.cursor_ghost = nil
+                                pdata.selected = index
+                                config_tmp.max_slot = index > config_tmp.max_slot and index or config_tmp.max_slot
+                            end
+                        end
+                        at_gui.update_button(pdata, index, e.element)
+                        at_gui.update_button(pdata, old_selected)
+                        at_gui.update_sliders(pdata)
+                        --GUI.update_button_styles(player, pdata)--TODO: only update changed buttons
+                        return
+                    end
                     if not elem_value or old_selected == index then return end
                     pdata.selected = index
                     if old_selected then
@@ -171,6 +197,7 @@ at_gui.handlers = {
             end,
             on_gui_elem_changed = function(e)
                 local player = game.get_player(e.player_index)
+                if player.cursor_ghost then return end--dragging to an empty slot, on_gui_click raised later
                 local pdata = global._pdata[e.player_index]
                 local elem_value = e.element.elem_value
                 local old_selected = pdata.selected
@@ -611,20 +638,22 @@ function at_gui.create_main_window(player, pdata)
                             }},
                             {type = "frame", style = "bordered_frame", style_mods = {right_padding = 8, horizontally_stretchable = "on"}, children = {
                                 {type = "flow", direction = "vertical", children = {
-                                    {type = "table", save_as = "sliders.table", style_mods = {minimal_height = 60}, column_count = 2, children = {
+                                    {type = "table", save_as = "sliders.table", style_mods = {height = 60}, column_count = 2, children = {
                                         {type = "flow", direction = "horizontal", children = {
                                             {type = "label", caption = {"auto-trash-request"}}
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
                                             {type = "slider", save_as = "sliders.request", handlers = "sliders.request", minimum_value = 0, maximum_value = 42},
-                                            {type = "textfield", save_as = "sliders.request_text", handlers = "sliders.request", style = "slider_value_textfield"}
+                                            {type = "textfield", save_as = "sliders.request_text", handlers = "sliders.request", style = "slider_value_textfield"},
+                                            --{type = "sprite-button", style = "tool_button", style_mods = {top_margin = 2}, sprite = "utility/export_slot"}
                                         }},
                                         {type = "flow", direction = "horizontal", children = {
                                             {type = "label", caption={"auto-trash-trash"}},
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
                                             {type = "slider", save_as = "sliders.trash", handlers = "sliders.trash", minimum_value = 0, maximum_value = 42},
-                                            {type = "textfield", save_as = "sliders.trash_text", handlers = "sliders.trash", style = "slider_value_textfield"}
+                                            {type = "textfield", save_as = "sliders.trash_text", handlers = "sliders.trash", style = "slider_value_textfield"},
+                                            --{type = "sprite-button", style = "tool_button", style_mods = {top_margin = 2}, sprite = "utility/export_slot"}
                                         }},
                                     }},
                                     {type = "drop-down", style = "at_quick_actions", handlers = "quick_actions",
