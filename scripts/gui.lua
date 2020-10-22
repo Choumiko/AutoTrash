@@ -44,7 +44,7 @@ local at_gui = {}
 at_gui.templates = {
     slot_table = {
         main = function(btns, pdata)
-            local ret = {type = "table", column_count = constants.slot_columns, style = "at_filter_group_table", save_as = "slot_table",
+            local ret = {type = "table", column_count = constants.slot_columns, style = "at_filter_group_table", save_as = "main.slot_table",
                 style_mods = {minimal_height = constants.slot_table_height}, children = {}}
             for i=1, btns do
                 ret.children[i] = gui.templates.slot_table.button(i, pdata)
@@ -175,7 +175,7 @@ at_gui.handlers = {
                 if e.button == defines.mouse_button_type.right then
                     if not elem_value then
                         pdata.selected = false
-                        at_gui.update_button(pdata, old_selected, pdata.gui.slot_table.children[old_selected])
+                        at_gui.update_button(pdata, old_selected, pdata.gui.main.slot_table.children[old_selected])
                         at_gui.update_sliders(pdata)
                         return
                     end
@@ -210,7 +210,7 @@ at_gui.handlers = {
                     if not elem_value or old_selected == index then return end
                     pdata.selected = index
                     if old_selected then
-                        local old = pdata.gui.slot_table.children[old_selected]
+                        local old = pdata.gui.main.slot_table.children[old_selected]
                         at_gui.update_button(pdata, old_selected, old)
                     end
                     at_gui.update_button(pdata, index, e.element)
@@ -232,8 +232,8 @@ at_gui.handlers = {
                         if i ~= index and elem_value == v.name then
                             display_message(player, {"", {"cant-set-duplicate-request", item_prototype(elem_value).localised_name}}, true)
                             pdata.selected = i
-                            at_gui.update_button(pdata, i, pdata.gui.slot_table.children[i])
-                            pdata.gui.main.config_rows.scroll_to_element(pdata.gui.slot_table.children[i], "top-third")
+                            at_gui.update_button(pdata, i, pdata.gui.main.slot_table.children[i])
+                            pdata.gui.main.config_rows.scroll_to_element(pdata.gui.main.slot_table.children[i], "top-third")
                             if item_config then
                                 e.element.elem_value = item_config.name
                             else
@@ -258,7 +258,7 @@ at_gui.handlers = {
                     end
                     at_gui.update_button(pdata, index, e.element)
                     if old_selected then
-                        at_gui.update_button(pdata, old_selected, pdata.gui.slot_table.children[old_selected])
+                        at_gui.update_button(pdata, old_selected, pdata.gui.main.slot_table.children[old_selected])
                     end
                     at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
                     at_gui.update_sliders(pdata)
@@ -288,7 +288,7 @@ at_gui.handlers = {
             on_gui_click = function(e)
                 local player = game.get_player(e.player_index)
                 local pdata = global._pdata[e.player_index]
-                local textfield = pdata.gui.preset_textfield
+                local textfield = pdata.gui.main.preset_textfield
                 local name = textfield.text
                 if name == "" then
                     display_message(player, {"auto-trash-storage-name-not-set"}, true)
@@ -303,7 +303,7 @@ at_gui.handlers = {
                     end
                     display_message(player, "Preset " .. name .." updated", "success")
                 else
-                    gui.build(pdata.gui.presets_flow, {gui.templates.preset(name, pdata)})
+                    gui.build(pdata.gui.main.presets_flow, {gui.templates.preset(name, pdata)})
                 end
 
                 pdata.presets[name] = table.deep_copy(pdata.config_tmp)
@@ -320,7 +320,7 @@ at_gui.handlers = {
                     pdata.selected_presets = {[name] = true}
                     pdata.config_tmp = table.deep_copy(pdata.presets[name])
                     pdata.selected = false
-                    pdata.gui.preset_textfield.text = name
+                    pdata.gui.main.preset_textfield.text = name
                     local slots = player.character_logistic_slot_count
                     local diff = pdata.config_tmp.max_slot - slots
                     if diff > 0 then
@@ -504,7 +504,7 @@ at_gui.decrease_slots = function(player, pdata, slots, old_slots)
     local rows = constants.slot_rows
     local width = constants.slot_table_width
     width = (slots <= (rows*cols)) and width or (width + 12)
-    local slot_table = pdata.gui.slot_table
+    local slot_table = pdata.gui.main.slot_table
     for i = old_slots, slots+1, -1 do
         local btn = slot_table.children[i]
         gui.update_filters("slots.item_button", player.index, {btn.index}, "remove")
@@ -526,7 +526,7 @@ at_gui.increase_slots = function(player, pdata, slots, old_slots)
     width = (slots <= (rows*cols)) and width or (width + 12)
 
 
-    local slot_table = pdata.gui.slot_table
+    local slot_table = pdata.gui.main.slot_table
     gui.update_filters("slots.decrease", player.index, nil, "remove")
     gui.update_filters("slots.increase", player.index, nil, "remove")
     slot_table.count_change.destroy()
@@ -540,7 +540,7 @@ at_gui.increase_slots = function(player, pdata, slots, old_slots)
 end
 
 at_gui.update_buttons = function(pdata)
-    local children = pdata.gui.slot_table.children
+    local children = pdata.gui.main.slot_table.children
     for i=1, #children-1 do
         at_gui.update_button(pdata, i, children[i])
     end
@@ -571,31 +571,36 @@ at_gui.get_button_style = function(i, selected, item, available, on_the_way, ite
 end
 
 at_gui.update_button_styles = function(player, pdata)
-    local ruleset_grid = pdata.gui.slot_table
+    local ruleset_grid = pdata.gui.main.slot_table
     if not (ruleset_grid and ruleset_grid.valid) then return end
     local selected = pdata.selected
     local config = pdata.config_tmp
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
-
     if not (available and on_the_way and config.c_requests > 0 and not pdata.flags.pause_requests) then
         local children = ruleset_grid.children
         for i=1, #children-1 do
             children[i].style = (i == selected) and "at_button_slot_selected" or "at_button_slot"
         end
-        return true
+        return
     end
     config = config.config
+    local ret = {}
     local buttons = ruleset_grid.children
     for i=1, #buttons-1 do
-        buttons[i].style = at_gui.get_button_style(i, selected, config[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+        local item = config[i]
+        local style, diff = at_gui.get_button_style(i, selected, config[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+        if item and item.request > 0 then
+            ret[item.name] = {style, diff}
     end
-    return true
+        buttons[i].style = style
+end
+    return ret
 end
 
 at_gui.update_button = function(pdata, i, button)
     if not (button and button.valid) then
         if not i then return end
-        button = pdata.gui.slot_table.children[i]
+        button = pdata.gui.main.slot_table.children[i]
     end
     local req = pdata.config_tmp.config[i]
     if req then
@@ -634,7 +639,7 @@ end
 
 at_gui.update_sliders = function(pdata)
     if pdata.selected then
-        local sliders = pdata.gui.sliders
+        local sliders = pdata.gui.main.sliders
         local item_config = pdata.config_tmp.config[pdata.selected]
         if item_config then
             sliders.request.slider_value = convert_to_slider(item_config.request)
@@ -645,13 +650,13 @@ at_gui.update_sliders = function(pdata)
         end
     end
     local visible = pdata.selected and true or false
-    for _, child in pairs(pdata.gui.sliders.table.children) do
+    for _, child in pairs(pdata.gui.main.sliders.table.children) do
         child.visible = visible
     end
 end
 
 at_gui.update_presets = function(pdata)
-    local children = pdata.gui.presets_flow.children
+    local children = pdata.gui.main.presets_flow.children
     local selected_presets = pdata.selected_presets
     local death_presets = pdata.death_presets
     for i=1, #children do
@@ -663,9 +668,9 @@ at_gui.update_presets = function(pdata)
     end
     local s = table_size(selected_presets)
     if s == 1 then
-        pdata.gui.preset_textfield.text = next(selected_presets)
+        pdata.gui.main.preset_textfield.text = next(selected_presets)
     elseif s > 1 then
-        pdata.gui.preset_textfield.text = ""
+        pdata.gui.main.preset_textfield.text = ""
     end
 end
 
@@ -711,21 +716,21 @@ function at_gui.create_main_window(player, pdata)
                             }},
                             {type = "frame", style = "bordered_frame", style_mods = {right_padding = 8, horizontally_stretchable = "on"}, children = {
                                 {type = "flow", direction = "vertical", children = {
-                                    {type = "table", save_as = "sliders.table", style_mods = {height = 60}, column_count = 2, children = {
+                                    {type = "table", save_as = "main.sliders.table", style_mods = {height = 60}, column_count = 2, children = {
                                         {type = "flow", direction = "horizontal", children = {
                                             {type = "label", caption = {"auto-trash-request"}}
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
-                                            {type = "slider", save_as = "sliders.request", handlers = "sliders.request", minimum_value = 0, maximum_value = 42},
-                                            {type = "textfield", save_as = "sliders.request_text", handlers = "sliders.request", style = "slider_value_textfield"},
+                                            {type = "slider", save_as = "main.sliders.request", handlers = "sliders.request", minimum_value = 0, maximum_value = 42},
+                                            {type = "textfield", save_as = "main.sliders.request_text", handlers = "sliders.request", style = "slider_value_textfield"},
                                             --{type = "sprite-button", style = "tool_button", style_mods = {top_margin = 2}, sprite = "utility/export_slot"}
                                         }},
                                         {type = "flow", direction = "horizontal", children = {
                                             {type = "label", caption={"auto-trash-trash"}},
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
-                                            {type = "slider", save_as = "sliders.trash", handlers = "sliders.trash", minimum_value = 0, maximum_value = 42},
-                                            {type = "textfield", save_as = "sliders.trash_text", handlers = "sliders.trash", style = "slider_value_textfield"},
+                                            {type = "slider", save_as = "main.sliders.trash", handlers = "sliders.trash", minimum_value = 0, maximum_value = 42},
+                                            {type = "textfield", save_as = "main.sliders.trash_text", handlers = "sliders.trash", style = "slider_value_textfield"},
                                             --{type = "sprite-button", style = "tool_button", style_mods = {top_margin = 2}, sprite = "utility/export_slot"}
                                         }},
                                     }},
@@ -750,13 +755,13 @@ function at_gui.create_main_window(player, pdata)
                         }},
                         {type = "flow", direction="vertical", style_mods = {maximal_width = 274, padding= 12, top_padding = 8, vertical_spacing = 12}, children = {
                             {type = "flow", children = {
-                                {type = "textfield", style = "at_save_as_textfield", save_as = "preset_textfield", handlers = "presets.textfield", text = ""},
+                                {type = "textfield", style = "at_save_as_textfield", save_as = "main.preset_textfield", handlers = "presets.textfield", text = ""},
                                 {template = "pushers.horizontal"},
                                 {type = "button", caption = {"gui-save-game.save"}, style = "at_save_button", handlers = "presets.save"}
                             }},
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
                                 {type = "scroll-pane", style_mods = {extra_top_padding_when_activated = 0, extra_left_padding_when_activated = 0, extra_right_padding_when_activated = 0}, children = {
-                                    {type = "flow", direction = "vertical", save_as = "presets_flow", style_mods = {vertically_stretchable = "on", left_padding = 8, top_padding = 8, width = 230}, children =
+                                    {type = "flow", direction = "vertical", save_as = "main.presets_flow", style_mods = {vertically_stretchable = "on", left_padding = 8, top_padding = 8, width = 230}, children =
                                         gui.templates.presets(pdata),
                                     },
                                 }}
@@ -770,7 +775,7 @@ function at_gui.create_main_window(player, pdata)
     gui_data.main.titlebar.flow.drag_target = gui_data.main.window
     gui_data.main.window.force_auto_center()
     gui_data.main.window.visible = false
-    pdata.gui = gui_data
+    pdata.gui.main = gui_data.main
     pdata.selected = false
     at_gui.update_button_styles(player, pdata)
     at_gui.update_sliders(pdata)
@@ -819,7 +824,31 @@ at_gui.create_status_display = function(player, pdata)
     at_gui.update_status_display(player, pdata)
 end
 
-at_gui.update_status_display = function(player, pdata)
+at_gui.update_status_display_cached = function(pdata, cache)
+    local status_table = pdata.gui.status_table
+    local max_count = pdata.settings.status_count
+    local children = status_table.children
+    local c = 1
+    for name, data in pairs(cache) do
+        if c > max_count then return true end
+            local style = data[1]
+            if style ~= "at_button_slot" then
+                local button = children[c]
+                button.style = style
+                button.sprite = "item/" .. name
+                button.number = data[2]
+                button.visible = true
+                c = c + 1
+            end
+    end
+    for i = c, max_count do
+        children[i].visible = false
+    end
+    return true
+end
+
+at_gui.update_status_display = function(player, pdata, cache)
+    if cache then return at_gui.update_status_display_cached(pdata, cache) end
     local status_table = pdata.gui.status_table
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
     if not (available and not pdata.flags.pause_requests) then
@@ -832,9 +861,6 @@ at_gui.update_status_display = function(player, pdata)
     local max_count = pdata.settings.status_count
     local get_request_slot = player.character.get_request_slot
 
-    --TODO: looping over config_new is slightly faster, but may be out of sync with the actual requests
-    -- for i, item in pairs(config_tmp) do--luacheck: ignore
-    --     if item and item.request > 0 then
     local children = status_table.children
     local c = 1
     for i = 1, player.character_logistic_slot_count do
@@ -855,7 +881,7 @@ at_gui.update_status_display = function(player, pdata)
             end
         end
     end
-    for i = c, pdata.settings.status_count do
+    for i = c, max_count do
         children[i].visible = false
     end
     return true

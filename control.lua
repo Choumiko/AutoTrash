@@ -3,6 +3,7 @@ require "__core__/lualib/util"
 local event = require("__flib__.event")
 local gui = require("__flib__.gui")
 local migration = require("__flib__.migration")
+local table = require("__flib__.table")
 
 
 local global_data = require("scripts.global-data")
@@ -45,10 +46,19 @@ local function on_nth_tick()
     local pdata
     for i, p in pairs(game.players) do
         if p.character then
+            --TODO: remove
+            if __Profiler then
+                p.character_personal_logistic_requests_enabled = true
+            end
             pdata = global._pdata[i]
-            -- GUI.update_button_styles(p, pdata)
-            -- GUI.update_status_display(p, pdata)
+            local cache
+            if pdata.flags.gui_open then
+                cache = at_gui.update_button_styles(p, pdata)
         end
+            if pdata.flags.status_display_open then
+                at_gui.update_status_display(p, pdata, cache)
+    end
+end
     end
 end
 
@@ -180,10 +190,15 @@ local migrations = {
                 end
             end
             pdata.storage_new = nil
+            pdata.gui = {}
             player_data.update_settings(player, pdata)
             if player.gui.left.mod_gui_frame_flow and player.gui.left.mod_gui_frame_flow.valid then
                 for _, egui in pairs(player.gui.left.mod_gui_frame_flow.children) do
                     if egui.get_mod() == "AutoTrash" then
+                        if egui.name == "autotrash_status_flow" then
+                            assert(pdata.gui_elements.status_flow == egui)
+                            pdata.gui.status_flow = egui
+                        else
                         egui.destroy()
                     end
                 end
@@ -283,7 +298,7 @@ local function on_configuration_changed(data)
         end
         -- GUI.init(player)
         -- GUI.update_buttons(player, pdata)
-        -- GUI.update_status_display(player, pdata)
+        at_gui.update_status_display(player, pdata)
     end
 end
 
@@ -334,8 +349,8 @@ local function on_player_toggled_map_editor(event)
     local status, err = pcall(function()
     local player = game.get_player(event.player_index)
     if not player.character then
-        GUI.close(player, global._pdata[event.player_index], true)
-        GUI.close_quick_presets(global._pdata[event.player_index])
+        at_gui.close(global._pdata[event.player_index], true)
+        --GUI.close_quick_presets(global._pdata[event.player_index])
     end
     end)
     if not status then
@@ -358,11 +373,11 @@ local function on_player_respawned(event)
         end
         GUI.close(player, pdata)
         pdata.config_tmp = tmp
-        pdata.config_new = util.table.deepcopy(tmp)
+        pdata.config_new = table.deep_copy(tmp)
 
         set_requests(player, pdata)
         player.character_personal_logistic_requests_enabled = true
-        GUI.update_status_display(player, pdata)
+        at_gui.update_status_display(player, pdata)
     end
     end)
     if not status then
@@ -384,7 +399,7 @@ local function on_player_changed_position(event)
         maybe_new = maybe_new.logistic_network
     end
     if maybe_new ~= current then
-        GUI.update_button_styles(player, pdata)
+        at_gui.update_button_styles(player, pdata)
         pdata.current_network = get_network_entity(player)
     end
     if not pdata.flags.trash_network then
@@ -525,7 +540,7 @@ local function toggle_autotrash_pause_requests(player)
     else
         lib_control.pause_requests(player, pdata)
     end
-    GUI.update_status_display(player, pdata)
+    at_gui.update_status_display(player, pdata)
     GUI.update_main_button(pdata)
     GUI.close(player, pdata)
     end)
@@ -547,14 +562,8 @@ local function on_runtime_mod_setting_changed(event)
     if not (player_index and pdata) then return end
     player_data.update_settings(player, pdata)
 
-    if event.setting == "autotrash_status_count" then
-        GUI.update_status_display(player, pdata)
-    end
-    if event.setting == "autotrash_status_columns" then
-        local status_table = pdata.gui_elements.status_table
-        if status_table and status_table.valid then
-            GUI.open_status_display(player, pdata)
-        end
+    if event.setting == "autotrash_status_count" or event.setting == "autotrash_status_columns" then
+        at_gui.init_status_display(player, pdata)
     end
     end)
     if not status then
@@ -563,13 +572,6 @@ local function on_runtime_mod_setting_changed(event)
 end
 
 gui.register_handlers()
-
--- event.on_gui_click(GUI.generic_event)
--- event.on_gui_checked_state_changed(GUI.generic_event)
--- event.on_gui_elem_changed(GUI.generic_event)
--- event.on_gui_value_changed(GUI.generic_event)
--- event.on_gui_text_changed(GUI.generic_event)
--- event.on_gui_selection_state_changed(GUI.generic_event)
 
 event.on_runtime_mod_setting_changed(on_runtime_mod_setting_changed)
 
@@ -624,18 +626,6 @@ end
 event.register("autotrash_trash_cursor", autotrash_trash_cursor)
 
 local at_commands = {
-    -- reload = function()
-    --     game.reload_mods()
-
-    --     local button_flow = mod_gui.get_button_flow(game.player)[GUI.defines.main_button]
-    --     if button_flow and button_flow.valid then
-    --         GUI.deregister_action(button_flow, global._pdata[game.player.index], true)
-    --     end
-
-    --     init_global()
-    --     game.player.print("Mods reloaded")
-    -- end,
-
     hide = function(args)
         local button = global._pdata[args.player_index].gui_elements.main_button
         if button and button.valid then
@@ -655,13 +645,13 @@ local at_commands = {
         local pdata = global._pdata[player_index]
         local player = game.get_player(player_index)
         local status, err = pcall(function()
-            GUI.close(player, pdata)
+            at_gui.close(pdata)
             pdata.config_tmp = lib_control.combine_from_vanilla(player)
             GUI.open_config_frame(player, pdata)
             GUI.mark_dirty(pdata)
         end)
         if not status then
-            GUI.close(player, pdata)
+            at_gui.close(pdata)
             pdata.config_tmp = nil
             player_data.init(player_index)
             debugDump(err, player_index, true)
