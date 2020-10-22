@@ -10,6 +10,7 @@ local convert_to_slider = lib_control.convert_to_slider
 local convert_from_slider = lib_control.convert_from_slider
 local display_message = lib_control.display_message
 local item_prototype = lib_control.item_prototype
+local get_non_equipment_network = lib_control.get_non_equipment_network
 local presets = require("presets")
 
 local function tonumber_max(n)
@@ -20,9 +21,9 @@ end
 local function get_network_data(player)
     local character = player.character
     if not character then return end
-    local network = lib_control.get_non_equipment_network(player)--character and character.logistic_network--
-    local requester = character and character.get_logistic_point(defines.logistic_member_index.character_requester)
-    if not (network and network.valid and requester and requester.valid) then
+    local network = get_non_equipment_network(character)
+    local requester = character.get_logistic_point(defines.logistic_member_index.character_requester)
+    if not (network and requester and network.valid and requester.valid) then
         return
     end
     local on_the_way = requester.targeted_items_deliver
@@ -552,8 +553,8 @@ at_gui.get_button_style = function(i, selected, item, available, on_the_way, ite
     if i == selected then
         return "at_button_slot_selected"
     end
-    local n, c = item.name, item.request
-    local diff = c - ((item_count[n] or 0) + (armor[n] or 0) + (gun[n] or 0) + (ammo[n] or 0) + (cursor_stack[n] or 0))
+    local n = item.name
+    local diff = item.request - ((item_count[n] or 0) + (armor[n] or 0) + (gun[n] or 0) + (ammo[n] or 0) + (cursor_stack[n] or 0))
 
     if diff <= 0 then
         return "at_button_slot"
@@ -577,8 +578,9 @@ at_gui.update_button_styles = function(player, pdata)
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
 
     if not (available and on_the_way and config.c_requests > 0 and not pdata.flags.pause_requests) then
-        for i, button in pairs(ruleset_grid.children) do
-            button.style = (i == selected) and "at_button_slot_selected" or "at_button_slot"
+        local children = ruleset_grid.children
+        for i=1, #children-1 do
+            children[i].style = (i == selected) and "at_button_slot_selected" or "at_button_slot"
         end
         return true
     end
@@ -778,6 +780,85 @@ end
 
 function at_gui.init(player, pdata)
     at_gui.create_main_window(player, pdata)
+    local status_flow = pdata.gui.status_flow
+    if not (status_flow and status_flow.valid) then
+        status_flow = mod_gui.get_frame_flow(player).autotrash_status_flow
+        if (status_flow and status_flow.valid) then
+            pdata.gui.status_flow = status_flow
+        else
+            pdata.gui.status_flow = mod_gui.get_frame_flow(player).add{
+                type = "flow",
+                name = "autotrash_status_flow",
+                direction = "vertical"
+            }
+        end
+        at_gui.create_status_display(player, pdata)
+    end
+end
+
+at_gui.create_status_display = function(player, pdata)
+    local status_table = pdata.gui.status_table
+    if status_table and status_table.valid then
+        status_table.destroy()
+        pdata.gui.status_table = nil
+    end
+
+    status_table = pdata.gui.status_flow.add{
+        type = "table",
+        style = "at_request_status_table",
+        column_count = pdata.settings.status_columns
+    }
+    pdata.gui.status_table = status_table
+
+    for _ = 1, pdata.settings.status_count do
+        status_table.add{
+            type = "sprite-button",
+            visible = false
+        }
+    end
+    at_gui.update_status_display(player, pdata)
+end
+
+at_gui.update_status_display = function(player, pdata)
+    local status_table = pdata.gui.status_table
+    local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
+    if not (available and not pdata.flags.pause_requests) then
+        for _, child in pairs(status_table.children) do
+            child.visible = false
+        end
+        return true
+    end
+
+    local max_count = pdata.settings.status_count
+    local get_request_slot = player.character.get_request_slot
+
+    --TODO: looping over config_new is slightly faster, but may be out of sync with the actual requests
+    -- for i, item in pairs(config_tmp) do--luacheck: ignore
+    --     if item and item.request > 0 then
+    local children = status_table.children
+    local c = 1
+    for i = 1, player.character_logistic_slot_count do
+        local item = get_request_slot(i)
+        if item and item.count > 0 then
+            if c > max_count then return true end
+            item.request = item.count
+            if item.request > 0 then
+                local style, diff = at_gui.get_button_style(i, false, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+                if style ~= "at_button_slot" then
+                    local button = children[c]
+                    button.style = style
+                    button.sprite = "item/" .. item.name
+                    button.number = diff
+                    button.visible = true
+                    c = c + 1
+                end
+            end
+        end
+    end
+    for i = c, pdata.settings.status_count do
+        children[i].visible = false
+    end
+    return true
 end
 
 function at_gui.destroy(player, pdata)
