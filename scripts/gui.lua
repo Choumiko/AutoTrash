@@ -149,7 +149,7 @@ gui.add_templates(at_gui.templates)
 at_gui.handlers = {
     mod_gui_button = {
         on_gui_click = function(e)
-            at_gui.toggle(global._pdata[e.player_index])
+            at_gui.toggle(game.get_player(e.player_index), global._pdata[e.player_index])
         end,
     },
     main = {
@@ -591,9 +591,9 @@ at_gui.update_button_styles = function(player, pdata)
         local style, diff = at_gui.get_button_style(i, selected, config[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
         if item and item.request > 0 then
             ret[item.name] = {style, diff}
-    end
+        end
         buttons[i].style = style
-end
+    end
     return ret
 end
 
@@ -777,31 +777,38 @@ function at_gui.create_main_window(player, pdata)
     gui_data.main.window.visible = false
     pdata.gui.main = gui_data.main
     pdata.selected = false
-    at_gui.update_button_styles(player, pdata)
-    at_gui.update_sliders(pdata)
-    at_gui.update_presets(pdata)
 end
 
 
 function at_gui.init(player, pdata)
     at_gui.create_main_window(player, pdata)
     local status_flow = pdata.gui.status_flow
-    if not (status_flow and status_flow.valid) then
+    local visible = player.force.character_logistic_requests
+    if status_flow and status_flow then
+        status_flow.clear()
+    else
         status_flow = mod_gui.get_frame_flow(player).autotrash_status_flow
-        if (status_flow and status_flow.valid) then
+        if status_flow and status_flow.valid then
             pdata.gui.status_flow = status_flow
+            status_flow.clear()
         else
-            pdata.gui.status_flow = mod_gui.get_frame_flow(player).add{
-                type = "flow",
-                name = "autotrash_status_flow",
-                direction = "vertical"
-            }
+            pdata.gui.status_flow = mod_gui.get_frame_flow(player).add{type = "flow", name = "autotrash_status_flow", direction = "vertical"}
         end
-        at_gui.create_status_display(player, pdata)
     end
+    pdata.gui.status_flow.visible = visible
+
+    local main_button_flow = pdata.gui.mod_gui.flow
+    if main_button_flow and main_button_flow.valid then
+        main_button_flow.clear()
+    else
+        pdata.gui.mod_gui.flow = mod_gui.get_button_flow(player).add{type = "flow", direction = "horizontal", name =  "autotrash_main_flow", style = "at_main_flow"}
+    end
+    pdata.gui.mod_gui.button = pdata.gui.mod_gui.flow.add{type = "sprite-button", name = "at_config_button", style = "at_sprite_button", sprite = "autotrash_trash"}
+    gui.update_filters("mod_gui_button", player.index, {pdata.gui.mod_gui.button.index}, "add")
+    pdata.gui.mod_gui.flow.visible = visible
 end
 
-at_gui.create_status_display = function(player, pdata)
+at_gui.init_status_display = function(player, pdata)
     local status_table = pdata.gui.status_table
     if status_table and status_table.valid then
         status_table.destroy()
@@ -901,11 +908,14 @@ function at_gui.destroy(player, pdata)
     pdata.gui_open = false
 end
 
-function at_gui.open(pdata)
+function at_gui.open(player, pdata)
     local window_frame = pdata.gui.main.window
     if window_frame and window_frame.valid then
         window_frame.visible = true
         pdata.flags.gui_open = true
+        at_gui.update_button_styles(player, pdata)
+        at_gui.update_sliders(pdata)
+        at_gui.update_presets(pdata)
     end
     --player.opened = pdata.gui.window
 end
@@ -920,11 +930,11 @@ function at_gui.close(pdata)
     --player.opened = nil
 end
 
-function at_gui.toggle(pdata)
+function at_gui.toggle(player, pdata)
     if pdata.flags.gui_open then
         at_gui.close(pdata)
     else
-        at_gui.open(pdata)
+        at_gui.open(player, pdata)
     end
 end
 return at_gui

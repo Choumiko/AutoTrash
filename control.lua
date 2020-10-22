@@ -1,5 +1,5 @@
 require "__core__/lualib/util"
-
+--TODO: check every GUI/at_gui call
 local event = require("__flib__.event")
 local gui = require("__flib__.gui")
 local migration = require("__flib__.migration")
@@ -54,11 +54,11 @@ local function on_nth_tick()
             local cache
             if pdata.flags.gui_open then
                 cache = at_gui.update_button_styles(p, pdata)
-        end
+            end
             if pdata.flags.status_display_open then
                 at_gui.update_status_display(p, pdata, cache)
-    end
-end
+            end
+        end
     end
 end
 
@@ -174,34 +174,52 @@ local migrations = {
     ["5.2.3"] = function()
         for player_index, player in pairs(game.players) do
             local pdata = global._pdata[player_index]
-            local psettings = pdata.settings
-            global._pdata[player_index].flags = {
-                gui_open = false,
-                trash_above_requested = psettings.trash_above_requested or false,
-                trash_unrequested = psettings.trash_unrequested or false,
-                trash_network = psettings.trash_network or false,
-                pause_trash = psettings.pause_trash or false,
-                pause_requests = psettings.pause_requests or false,
-            }
-            pdata.presets = pdata.storage_new
-            if pdata.presets then
-                for _, stored in pairs(pdata.presets) do
-                    remove_invalid_items(pdata, stored)
+            if pdata then
+                local psettings = pdata.settings
+                pdata.flags = {
+                    gui_open = false,
+                    trash_above_requested = psettings.trash_above_requested or false,
+                    trash_unrequested = psettings.trash_unrequested or false,
+                    trash_network = psettings.trash_network or false,
+                    pause_trash = psettings.pause_trash or false,
+                    pause_requests = psettings.pause_requests or false,
+                }
+                pdata.gui = {
+                    mod_gui = {},
+                }
+                pdata.presets = pdata.storage_new
+                if pdata.presets then
+                    for _, stored in pairs(pdata.presets) do
+                        remove_invalid_items(pdata, stored)
+                    end
                 end
+                pdata.storage_new = nil
+                pdata.gui_actions = nil
+                pdata.gui_elements = nil
+                pdata.gui_location = nil
+
+                player_data.update_settings(player, pdata)
+            else
+                pdata = player_data.init(player_index)
             end
-            pdata.storage_new = nil
-            pdata.gui = {}
-            player_data.update_settings(player, pdata)
-            if player.gui.left.mod_gui_frame_flow and player.gui.left.mod_gui_frame_flow.valid then
+            --keep the status flow in gui.left, everything else goes boom (from AutoTrash)
+            local mod_gui_flow = mod_gui.get_frame_flow(player)
+            if mod_gui_flow and mod_gui_flow.valid then
                 for _, egui in pairs(player.gui.left.mod_gui_frame_flow.children) do
                     if egui.get_mod() == "AutoTrash" then
                         if egui.name == "autotrash_status_flow" then
-                            assert(pdata.gui_elements.status_flow == egui)
                             pdata.gui.status_flow = egui
+                            egui.clear()
                         else
-                        egui.destroy()
+                            egui.destroy()
+                        end
                     end
                 end
+            end
+            local button_flow = mod_gui.get_button_flow(player).autotrash_main_flow
+            if button_flow and button_flow.valid then
+                pdata.gui.mod_gui.flow = button_flow
+                button_flow.clear()
             end
             for _, egui in pairs(player.gui.screen.children) do
                 if egui.get_mod() == "AutoTrash" then
@@ -212,35 +230,29 @@ local migrations = {
 
         gui.init()
         gui.build_lookup_tables()
-        for player_index, pdata in pairs(global._pdata) do
-            for name, element in pairs(pdata.gui_elements) do
-                if element and element.valid then
-                    if name ~= "main_button" then
-                        element.destroy()
-                    else
-                        gui.update_filters("mod_gui_button", player_index, {element.index}, "add")
-                    end
-                end
-            end
-            pdata.gui_actions = nil
-            pdata.gui_elements = nil
-            pdata.gui_location = nil
+        for pi, player in pairs(game.players) do
+            at_gui.init(player, global._pdata[pi])
         end
 
-        for _, force in pairs(game.forces) do
-            if force.character_logistic_requests then
-                for _, player in pairs(force.players) do
-                    at_gui.init(player, global._pdata[player.index])
-                end
-                global.unlocked_by_force[force.name] = true
-            end
-        end
         --TODO: remove
-        global._pdata[1].presets["preset2"]["config"][14] = global._pdata[1].presets["preset2"]["config"][7]
-        global._pdata[1].presets["preset2"]["config"][7] = nil
-        global._pdata[1].presets["preset2"].max_slot = 14
         at_gui.open(game.players[1], global._pdata[1])
+        -- global._pdata[1].presets["preset2"]["config"][14] = global._pdata[1].presets["preset2"]["config"][7]
+        -- global._pdata[1].presets["preset2"]["config"][7] = nil
+        -- global._pdata[1].presets["preset2"].max_slot = 14
+        -- for i = 1, 13 do
+        --     global._pdata[1].presets["fpp" .. i] = table.deep_copy(global._pdata[1].presets["preset1"])
+        -- end
+
+
+
     end,
+    ["5.2.4"] = function()
+        for player_index, player in pairs(game.players) do
+            local pdata = global._pdata[player_index]
+            pdata.flags.status_display_open = false
+            at_gui.init_status_display(player, pdata)
+        end
+    end
 }
 
 local function on_configuration_changed(data)
@@ -267,17 +279,17 @@ local function on_configuration_changed(data)
             if player.character and player.force.technologies["logistic-robotics"].researched then
                 local pdata = global._pdata[player_index]
                 local status, err = pcall(function()
-                    GUI.close(player, pdata)
+                    at_gui.close(pdata)
                     pdata.config_tmp = lib_control.combine_from_vanilla(player)
                     if next(pdata.config_tmp.config) then
-                        pdata.presets["at_imported"] = util.table.deepcopy(pdata.config_tmp)
+                        pdata.presets["at_imported"] = table.deep_copy(pdata.config_tmp)
                         pdata.selected_presets = {at_imported = true}
-                        GUI.open_config_frame(player, pdata)
-                        GUI.mark_dirty(pdata, true)
+                        at_gui.init(player, pdata)
+                        at_gui.open(player, pdata)
                     end
                 end)
                 if not status then
-                    GUI.close(player, pdata)
+                    at_gui.close(pdata)
                     pdata.config_tmp = nil
                     pdata.presets["at_imported"] = nil
                     pdata.selected_presets = {}
@@ -580,7 +592,7 @@ local function on_research_finished(event)
         local force = event.research.force
         if not global.unlocked_by_force[force.name] and force.character_logistic_requests then
             for _, player in pairs(event.research.force.players) do
-                GUI.init(player)
+                at_gui.init(player, global._pdata[player.index])
             end
             global.unlocked_by_force[force.name] = true
         end
@@ -668,14 +680,3 @@ end
 commands.add_command(command_prefix .. "hide", "Hide the AutoTrash button", at_commands.hide)
 commands.add_command(command_prefix .. "show", "Show the AutoTrash button", at_commands.show)
 commands.add_command(command_prefix .. "import", "Import from vanilla", at_commands.import)
-
-remote.add_interface("at",
-    {
-        saveVar = function(name)
-            saveVar(global, name)
-        end,
-
-        init_gui = function()
-            GUI.init(game.player)
-        end,
-    })
