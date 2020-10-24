@@ -224,7 +224,47 @@ at_gui.handlers = {
             on_gui_closed = function(e)
                 at_gui.close(global._pdata[e.player_index])
             end
-        }
+        },
+        apply_changes = {
+            on_gui_click = function(e)
+                local player = game.get_player(e.player_index)
+                local pdata = global._pdata[e.player_index]
+                pdata.config_new = table.deep_copy(pdata.config_tmp)
+                pdata.dirty = false
+                pdata.gui.main.reset_button.enabled = false
+                if pdata.settings.close_on_apply then
+                    at_gui.close(pdata)
+                end
+
+                set_requests(player, pdata)
+                at_gui.update_status_display(player, pdata)
+            end
+        },
+        reset = {
+            on_gui_click = function(e)
+                local pdata = global._pdata[e.player_index]
+                if pdata.flags.dirty then
+                    pdata.config_tmp = table.deep_copy(pdata.config_new)
+                    e.element.enabled = false
+                    pdata.selected_presets = {}
+                    pdata.selected = false
+                    pdata.flags.dirty = false
+                    at_gui.update_sliders(pdata)
+                    at_gui.update_buttons(pdata)
+                    at_gui.update_presets(pdata)
+                end
+            end
+    },
+        export = {
+            on_gui_click = function(e)
+                error("Not implemented")
+            end
+        },
+        import = {
+            on_gui_click = function(e)
+                error("Not implemented")
+            end
+        },
     },
     slots = {
         item_button = {
@@ -261,6 +301,7 @@ at_gui.handlers = {
                                 player.cursor_ghost = nil
                                 pdata.selected = index
                                 config_tmp.max_slot = index > config_tmp.max_slot and index or config_tmp.max_slot
+                                at_gui.mark_dirty(pdata)
                             end
                         end
                         at_gui.update_button(pdata, index, e.element)
@@ -318,6 +359,7 @@ at_gui.handlers = {
                     if config_tmp.config[index].request > 0 then
                         config_tmp.c_requests = config_tmp.c_requests + 1
                     end
+                    at_gui.mark_dirty(pdata)
                     at_gui.update_button(pdata, index, e.element)
                     if old_selected then
                         at_gui.update_button(pdata, old_selected, pdata.gui.main.slot_table.children[old_selected])
@@ -403,6 +445,7 @@ at_gui.handlers = {
                     pdata.config_tmp = tmp
                     pdata.selected = false
                 end
+                at_gui.mark_dirty(pdata, true)
                 at_gui.update_buttons(pdata)
                 at_gui.update_presets(pdata)
                 at_gui.update_sliders(pdata)
@@ -515,6 +558,7 @@ at_gui.handlers = {
                 config_tmp.c_requests = c
             end
             element.selected_index = 1
+            at_gui.mark_dirty(pdata)
             at_gui.update_sliders(pdata)
             at_gui.update_buttons(pdata)
         end
@@ -569,6 +613,7 @@ at_gui.update_request_config = function(number, pdata)
     if item_config.trash and number > item_config.trash then
         item_config.trash = number
     end
+    at_gui.mark_dirty(pdata)
     at_gui.update_sliders(pdata)
     at_gui.update_button(pdata, pdata.selected)
 end
@@ -586,6 +631,7 @@ at_gui.update_trash_config = function(number, pdata)
         item_config.request = number
     end
     item_config.trash = number
+    at_gui.mark_dirty(pdata)
     at_gui.update_sliders(pdata)
     at_gui.update_button(pdata, pdata.selected)
 end
@@ -727,6 +773,7 @@ at_gui.clear_button = function(pdata, index, button)
             end
         end
     end
+    at_gui.mark_dirty(pdata)
     at_gui.update_button(pdata, index, button)
     at_gui.update_sliders(pdata)
 end
@@ -793,11 +840,11 @@ function at_gui.create_main_window(player, pdata)
                         {type = "frame", style = "subheader_frame", children={
                             {type = "label", style = "subheader_caption_label", caption = "Logistics configuration"},
                             {template = "pushers.horizontal"},
-                            {type = "sprite-button", style = "tool_button_green", style_mods = {padding = 0},
+                            {type = "sprite-button", style = "tool_button_green", handlers = "main.apply_changes", style_mods = {padding = 0},
                                 sprite = "utility/check_mark_white", tooltip = {"module-inserter-config-button-apply"}},
-                            {type = "sprite-button", style = "tool_button_red", sprite = "utility/reset_white"},
-                            {type = "sprite-button", style = "tool_button", sprite = "utility/export_slot", tooltip = {"autotrash_export_tt"}},
-                            {type = "sprite-button", style = "tool_button", sprite = "mi_import_string", tooltip = {"autotrash_import_tt"}}
+                            {type = "sprite-button", style = "tool_button_red", save_as = "main.reset_button", handlers = "main.reset", sprite = "utility/reset_white"},
+                            {type = "sprite-button", style = "tool_button", handlers = "main.export", sprite = "utility/export_slot", tooltip = {"autotrash_export_tt"}},
+                            {type = "sprite-button", style = "tool_button", handlers = "main.import", sprite = "mi_import_string", tooltip = {"autotrash_import_tt"}}
                         }},
                         {type = "flow", direction="vertical", style_mods = {padding= 12, top_padding = 8, vertical_spacing = 10}, children = {
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
@@ -1022,6 +1069,16 @@ function at_gui.update_settings(pdata)
     frame[def.pause_trash].state = flags.pause_trash
     frame[def.pause_requests].state = flags.pause_requests
     frame[def.network_button].caption = pdata.main_network and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+end
+
+function at_gui.mark_dirty(pdata, keep_presets)
+    local reset = pdata.gui.main.reset_button
+    reset.enabled = true
+    pdata.flags.dirty = true
+    if not keep_presets then
+        pdata.selected_presets = {}
+    end
+    at_gui.update_presets(pdata)
 end
 
 function at_gui.destroy(player, pdata)

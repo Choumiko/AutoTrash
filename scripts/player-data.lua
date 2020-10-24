@@ -6,6 +6,7 @@ function player_data.init(player_index)
     global._pdata[player_index] = {
         flags = {
             gui_open = false,
+            dirty = false,
             status_display_open = false,
             trash_above_requested = false,
             trash_unrequested = false,
@@ -26,7 +27,6 @@ function player_data.init(player_index)
         temporary_requests = {},
         temporary_trash = {},
         settings = {},
-        dirty = false,
         selected_presets = {},
         death_presets = {},
 

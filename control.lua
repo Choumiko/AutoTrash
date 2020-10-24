@@ -249,6 +249,8 @@ local migrations = {
         for player_index, player in pairs(game.players) do
             local pdata = global._pdata[player_index]
             pdata.flags.status_display_open = false
+            pdata.flags.dirty = false
+            pdata.dirty = nil
             at_gui.init_status_display(player, pdata)
         end
     end
@@ -661,7 +663,7 @@ local at_commands = {
             at_gui.close(pdata)
             pdata.config_tmp = lib_control.combine_from_vanilla(player)
             at_gui.open(player, pdata)
-            GUI.mark_dirty(pdata)
+            at_gui.mark_dirty(pdata)
         end)
         if not status then
             at_gui.close(pdata)
