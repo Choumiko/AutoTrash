@@ -184,6 +184,12 @@ styles["at_slider_table"] = {
     minimal_height = 60
 }
 
+styles.at_scroll_pane = {
+    type = "scroll_pane_style",
+    extra_padding_when_activated = 0,
+    extra_right_padding_when_activated = -4
+}
+
 styles.at_slot_table_scroll_pane = {
     type = "scroll_pane_style",
     parent = "flib_naked_scroll_pane",
