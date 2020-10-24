@@ -6,20 +6,23 @@ function player_data.init(player_index)
     global._pdata[player_index] = {
         flags = {
             gui_open = false,
+            status_display_open = false,
             trash_above_requested = false,
             trash_unrequested = false,
             trash_network = false,
             pause_trash = false,
             pause_requests = false,
         },
-        gui = {},
+        gui = {
+            mod_gui = {}
+        },
         config_new = {config = {}, c_requests = 0, max_slot = 0},
         config_tmp = {config = {}, c_requests = 0, max_slot = 0},
         selected = false,
 
         main_network = false,
         current_network = nil,
-        storage_new = {},
+        presets = {},
         temporary_requests = {},
         temporary_trash = {},
         settings = {},
@@ -30,6 +33,7 @@ function player_data.init(player_index)
 
     }
     player_data.update_settings(game.get_player(player_index), global._pdata[player_index])
+    return global._pdata[player_index]
 end
 
 function player_data.update_settings(player, pdata)
