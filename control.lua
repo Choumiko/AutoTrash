@@ -123,12 +123,9 @@ local function on_init()
     gui.build_lookup_tables()
 end
 
-local function on_pre_player_removed(event)
-    if global._pdata[event.player_index] then
-        GUI.delete(global._pdata[event.player_index])
-        global._pdata[event.player_index] = nil
-        register_conditional_events()
-    end
+local function on_player_removed(event)
+    global._pdata[event.player_index] = nil
+    register_conditional_events()
 end
 
 local function remove_invalid_items(pdata, tbl, unselect)
@@ -235,6 +232,8 @@ local migrations = {
         end
 
         --TODO: remove
+        global._pdata[1].config_tmp = table.deep_copy(global._pdata[1].config_new)
+        set_requests(game.players[1], global._pdata[1])
         at_gui.open(game.players[1], global._pdata[1])
         -- global._pdata[1].presets["preset2"]["config"][14] = global._pdata[1].presets["preset2"]["config"][7]
         -- global._pdata[1].presets["preset2"]["config"][7] = nil
@@ -308,9 +307,10 @@ local function on_configuration_changed(data)
         for _, stored in pairs(pdata.presets) do
             remove_invalid_items(pdata, stored)
         end
-        -- GUI.init(player)
-        -- GUI.update_buttons(player, pdata)
-        at_gui.update_status_display(player, pdata)
+        if pdata.flags.gui_open then
+            at_gui.update_buttons(pdata)
+            at_gui.update_status_display(player, pdata)
+        end
     end
 end
 
@@ -362,7 +362,6 @@ local function on_player_toggled_map_editor(event)
     local player = game.get_player(event.player_index)
     if not player.character then
         at_gui.close(global._pdata[event.player_index], true)
-        --GUI.close_quick_presets(global._pdata[event.player_index])
     end
     end)
     if not status then
@@ -383,7 +382,7 @@ local function on_player_respawned(event)
         for key, _ in pairs(selected_presets) do
             presets.merge(tmp, pdata.presets[key])
         end
-        GUI.close(player, pdata)
+        at_gui.close(pdata)
         pdata.config_tmp = tmp
         pdata.config_new = table.deep_copy(tmp)
 
@@ -411,7 +410,9 @@ local function on_player_changed_position(event)
         maybe_new = maybe_new.logistic_network
     end
     if maybe_new ~= current then
-        at_gui.update_button_styles(player, pdata)
+        if pdata.flags.gui_open then
+            at_gui.update_button_styles(player, pdata)
+        end
         pdata.current_network = get_network_entity(player)
     end
     if not pdata.flags.trash_network then
@@ -419,19 +420,19 @@ local function on_player_changed_position(event)
     end
     local is_in_network, invalid = in_network(player, pdata)
     if invalid then
-        GUI.update_settings(pdata)
+        at_gui.update_settings(pdata)
     end
     local paused = pdata.flags.pause_trash
     if not is_in_network and not paused then
         pause_trash(player, pdata)
-        GUI.update_main_button(pdata)
+        at_gui.update_main_button(pdata)
         if pdata.settings.display_messages then
             display_message(player, "AutoTrash paused")
         end
         return
     elseif is_in_network and paused then
         unpause_trash(player, pdata)
-        GUI.update_main_button(pdata)
+        at_gui.update_main_button(pdata)
         if pdata.settings.display_messages then
             display_message(player, "AutoTrash unpaused")
         end
@@ -445,7 +446,7 @@ event.on_player_created(on_player_created)
 event.on_player_main_inventory_changed(on_player_main_inventory_changed)
 
 event.on_player_toggled_map_editor(on_player_toggled_map_editor)
-event.on_pre_player_removed(on_pre_player_removed)
+event.on_player_removed(on_player_removed)
 event.on_player_respawned(on_player_respawned)
 event.on_player_changed_position(on_player_changed_position)
 
@@ -465,7 +466,7 @@ local function update_network(entity, player_index, pdata, main)
         local player = game.get_player(player_index)
         player.print("Autotrash main network has been unset")
     end
-    GUI.update_settings(pdata)
+    at_gui.update_settings(pdata)
     return newEntity
 end
 
@@ -536,8 +537,8 @@ local function toggle_autotrash_pause(player)
     else
         pause_trash(player, pdata)
     end
-    GUI.update_main_button(pdata)
-    GUI.close(player, pdata)
+    at_gui.update_main_button(pdata)
+    at_gui.close(pdata)
     end)
     if not status then
         debugDump(err, player.index, true)
@@ -553,8 +554,8 @@ local function toggle_autotrash_pause_requests(player)
         lib_control.pause_requests(player, pdata)
     end
     at_gui.update_status_display(player, pdata)
-    GUI.update_main_button(pdata)
-    GUI.close(player, pdata)
+    at_gui.update_main_button(pdata)
+    at_gui.close(pdata)
     end)
     if not status then
         debugDump(err, player.index, true)
@@ -659,7 +660,7 @@ local at_commands = {
         local status, err = pcall(function()
             at_gui.close(pdata)
             pdata.config_tmp = lib_control.combine_from_vanilla(player)
-            GUI.open_config_frame(player, pdata)
+            at_gui.open(player, pdata)
             GUI.mark_dirty(pdata)
         end)
         if not status then

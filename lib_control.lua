@@ -122,19 +122,19 @@ local function unpause_trash(player, pdata)
     set_requests(player, pdata)
 end
 
-local function get_non_equipment_network(player)
-    if not player.character then return end
+local function get_non_equipment_network(character)
+    if not character then return end
     --trash slots researched
-    local logi_point = player.character.get_logistic_point(defines.logistic_member_index.character_provider)
+    local logi_point = character.get_logistic_point(defines.logistic_member_index.character_provider)
     if not logi_point then
         --requests researched
-        logi_point = player.character.get_logistic_point(defines.logistic_member_index.character_requester)
+        logi_point = character.get_logistic_point(defines.logistic_member_index.character_requester)
     end
     return logi_point and logi_point.logistic_network
 end
 
 local function get_network_entity(player)
-    local network = get_non_equipment_network(player)
+    local network = get_non_equipment_network(player.character)
     if network and network.valid then
         local cell = network.find_cell_closest_to(player.position)
         return cell and cell.owner
@@ -146,7 +146,7 @@ local function in_network(player, pdata)
     if not pdata.flags.trash_network then
         return true
     end
-    local currentNetwork = get_non_equipment_network(player)
+    local currentNetwork = get_non_equipment_network(player.character)
     if pdata.main_network and not pdata.main_network.valid then
         --ended up with an invalid entity, not much i can do to recover
         player.print("AutoTrash lost the main network. You will have to set it again.")

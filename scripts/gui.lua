@@ -10,7 +10,11 @@ local convert_to_slider = lib_control.convert_to_slider
 local convert_from_slider = lib_control.convert_from_slider
 local display_message = lib_control.display_message
 local item_prototype = lib_control.item_prototype
+local in_network = lib_control.in_network
 local get_non_equipment_network = lib_control.get_non_equipment_network
+local set_requests = lib_control.set_requests
+local pause_trash = lib_control.pause_trash
+local unpause_trash = lib_control.unpause_trash
 local presets = require("presets")
 
 local function tonumber_max(n)
@@ -39,7 +43,59 @@ local function get_network_data(player)
     return available, on_the_way, item_count, cursor_stack, armor, gun, ammo
 end
 
-local at_gui = {}
+local at_gui = {
+    defines = {
+        trash_above_requested = "trash_above_requested",
+        trash_unrequested = "trash_unrequested",
+        trash_network = "trash_network",
+        pause_trash = "pause_trash",
+        pause_requests = "pause_requests",
+        network_button = "network_button",
+    },
+}
+
+at_gui.toggle_setting = {
+    trash_above_requested = function(player, pdata)
+        set_requests(player, pdata)
+        return pdata.flags.trash_above_requested
+    end,
+    trash_unrequested = function(player, pdata)
+        set_requests(player, pdata)
+        return pdata.flags.trash_unrequested
+    end,
+    trash_network = function(player, pdata)
+        if pdata.flags.trash_network and not pdata.main_network then
+            player.print("No main network set")
+            pdata.flags.trash_network = false
+            return false
+        end
+
+        if pdata.flags.trash_network and in_network(player, pdata) then
+            unpause_trash(player, pdata)
+            at_gui.update_main_button(pdata)
+        end
+        return pdata.flags.trash_network
+    end,
+    pause_trash = function(player, pdata)
+        if pdata.flags.pause_trash then
+            pause_trash(player, pdata)
+        else
+            unpause_trash(player, pdata)
+        end
+        at_gui.update_main_button(pdata)
+        return pdata.flags.pause_trash
+    end,
+    pause_requests = function(player, pdata)
+        if pdata.flags.pause_requests then
+            lib_control.pause_requests(player, pdata)
+        else
+            lib_control.unpause_requests(player, pdata)
+        end
+        at_gui.update_main_button(pdata)
+        at_gui.update_status_display(player, pdata)
+        return pdata.flags.pause_requests
+    end,
+}
 
 at_gui.templates = {
     slot_table = {
@@ -80,43 +136,49 @@ at_gui.templates = {
 
     settings = function(flags, pdata)
         return {type = "frame", style = "bordered_frame", style_mods = {right_padding = 8, horizontally_stretchable = "on"}, children = {
-            {type = "flow", direction = "vertical", children = {
+            {type = "flow", direction = "vertical", save_as = "main.trash_options", children = {
                 {
                     type = "checkbox",
-                    --name = gui_defines.trash_above_requested,
+                    name = at_gui.defines.trash_above_requested,
                     caption = {"auto-trash-above-requested"},
-                    state = flags.trash_above_requested
+                    state = flags.trash_above_requested,
+                    handlers = "settings.toggle"
                 },
                 {
                     type = "checkbox",
-                    --name = gui_defines.trash_unrequested,
+                    name = at_gui.defines.trash_unrequested,
                     caption = {"auto-trash-unrequested"},
-                    state = flags.trash_unrequested
+                    state = flags.trash_unrequested,
+                    handlers = "settings.toggle"
                 },
                 {
                     type = "checkbox",
-                    --name = gui_defines.trash_network,
+                    name = at_gui.defines.trash_network,
                     caption = {"auto-trash-in-main-network"},
-                    state = flags.trash_network
+                    state = flags.trash_network,
+                    handlers = "settings.toggle"
                 },
                 {
                     type = "checkbox",
-                    --name = gui_defines.pause_trash,
+                    name = at_gui.defines.pause_trash,
                     caption = {"auto-trash-config-button-pause"},
                     tooltip = {"auto-trash-tooltip-pause"},
-                    state = flags.pause_trash
+                    state = flags.pause_trash,
+                    handlers = "settings.toggle"
                 },
                 {
                     type = "checkbox",
-                    --name = gui_defines.pause_requests,
+                    name = at_gui.defines.pause_requests,
                     caption = {"auto-trash-config-button-pause-requests"},
                     tooltip = {"auto-trash-tooltip-pause-requests"},
-                    state = flags.pause_requests
+                    state = flags.pause_requests,
+                    handlers = "settings.toggle"
                 },
                 {
                     type = "button",
-                    --name = gui_defines.network_button,
-                    caption = pdata.main_network and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+                    name = at_gui.defines.network_button,
+                    caption = pdata.main_network and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"},
+                    handlers = "settings.change_network"
                 },
                 {template = "pushers.horizontal"}
             }},
@@ -456,6 +518,37 @@ at_gui.handlers = {
             at_gui.update_sliders(pdata)
             at_gui.update_buttons(pdata)
         end
+    },
+    settings = {
+        toggle = {
+            on_gui_checked_state_changed = function(e)
+                local pdata = global._pdata[e.player_index]
+                local name = e.element.name
+                if at_gui.toggle_setting[name] then
+                    pdata.flags[name] = e.element.state
+                    e.element.state = at_gui.toggle_setting[name](game.get_player(e.player_index), pdata)
+                end
+            end
+        },
+        change_network = {
+            on_gui_click = function(e)
+                local pdata = global._pdata[e.player_index]
+                local player = game.get_player(e.player_index)
+                if pdata.main_network then
+                    if not pdata.main_network.valid then
+                        --ended up with an invalid entity, not much i can do to recover
+                        player.print("AutoTrash lost the main network. You will have to set it again.")
+                    end
+                    pdata.main_network = false
+                else
+                    pdata.main_network = lib_control.get_network_entity(player)
+                    if not pdata.main_network then
+                        display_message(player, {"auto-trash-not-in-network"}, true)
+                    end
+                end
+                at_gui.update_settings(pdata)
+            end
+        }
     }
 }
 gui.add_handlers(at_gui.handlers)
@@ -540,6 +633,7 @@ at_gui.increase_slots = function(player, pdata, slots, old_slots)
 end
 
 at_gui.update_buttons = function(pdata)
+    if not pdata.flags.gui_open then return end
     local children = pdata.gui.main.slot_table.children
     for i=1, #children-1 do
         at_gui.update_button(pdata, i, children[i])
@@ -638,6 +732,7 @@ at_gui.clear_button = function(pdata, index, button)
 end
 
 at_gui.update_sliders = function(pdata)
+    if not pdata.flags.gui_open then return end
     if pdata.selected then
         local sliders = pdata.gui.main.sliders
         local item_config = pdata.config_tmp.config[pdata.selected]
@@ -656,6 +751,7 @@ at_gui.update_sliders = function(pdata)
 end
 
 at_gui.update_presets = function(pdata)
+    if not pdata.flags.gui_open then return end
     local children = pdata.gui.main.presets_flow.children
     local selected_presets = pdata.selected_presets
     local death_presets = pdata.death_presets
@@ -781,6 +877,7 @@ end
 
 
 function at_gui.init(player, pdata)
+    at_gui.destroy(player, pdata)
     at_gui.create_main_window(player, pdata)
     local status_flow = pdata.gui.status_flow
     local visible = player.force.character_logistic_requests
@@ -894,18 +991,53 @@ at_gui.update_status_display = function(player, pdata, cache)
     return true
 end
 
+function at_gui.update_main_button(pdata)
+    local mainButton = pdata.gui.mod_gui.button
+    if not (mainButton and mainButton.valid) then
+        return
+    end
+    local flags = pdata.flags
+    if flags.pause_trash and not flags.pause_requests then
+        mainButton.sprite = "autotrash_trash_paused"
+    elseif flags.pause_requests and not flags.pause_trash then
+        mainButton.sprite = "autotrash_requests_paused"
+    elseif flags.pause_trash and flags.pause_requests then
+        mainButton.sprite = "autotrash_both_paused"
+    else
+        mainButton.sprite = "autotrash_trash"
+    end
+    at_gui.update_settings(pdata)
+end
+
+function at_gui.update_settings(pdata)
+    if not pdata.flags.gui_open then return end
+    local frame = pdata.gui.main.trash_options
+    if not (frame and frame.valid) then return end
+    local flags = pdata.flags
+    local def = at_gui.defines
+
+    frame[def.trash_unrequested].state = flags.trash_unrequested
+    frame[def.trash_above_requested].state = flags.trash_above_requested
+    frame[def.trash_network].state = flags.trash_network
+    frame[def.pause_trash].state = flags.pause_trash
+    frame[def.pause_requests].state = flags.pause_requests
+    frame[def.network_button].caption = pdata.main_network and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+end
+
 function at_gui.destroy(player, pdata)
     local player_index = player.index
-    gui.update_filters("main", player_index, nil, "remove")
-    pdata.gui.main.window.destroy()
+    if pdata.gui.main and pdata.gui.main.window and pdata.gui.main.window.valid then
+        gui.update_filters("main", player_index, nil, "remove")
+        pdata.gui.main.window.destroy()
+        pdata.gui.main = nil
+        pdata.flags.gui_open = false
+    end
     if pdata.gui.import then
         if pdata.gui.import.window.main then
             pdata.gui.import.window.main.destroy()
         end
+        pdata.gui.import = nil
     end
-    pdata.gui.main = nil
-    pdata.gui.presets = nil
-    pdata.gui_open = false
 end
 
 function at_gui.open(player, pdata)
@@ -914,6 +1046,7 @@ function at_gui.open(player, pdata)
         window_frame.visible = true
         pdata.flags.gui_open = true
         at_gui.update_button_styles(player, pdata)
+        at_gui.update_settings(pdata)
         at_gui.update_sliders(pdata)
         at_gui.update_presets(pdata)
     end
@@ -926,7 +1059,6 @@ function at_gui.close(pdata)
         window_frame.visible = false
         pdata.flags.gui_open = false
     end
-    --at_gui.destroy(player, pdata)
     --player.opened = nil
 end
 
