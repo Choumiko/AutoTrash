@@ -54,6 +54,72 @@ local at_gui = {
     },
 }
 
+local function import_presets(player, pdata, add_presets, stack)
+    if stack and stack.valid_for_read then
+        if stack.is_blueprint and stack.is_blueprint_setup() then
+            local preset, cc_found = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
+            if cc_found then
+                pdata.config_tmp = preset
+                player.print({"string-import-successful", "AutoTrash configuration"})
+                pdata.selected = false
+
+                --named preset
+                if stack.label and stack.label ~= "Autotrash_configuration" then
+                    local textfield = pdata.gui.main.preset_textfield
+                    local preset_name = string.sub(stack.label, 11)
+                    if add_presets and at_gui.add_preset(player, pdata, preset_name, preset) then
+                        pdata.selected_presets = {[preset_name] = true}
+                        at_gui.update_presets(pdata)
+                    end
+                    textfield.text = preset_name
+                    player.clean_cursor()
+                    textfield.focus()
+                end
+            else
+                player.print({"", {"error-while-importing-string"}, " ", {"autotrash_import_error"}})
+            end
+            return true
+        elseif add_presets and stack.is_blueprint_book then
+            local book_inventory = stack.get_inventory(defines.inventory.item_main)
+            local any_cc = false
+            for i = 1, #book_inventory do
+                local bp = book_inventory[i]
+                if bp.valid_for_read and bp.is_blueprint_setup() then
+                    local config, cc = presets.import(bp.get_blueprint_entities(), bp.blueprint_icons)
+                    if cc then
+                        any_cc = true
+                        at_gui.add_preset(player, pdata, bp.label, config)
+                    end
+                end
+            end
+            if any_cc then
+                at_gui.update_presets(pdata)
+            else
+                player.print({"", {"error-while-importing-string"}, " ", {"autotrash_import_error"}})
+            end
+            return true
+        end
+    end
+    return false
+end
+
+local function import_presets_from_string(player, pdata, bp_string, add_presets)
+    local inventory = game.create_inventory(1)
+    inventory.insert{name = "blueprint"}
+    local stack = inventory[1]
+    local result = stack.import_stack(bp_string)
+    if result ~= 0 then
+        inventory.destroy()
+        return result
+    end
+
+    if (stack.is_blueprint and stack.is_blueprint_setup()) or (add_presets and stack.is_blueprint_book) then
+        result = import_presets(player, pdata, add_presets, stack)
+    end
+    inventory.destroy()
+    return result
+end
+
 at_gui.toggle_setting = {
     trash_above_requested = function(player, pdata)
         set_requests(player, pdata)
@@ -133,6 +199,25 @@ at_gui.templates = {
         horizontal = {type = "empty-widget", style_mods = {horizontally_stretchable = true}},
         vertical = {type = "empty-widget", style_mods = {vertically_stretchable = true}}
     },
+    import_export_window = function(bp_string, mode)
+        local caption = bp_string and {"gui.export-to-string"} or {"gui-blueprint-library.import-string"}
+        local button_caption = bp_string and {"gui.close"} or {"gui-blueprint-library.import"}
+        local button_handler = bp_string and "import.close_button" or "import.import_button"
+        return {type = "frame", save_as = "window.main", style = "inner_frame_in_outer_frame", direction = "vertical", children = {
+                {type = "flow", save_as = "window.titlebar", children = {
+                    {type = "label", style = "frame_title", caption = caption, elem_mods = {ignored_by_interaction = true}},
+                    {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
+                    {template = "frame_action_button", sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
+                        handlers = "import.close_button", save_as = "close_button"}
+                }},
+                {type = "text-box", text = bp_string, save_as = "window.textbox", elem_mods = {word_wrap = true}, style_mods = {width=400, height = 250}},
+                {type = "flow", direction = "horizontal", children={
+                        {template = "pushers.horizontal"},
+                        {type = "label", name = "mode", caption = mode, visible = false},
+                        {type = "button", handlers = button_handler, style = "dialog_button", caption = button_caption}
+                }}
+            }}
+    end,
 
     settings = function(flags, pdata)
         return {type = "frame", style = "bordered_frame", style_mods = {right_padding = 8, horizontally_stretchable = "on"}, children = {
@@ -254,17 +339,83 @@ at_gui.handlers = {
                     at_gui.update_presets(pdata)
                 end
             end
-    },
+        },
         export = {
             on_gui_click = function(e)
-                error("Not implemented")
+                local player = game.get_player(e.player_index)
+                local pdata = global._pdata[e.player_index]
+                local name
+                if table_size(pdata.selected_presets) == 1 then
+                    name = "AutoTrash_" .. next(pdata.selected_presets)
+                else
+                    name = "AutoTrash_configuration"
+                end
+                local text = presets.export(pdata.config_tmp, name)
+                if e.shift then
+                    local stack = player.cursor_stack
+                    if stack.valid_for_read then
+                        player.print("Click with an empty cursor")
+                        return
+                    else
+                        if stack.import_stack(text) ~= 0 then
+                            player.print({"failed-to-import-string", name})
+                            return
+                        end
+                    end
+                else
+                    at_gui.create_import_window(player, pdata, text, "single")
+                end
+            end
+        },
+        export_all = {
+            on_gui_click = function(e)
+                local player = game.get_player(e.player_index)
+                local pdata = global._pdata[e.player_index]
+                if not next(pdata.presets) then
+                    display_message(player, "", true)
+                end
+                local text = presets.export_all(pdata)
+                if e.shift then
+                    local stack = player.cursor_stack
+                    if stack.valid_for_read then
+                        player.print("Click with an empty cursor")
+                        return
+                    else
+                        if stack.import_stack(text) ~= 0 then
+                            player.print({"failed-to-import-string"})
+                            return
+                        end
+                    end
+                else
+                    at_gui.create_import_window(player, pdata, text, "all")
+                end
             end
         },
         import = {
             on_gui_click = function(e)
-                error("Not implemented")
+                local player = game.get_player(e.player_index)
+                local pdata = global._pdata[e.player_index]
+                if import_presets(player, pdata, false, player.cursor_stack) then
+                    at_gui.update_buttons(pdata)
+                    at_gui.update_sliders(pdata)
+                    at_gui.mark_dirty(pdata)
+                else
+                    at_gui.create_import_window(player, pdata, nil, "single")
+                end
             end
         },
+        import_all = {
+            on_gui_click = function(e)
+                local player = game.get_player(e.player_index)
+                local pdata = global._pdata[e.player_index]
+                if import_presets(player, pdata, true, player.cursor_stack) then
+                    at_gui.update_buttons(pdata)
+                    at_gui.update_sliders(pdata)
+                else
+                    at_gui.create_import_window(player, pdata, nil, "all")
+                end
+            end
+        }
     },
     slots = {
         item_button = {
@@ -394,25 +545,13 @@ at_gui.handlers = {
                 local pdata = global._pdata[e.player_index]
                 local textfield = pdata.gui.main.preset_textfield
                 local name = textfield.text
-                if name == "" then
-                    display_message(player, {"auto-trash-storage-name-not-set"}, true)
-                    textfield.focus()
-                    return
-                end
-                if pdata.presets[name] then
-                    if not pdata.settings.overwrite then
-                        display_message(player, {"auto-trash-storage-name-in-use"}, true)
-                        textfield.focus()
-                        return
-                    end
-                    display_message(player, "Preset " .. name .." updated", "success")
+                if at_gui.add_preset(player, pdata, name) then
+                    pdata.selected_presets = {[name] = true}
+                    at_gui.update_presets(pdata)
                 else
-                    gui.build(pdata.gui.main.presets_flow, {gui.templates.preset(name, pdata)})
+                    textfield.focus()
                 end
 
-                pdata.presets[name] = table.deep_copy(pdata.config_tmp)
-                pdata.selected_presets = {[name] = true}
-                at_gui.update_presets(pdata)
             end
         },
         load = {
@@ -591,6 +730,30 @@ at_gui.handlers = {
                     end
                 end
                 at_gui.update_settings(pdata)
+            end
+        }
+    },
+    import = {
+        import_button = {
+            on_gui_click = function(e)
+                local pdata = global._pdata[e.player_index]
+                local player = game.get_player(e.player_index)
+                local gui_elements = pdata.gui
+                local text_box = gui_elements.import.window.textbox
+                local add_presets = e.element.parent.mode.caption == "all"
+                local result = import_presets_from_string(player, pdata, text_box.text, add_presets)
+                if not result then
+                    player.print({"failed-to-import-string", "Unknown error"})
+                end
+                gui.handlers.import.close_button.on_gui_click(e)
+            end
+        },
+        close_button = {
+            on_gui_click = function(e)
+                local pdata = global._pdata[e.player_index]
+                gui.update_filters("import", e.player_index, nil, "remove")
+                pdata.gui.import.window.main.destroy()
+                pdata.gui.import = nil
             end
         }
     }
@@ -797,6 +960,26 @@ at_gui.update_sliders = function(pdata)
     end
 end
 
+at_gui.add_preset = function(player, pdata, name, config)
+    config = config or pdata.config_tmp
+    if name == "" then
+        display_message(player, {"auto-trash-storage-name-not-set"}, true)
+        return
+    end
+    if pdata.presets[name] then
+        if not pdata.settings.overwrite then
+            display_message(player, {"auto-trash-storage-name-in-use"}, true)
+            return
+        end
+        pdata.presets[name] = table.deep_copy(config)
+        display_message(player, "Preset " .. name .." updated", "success")
+    else
+        pdata.presets[name] = table.deep_copy(config)
+        gui.build(pdata.gui.main.presets_flow, {gui.templates.preset(name, pdata)})
+    end
+    return true
+end
+
 at_gui.update_presets = function(pdata)
     if not pdata.flags.gui_open then return end
     local children = pdata.gui.main.presets_flow.children
@@ -893,8 +1076,8 @@ function at_gui.create_main_window(player, pdata)
                         {type = "frame", style = "subheader_frame", children={
                             {type = "label", style = "subheader_caption_label", caption = "Presets"},
                             {template = "pushers.horizontal"},
-                            {type = "sprite-button", style = "tool_button", sprite = "utility/export_slot", tooltip = {"module-inserter-export_tt"}},
-                            {type = "sprite-button", style = "tool_button", sprite = "mi_import_string", tooltip = {"module-inserter-import_tt"}},
+                            {type = "sprite-button", style = "tool_button", handlers = "main.export_all", sprite = "utility/export_slot", tooltip = {"autotrash_export_tt"}},
+                            {type = "sprite-button", style = "tool_button", handlers = "main.import_all", sprite = "mi_import_string", tooltip = {"", {"autotrash_import_tt"}, "\n[color=red][font=default-bold]", {"autotrash_import_extended"}, "[/font][/color]"}},
                         }},
                         {type = "flow", direction="vertical", style_mods = {maximal_width = 274, padding= 12, top_padding = 8, vertical_spacing = 12}, children = {
                             {type = "flow", children = {
@@ -920,6 +1103,25 @@ function at_gui.create_main_window(player, pdata)
     gui_data.main.window.visible = false
     pdata.gui.main = gui_data.main
     pdata.selected = false
+end
+
+function at_gui.create_import_window(player, pdata, bp_string, mode)
+    if pdata.gui.import and pdata.gui.import.window and pdata.gui.import.window.main.valid then
+        local window = pdata.gui.import.window.main
+        gui.update_filters("import", player.index, nil, "remove")
+        window.destroy()
+        pdata.gui.import = nil
+    end
+    pdata.gui.import = gui.build(player.gui.screen, {gui.templates.import_export_window(bp_string, mode)}, pdata.gui)
+    local import_window = pdata.gui.import.window
+    import_window.titlebar.drag_target = pdata.gui.import.window.main
+    import_window.main.force_auto_center()
+    local textbox = import_window.textbox
+    if bp_string then
+        textbox.read_only = true
+    end
+    textbox.select_all()
+    textbox.focus()
 end
 
 
@@ -1089,7 +1291,7 @@ function at_gui.destroy(player, pdata)
         pdata.gui.main = nil
         pdata.flags.gui_open = false
     end
-    if pdata.gui.import then
+    if pdata.gui.import and pdata.gui.import.window then
         if pdata.gui.import.window.main then
             pdata.gui.import.window.main.destroy()
         end
@@ -1110,11 +1312,16 @@ function at_gui.open(player, pdata)
     --player.opened = pdata.gui.window
 end
 
-function at_gui.close(pdata)
+function at_gui.close(pdata, no_reset)
     local window_frame = pdata.gui.main.window
     if window_frame and window_frame.valid then
         window_frame.visible = false
         pdata.flags.gui_open = false
+        if not no_reset and pdata.settings.reset_on_close then
+            pdata.config_tmp = table.deep_copy(pdata.config_new)
+            pdata.gui.main.reset_button.enabled = false
+            pdata.dirty = false
+        end
     end
     --player.opened = nil
 end

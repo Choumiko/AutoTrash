@@ -15,7 +15,8 @@ function player_data.init(player_index)
             pause_requests = false,
         },
         gui = {
-            mod_gui = {}
+            mod_gui = {},
+            import = {}
         },
         config_new = {config = {}, c_requests = 0, max_slot = 0},
         config_tmp = {config = {}, c_requests = 0, max_slot = 0},

@@ -183,6 +183,7 @@ local migrations = {
                 }
                 pdata.gui = {
                     mod_gui = {},
+                    import = {}
                 }
                 pdata.presets = pdata.storage_new
                 if pdata.presets then

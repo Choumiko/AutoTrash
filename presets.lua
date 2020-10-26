@@ -75,7 +75,7 @@ local ceil = math.ceil
 --preserves slot order, empty combinators are not included
 -- for importing, slot can be recalculated by the x position: starting_slot = x * 18 + 1
 -- y position of 0: request, y = 4: trash
-function presets.export(preset)
+function presets.export(preset, name)
     local item_slot_count = game.entity_prototypes["constant-combinator"].item_slot_count
     local combinators = ceil(preset.max_slot / item_slot_count)
     local half_cc = ceil(combinators / 2)
@@ -109,25 +109,34 @@ function presets.export(preset)
         bp[#bp+1] = request_cc[cc]
         bp[#bp+1] = trash_cc[cc]
     end
-    --log_blueprint_entities(bp)
-    return bp, {{index = 1, signal = {name = "signal-A", type = "virtual"}},{index = 2, signal = {name = "signal-T", type = "virtual"}},{index = 3, signal = {name = "signal-0", type = "virtual"}}}
+    local icons = {{index = 1, signal = {name = "signal-A", type = "virtual"}},{index = 2, signal = {name = "signal-T", type = "virtual"}},{index = 3, signal = {name = "signal-0", type = "virtual"}}}
+    local inventory = game.create_inventory(1)
+    inventory.insert{name = "blueprint"}
+    local stack = inventory[1]
+    stack.set_blueprint_entities(bp)
+    stack.label = name
+    stack.blueprint_icons = icons
+    local result = stack.export_stack()
+    inventory.destroy()
+    return result
 end
 
-function presets.export_all(pdata, inventory)
+function presets.export_all(pdata)
+    local inventory = game.create_inventory(1)
     inventory.insert{name = "blueprint-book"}
     local book = inventory[1]
     local book_inventory = book.get_inventory(defines.inventory.item_main)
     local index = 1
-    for name, preset in pairs(pdata.storage_new) do
+    for name, preset in pairs(pdata.presets) do
         book_inventory.insert{name = "blueprint"}
-        local bp, icons = presets.export(preset)
+        local bp = presets.export(preset, name)
         local blueprint = book_inventory[index]
-        blueprint.set_blueprint_entities(bp)
-        blueprint.label = name
-        blueprint.blueprint_icons = icons
+        blueprint.import_stack(bp)
         index = index + 1
     end
-    return book
+    local result = book.export_stack()
+    inventory.destroy()
+    return result
 end
 
 --Storing the exported string in the blueprint library preserves it even when mod items have been removed
