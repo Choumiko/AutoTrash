@@ -76,7 +76,9 @@ local function import_presets(player, pdata, add_presets, stack)
                 pdata.config_tmp = preset
                 player.print({"string-import-successful", "AutoTrash configuration"})
                 pdata.selected = false
-
+                at_gui.update_buttons(pdata)
+                at_gui.update_sliders(pdata)
+                at_gui.mark_dirty(pdata)
                 --named preset
                 if stack.label and stack.label ~= "Autotrash_configuration" then
                     local textfield = pdata.gui.main.preset_textfield
@@ -115,23 +117,6 @@ local function import_presets(player, pdata, add_presets, stack)
         end
     end
     return false
-end
-
-local function import_presets_from_string(player, pdata, bp_string, add_presets)
-    local inventory = game.create_inventory(1)
-    inventory.insert{name = "blueprint"}
-    local stack = inventory[1]
-    local result = stack.import_stack(bp_string)
-    if result ~= 0 then
-        inventory.destroy()
-        return result
-    end
-
-    if (stack.is_blueprint and stack.is_blueprint_setup()) or (add_presets and stack.is_blueprint_book) then
-        result = import_presets(player, pdata, add_presets, stack)
-    end
-    inventory.destroy()
-    return result
 end
 
 at_gui.toggle_setting = {
@@ -409,11 +394,7 @@ at_gui.handlers = {
             on_gui_click = function(e)
                 local player = e.player
                 local pdata = e.pdata
-                if import_presets(player, pdata, false, player.cursor_stack) then
-                    at_gui.update_buttons(pdata)
-                    at_gui.update_sliders(pdata)
-                    at_gui.mark_dirty(pdata)
-                else
+                if not import_presets(player, pdata, false, player.cursor_stack) then
                     at_gui.create_import_window(player, pdata, nil, "single")
                 end
             end
@@ -422,10 +403,7 @@ at_gui.handlers = {
             on_gui_click = function(e)
                 local player = e.player
                 local pdata = e.pdata
-                if import_presets(player, pdata, true, player.cursor_stack) then
-                    at_gui.update_buttons(pdata)
-                    at_gui.update_sliders(pdata)
-                else
+                if not import_presets(player, pdata, true, player.cursor_stack) then
                     at_gui.create_import_window(player, pdata, nil, "all")
                 end
             end
@@ -752,10 +730,18 @@ at_gui.handlers = {
             on_gui_click = function(e)
                 local player = e.player
                 local pdata = e.pdata
-                local gui_elements = pdata.gui
-                local text_box = gui_elements.import.window.textbox
                 local add_presets = e.element.parent.mode.caption == "all"
-                local result = import_presets_from_string(player, pdata, text_box.text, add_presets)
+                local inventory = game.create_inventory(1)
+
+                inventory.insert{name = "blueprint"}
+                local stack = inventory[1]
+                local result = stack.import_stack(pdata.gui.import.window.textbox.text)
+                if result ~= 0 then
+                    inventory.destroy()
+                    return result
+                end
+                result = import_presets(player, pdata, add_presets, stack)
+                inventory.destroy()
                 if not result then
                     player.print({"failed-to-import-string", "Unknown error"})
                 end
@@ -1090,8 +1076,8 @@ function at_gui.create_main_window(player, pdata)
                         {type = "frame", style = "subheader_frame", children={
                             {type = "label", style = "subheader_caption_label", caption = "Presets"},
                             {template = "pushers.horizontal"},
-                            {type = "sprite-button", style = "tool_button", handlers = "main.export_all", sprite = "utility/export_slot", tooltip = {"autotrash_export_tt"}},
-                            {type = "sprite-button", style = "tool_button", handlers = "main.import_all", sprite = "mi_import_string", tooltip = {"", {"autotrash_import_tt"}, "\n[color=red][font=default-bold]", {"autotrash_import_extended"}, "[/font][/color]"}},
+                            {type = "sprite-button", style = "tool_button", handlers = "main.export_all", sprite = "utility/export_slot", tooltip = {"autotrash_export_tt_all"}},
+                            {type = "sprite-button", style = "tool_button", handlers = "main.import_all", sprite = "mi_import_string", tooltip = {"autotrash_import_tt_all"}},
                         }},
                         {type = "flow", direction="vertical", style_mods = {maximal_width = 274, padding= 12, top_padding = 8, vertical_spacing = 12}, children = {
                             {type = "flow", children = {
