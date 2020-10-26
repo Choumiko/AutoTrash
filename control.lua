@@ -587,7 +587,7 @@ local function on_runtime_mod_setting_changed(event)
     end
 end
 
-gui.register_handlers()
+at_gui.register_handlers()
 
 event.on_runtime_mod_setting_changed(on_runtime_mod_setting_changed)
 

@@ -54,6 +54,20 @@ local at_gui = {
     },
 }
 
+function at_gui.register_handlers()
+    for name, id in pairs(defines.events) do
+        if string.sub(name, 1, 6) == "on_gui" then
+            script.on_event(id, at_gui.dispatch_handlers)
+        end
+    end
+end
+
+function at_gui.dispatch_handlers(event_data)
+    event_data.player = game.get_player(event_data.player_index)
+    event_data.pdata = global._pdata[event_data.player_index]
+    return gui.dispatch_handlers(event_data)
+end
+
 local function import_presets(player, pdata, add_presets, stack)
     if stack and stack.valid_for_read then
         if stack.is_blueprint and stack.is_blueprint_setup() then
@@ -296,24 +310,24 @@ gui.add_templates(at_gui.templates)
 at_gui.handlers = {
     mod_gui_button = {
         on_gui_click = function(e)
-            at_gui.toggle(game.get_player(e.player_index), global._pdata[e.player_index])
+            at_gui.toggle(e.player, e.pdata)
         end,
     },
     main = {
         close_button = {
             on_gui_click = function(e)
-                at_gui.close(global._pdata[e.player_index])
+                at_gui.close(e.pdata)
             end
         },
         window = {
             on_gui_closed = function(e)
-                at_gui.close(global._pdata[e.player_index])
+                at_gui.close(e.pdata)
             end
         },
         apply_changes = {
             on_gui_click = function(e)
-                local player = game.get_player(e.player_index)
-                local pdata = global._pdata[e.player_index]
+                local player = e.player
+                local pdata = e.pdata
                 pdata.config_new = table.deep_copy(pdata.config_tmp)
                 pdata.dirty = false
                 pdata.gui.main.reset_button.enabled = false
@@ -327,7 +341,7 @@ at_gui.handlers = {
         },
         reset = {
             on_gui_click = function(e)
-                local pdata = global._pdata[e.player_index]
+                local pdata = e.pdata
                 if pdata.flags.dirty then
                     pdata.config_tmp = table.deep_copy(pdata.config_new)
                     e.element.enabled = false
@@ -342,8 +356,8 @@ at_gui.handlers = {
         },
         export = {
             on_gui_click = function(e)
-                local player = game.get_player(e.player_index)
-                local pdata = global._pdata[e.player_index]
+                local player = e.player
+                local pdata = e.pdata
                 local name
                 if table_size(pdata.selected_presets) == 1 then
                     name = "AutoTrash_" .. next(pdata.selected_presets)
@@ -369,8 +383,8 @@ at_gui.handlers = {
         },
         export_all = {
             on_gui_click = function(e)
-                local player = game.get_player(e.player_index)
-                local pdata = global._pdata[e.player_index]
+                local player = e.player
+                local pdata = e.pdata
                 if not next(pdata.presets) then
                     display_message(player, "", true)
                 end
@@ -393,8 +407,8 @@ at_gui.handlers = {
         },
         import = {
             on_gui_click = function(e)
-                local player = game.get_player(e.player_index)
-                local pdata = global._pdata[e.player_index]
+                local player = e.player
+                local pdata = e.pdata
                 if import_presets(player, pdata, false, player.cursor_stack) then
                     at_gui.update_buttons(pdata)
                     at_gui.update_sliders(pdata)
@@ -406,8 +420,8 @@ at_gui.handlers = {
         },
         import_all = {
             on_gui_click = function(e)
-                local player = game.get_player(e.player_index)
-                local pdata = global._pdata[e.player_index]
+                local player = e.player
+                local pdata = e.pdata
                 if import_presets(player, pdata, true, player.cursor_stack) then
                     at_gui.update_buttons(pdata)
                     at_gui.update_sliders(pdata)
@@ -420,8 +434,8 @@ at_gui.handlers = {
     slots = {
         item_button = {
             on_gui_click = function(e)
-                local player = game.get_player(e.player_index)
-                local pdata = global._pdata[e.player_index]
+                local player = e.player
+                local pdata = e.pdata
                 local elem_value = e.element.elem_value
                 local old_selected = pdata.selected
                 local index = tonumber(e.element.name)
@@ -473,9 +487,9 @@ at_gui.handlers = {
                 end
             end,
             on_gui_elem_changed = function(e)
-                local player = game.get_player(e.player_index)
+                local player = e.player
                 if player.cursor_ghost then return end--dragging to an empty slot, on_gui_click raised later
-                local pdata = global._pdata[e.player_index]
+                local pdata = e.pdata
                 local elem_value = e.element.elem_value
                 local old_selected = pdata.selected
                 local index = tonumber(e.element.name)
@@ -524,25 +538,25 @@ at_gui.handlers = {
         },
         decrease = {
             on_gui_click = function (e)
-                local player = game.get_player(e.player_index)
+                local player = e.player
                 local old_slots = player.character_logistic_slot_count
                 local slots = old_slots > 9 and old_slots - 10 or old_slots
-                at_gui.decrease_slots(player, global._pdata[e.player_index], slots, old_slots)
+                at_gui.decrease_slots(player, e.pdata, slots, old_slots)
             end,
         },
         increase = {
             on_gui_click = function(e)
-                local player = game.get_player(e.player_index)
+                local player = e.player
                 local old_slots = player.character_logistic_slot_count
-                at_gui.increase_slots(player, global._pdata[e.player_index], old_slots + 10, old_slots)
+                at_gui.increase_slots(player, e.pdata, old_slots + 10, old_slots)
             end,
         },
     },
     presets = {
         save = {
             on_gui_click = function(e)
-                local player = game.get_player(e.player_index)
-                local pdata = global._pdata[e.player_index]
+                local player = e.player
+                local pdata = e.pdata
                 local textfield = pdata.gui.main.preset_textfield
                 local name = textfield.text
                 if at_gui.add_preset(player, pdata, name) then
@@ -556,8 +570,8 @@ at_gui.handlers = {
         },
         load = {
             on_gui_click = function(e)
-                local player = game.get_player(e.player_index)
-                local pdata = global._pdata[e.player_index]
+                local player = e.player
+                local pdata = e.pdata
                 local name = e.element.caption
                 if not e.shift and not e.control then
                     pdata.selected_presets = {[name] = true}
@@ -592,7 +606,7 @@ at_gui.handlers = {
         },
         delete = {
             on_gui_click = function(e)
-                local pdata = global._pdata[e.player_index]
+                local pdata = e.pdata
                 local parent = e.element.parent
                 local name = parent.name
                 gui.update_filters("presets", e.player_index, {e.element.index, parent.children[1].index, parent.children[2].index}, "remove")
@@ -605,7 +619,7 @@ at_gui.handlers = {
         },
         change_death_preset = {
             on_gui_click = function(e)
-                local pdata = global._pdata[e.player_index]
+                local pdata = e.pdata
                 local name = e.element.parent.name
                 if not (e.shift or e.control) then
                     pdata.death_presets = {[name] = true}
@@ -629,19 +643,19 @@ at_gui.handlers = {
     sliders = {
         request = {
             on_gui_value_changed = function(e)
-                local pdata = global._pdata[e.player_index]
+                local pdata = e.pdata
                 if not pdata.selected then return end
                 at_gui.update_request_config(tonumber_max(convert_from_slider(e.element.slider_value)) or 0, pdata)
             end,
             on_gui_text_changed = function(e)
-                local pdata = global._pdata[e.player_index]
+                local pdata = e.pdata
                 if not pdata.selected then return end
                 at_gui.update_request_config(tonumber_max(e.element.text) or 0, pdata)
             end
         },
         trash = {
             on_gui_value_changed = function(e)
-                local pdata = global._pdata[e.player_index]
+                local pdata = e.pdata
                 if not pdata.selected then return end
                 local number
                 if e.element.slider_value == 42 then
@@ -652,7 +666,7 @@ at_gui.handlers = {
                 at_gui.update_trash_config(number, pdata)
             end,
             on_gui_text_changed = function(e)
-                local pdata = global._pdata[e.player_index]
+                local pdata = e.pdata
                 if not pdata.selected then return end
                 at_gui.update_trash_config(tonumber_max(e.element.text) or false, pdata)
             end
@@ -660,7 +674,7 @@ at_gui.handlers = {
     },
     quick_actions = {
         on_gui_selection_state_changed = function(e)
-            local pdata = global._pdata[e.player_index]
+            local pdata = e.pdata
             local element = e.element
             local index = element.selected_index
             if index == 1 then return end
@@ -705,18 +719,18 @@ at_gui.handlers = {
     settings = {
         toggle = {
             on_gui_checked_state_changed = function(e)
-                local pdata = global._pdata[e.player_index]
+                local pdata = e.pdata
                 local name = e.element.name
                 if at_gui.toggle_setting[name] then
                     pdata.flags[name] = e.element.state
-                    e.element.state = at_gui.toggle_setting[name](game.get_player(e.player_index), pdata)
+                    e.element.state = at_gui.toggle_setting[name](e.player, pdata)
                 end
             end
         },
         change_network = {
             on_gui_click = function(e)
-                local pdata = global._pdata[e.player_index]
-                local player = game.get_player(e.player_index)
+                local player = e.player
+                local pdata = e.pdata
                 if pdata.main_network then
                     if not pdata.main_network.valid then
                         --ended up with an invalid entity, not much i can do to recover
@@ -736,8 +750,8 @@ at_gui.handlers = {
     import = {
         import_button = {
             on_gui_click = function(e)
-                local pdata = global._pdata[e.player_index]
-                local player = game.get_player(e.player_index)
+                local player = e.player
+                local pdata = e.pdata
                 local gui_elements = pdata.gui
                 local text_box = gui_elements.import.window.textbox
                 local add_presets = e.element.parent.mode.caption == "all"
@@ -750,7 +764,7 @@ at_gui.handlers = {
         },
         close_button = {
             on_gui_click = function(e)
-                local pdata = global._pdata[e.player_index]
+                local pdata = e.pdata
                 gui.update_filters("import", e.player_index, nil, "remove")
                 pdata.gui.import.window.main.destroy()
                 pdata.gui.import = nil
