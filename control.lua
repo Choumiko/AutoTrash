@@ -173,7 +173,9 @@ local migrations = {
             if pdata then
                 local psettings = pdata.settings
                 pdata.flags = {
+                    can_open_gui = player.force.character_logistic_requests,
                     gui_open = false,
+                    status_display_open = false,
                     trash_above_requested = psettings.trash_above_requested or false,
                     trash_unrequested = psettings.trash_unrequested or false,
                     trash_network = psettings.trash_network or false,
@@ -250,10 +252,10 @@ local migrations = {
     ["5.2.4"] = function()
         for player_index, player in pairs(game.players) do
             local pdata = global._pdata[player_index]
-            pdata.flags.status_display_open = false
             pdata.flags.dirty = false
             pdata.dirty = nil
             at_gui.init_status_display(player, pdata)
+            at_gui.open_status_display(player, pdata)
         end
     end
 }
@@ -302,15 +304,9 @@ local function on_configuration_changed(data)
             end
         end
     end
-
     register_conditional_events()
     for pi, player in pairs(game.players) do
         local pdata = global._pdata[pi]
-        remove_invalid_items(pdata, pdata.config_new)
-        remove_invalid_items(pdata, pdata.config_tmp, true)
-        for _, stored in pairs(pdata.presets) do
-            remove_invalid_items(pdata, stored)
-        end
         if pdata.flags.gui_open then
             at_gui.update_buttons(pdata)
         end
@@ -319,7 +315,9 @@ local function on_configuration_changed(data)
 end
 
 local function on_player_created(event)
+    local player = game.get_player(event.player_index)
     player_data.init(event.player_index)
+    at_gui.init(player, global._pdata[event.player_index])
 end
 
 local trash_blacklist = {
@@ -365,6 +363,7 @@ local function on_player_toggled_map_editor(event)
     local status, err = pcall(function()
     local player = game.get_player(event.player_index)
     if not player.character then
+        player.print{"autotrash_no_character"}
         at_gui.close(global._pdata[event.player_index], true)
     end
     end)
@@ -580,7 +579,7 @@ local function on_runtime_mod_setting_changed(event)
     player_data.update_settings(player, pdata)
 
     if event.setting == "autotrash_status_count" or event.setting == "autotrash_status_columns" then
-        at_gui.init_status_display(player, pdata)
+        at_gui.init_status_display(player, pdata, true)
     end
     end)
     if not status then
@@ -597,7 +596,12 @@ local function on_research_finished(event)
         local force = event.research.force
         if not global.unlocked_by_force[force.name] and force.character_logistic_requests then
             for _, player in pairs(event.research.force.players) do
-                at_gui.init(player, global._pdata[player.index])
+                local pdata = global._pdata[player.index]
+                pdata.flags.can_open_gui = true
+                pdata.gui.mod_gui.flow.visible = true
+                if player.character then
+                    at_gui.create_main_window(player, pdata)
+                end
             end
             global.unlocked_by_force[force.name] = true
         end

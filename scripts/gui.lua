@@ -297,16 +297,7 @@ at_gui.handlers = {
     mod_gui_button = {
         on_gui_click = function(e)
             if e.control and e.button == defines.mouse_button_type.right then
-                local pdata = e.pdata
-                local status_table = pdata.gui.status_table
-                if pdata.flags.status_display_open then
-                    status_table.parent.visible = false
-                    pdata.flags.status_display_open = false
-                else
-                    status_table.parent.visible = true
-                    pdata.flags.status_display_open = true
-                    at_gui.update_status_display(e.player, pdata)
-                end
+                at_gui.toggle_status_display(e.player, e.pdata)
             elseif e.button == defines.mouse_button_type.left then
                 at_gui.toggle(e.player, e.pdata)
             end
@@ -1145,8 +1136,8 @@ end
 
 function at_gui.init(player, pdata)
     at_gui.destroy(player, pdata)
-    at_gui.create_main_window(player, pdata)
-    local visible = player.force.character_logistic_requests
+    --at_gui.create_main_window(player, pdata)
+    local visible = pdata.flags.can_open_gui
 
     local main_button_flow = pdata.gui.mod_gui.flow
     if main_button_flow and main_button_flow.valid then
@@ -1160,21 +1151,26 @@ function at_gui.init(player, pdata)
     at_gui.init_status_display(player, pdata)
 end
 
-at_gui.init_status_display = function(player, pdata)
+at_gui.init_status_display = function(player, pdata, keep_status)
     local status_flow = pdata.gui.status_flow
     if not (status_flow and status_flow.valid) then
         status_flow = mod_gui.get_frame_flow(player).autotrash_status_flow
-        if status_flow and status_flow.valid then
-            pdata.gui.status_flow = status_flow
-        else
-            pdata.gui.status_flow = mod_gui.get_frame_flow(player).add{type = "flow", name = "autotrash_status_flow", direction = "vertical"}
+        if not (status_flow and status_flow.valid) then
+            status_flow = mod_gui.get_frame_flow(player).add{type = "flow", name = "autotrash_status_flow", direction = "vertical"}
         end
+            pdata.gui.status_flow = status_flow
+        end
+    status_flow.clear()
+
+    local visible = false
+    if keep_status then
+        visible = pdata.flags.can_open_gui and pdata.flags.status_display_open
     end
-    pdata.gui.status_flow.clear()
-    pdata.gui.status_flow.visible = player.force.character_logistic_requests
+    status_flow.visible = visible
+    pdata.flags.status_display_open = visible
     pdata.gui.status_table = nil
 
-    local status_table = pdata.gui.status_flow.add{
+    local status_table = status_flow.add{
         type = "table",
         style = "at_request_status_table",
         column_count = pdata.settings.status_columns
@@ -1187,8 +1183,36 @@ at_gui.init_status_display = function(player, pdata)
             visible = false
         }
     end
-    pdata.flags.status_display_open = player.force.character_logistic_requests
     at_gui.update_status_display(player, pdata)
+end
+
+at_gui.open_status_display = function(player, pdata)
+    local status_table = pdata.gui.status_table
+    if not (status_table and status_table.valid) then
+        at_gui.init_status_display(player, pdata)
+    end
+    if pdata.flags.can_open_gui then
+        status_table.parent.visible = true
+        pdata.flags.status_display_open = true
+    at_gui.update_status_display(player, pdata)
+end
+end
+
+at_gui.close_status_display = function(player, pdata)
+    pdata.flags.status_display_open = false
+    local status_table = pdata.gui.status_table
+    if not (status_table and status_table.valid) then
+        return
+    end
+    status_table.parent.visible = false
+end
+
+at_gui.toggle_status_display = function(player, pdata)
+    if pdata.flags.status_display_open then
+        at_gui.close_status_display(player, pdata)
+    else
+        at_gui.open_status_display(player, pdata)
+    end
 end
 
 at_gui.update_status_display_cached = function(pdata, cache)
@@ -1318,13 +1342,18 @@ function at_gui.destroy(player, pdata)
 end
 
 function at_gui.open(player, pdata)
+    if not player.character then
+        player.print{"autotrash_no_character"}
+        at_gui.close(pdata, true)
+        return
+    end
     local window_frame = pdata.gui.main.window
     if not (window_frame and window_frame.valid) then
         player.print{"autotrash_invalid_gui"}
         at_gui.close(pdata)
         at_gui.destroy(player, pdata)
-        return
-    end
+        at_gui.create_main_window(player, pdata)
+        end
     window_frame.visible = true
     pdata.flags.gui_open = true
     at_gui.update_button_styles(player, pdata)
