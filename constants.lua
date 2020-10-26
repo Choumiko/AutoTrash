@@ -15,4 +15,13 @@ constants.quick_actions = {
     [5] = {"autotrash_trash_to_requests"},
     [6] = {"autotrash_requests_to_trash"}
 }
+
+constants.trash_blacklist = {
+    ["blueprint"] = true,
+    ["blueprint-book"] = true,
+    ["deconstruction-item"] = true,
+    ["upgrade-item"] = true,
+    ["copy-paste-tool"] = true,
+    ["selection-tool"] = true,
+}
 return constants

@@ -1,12 +1,5 @@
 local floor = math.floor
-local trash_blacklist = {
-    ["blueprint"] = true,
-    ["blueprint-book"] = true,
-    ["deconstruction-item"] = true,
-    ["upgrade-item"] = true,
-    ["copy-paste-tool"] = true,
-    ["selection-tool"] = true,
-}
+local trash_blacklist = require("constants").trash_blacklist
 
 local item_prototypes = {}
 local function item_prototype(name)
@@ -322,6 +315,29 @@ local function convert_to_slider(n)
     end
 end
 
+local function remove_invalid_items(pdata, tbl, unselect)
+    local item_config
+    for i = tbl.max_slot, 1, -1 do
+        item_config = tbl.config[i]
+        if item_config then
+            if not item_prototype(item_config.name) then
+                if tbl.config[i].request > 0 then
+                    tbl.c_requests = tbl.c_requests - 1
+                end
+                tbl.config[i] = nil
+                if tbl.max_slot == i then
+                    tbl.max_slot = false
+                end
+                if unselect and pdata.selected and pdata.selected == i then
+                    pdata.selected = false
+                end
+            else
+                tbl.max_slot = tbl.max_slot or i
+            end
+        end
+    end
+end
+
 local M = {
     item_prototype = item_prototype,
     saveVar = saveVar,
@@ -341,7 +357,8 @@ local M = {
     get_non_equipment_network = get_non_equipment_network,
     get_network_entity = get_network_entity,
     in_network = in_network,
-    combine_from_vanilla = combine_from_vanilla
+    combine_from_vanilla = combine_from_vanilla,
+    remove_invalid_items = remove_invalid_items
 }
 
 return M

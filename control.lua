@@ -1,12 +1,12 @@
 require "__core__/lualib/util"
 --TODO: check every GUI/at_gui call
+--TODO: remove pcalls
 local event = require("__flib__.event")
 local gui = require("__flib__.gui")
 local migration = require("__flib__.migration")
 local table = require("__flib__.table")
-local mod_gui = require ("__core__.lualib.mod-gui")
 
-
+local trash_blacklist = require("constants").trash_blacklist
 local global_data = require("scripts.global-data")
 local player_data = require("scripts.player-data")
 local migrations = require("scripts.migrations")
@@ -23,6 +23,7 @@ local unpause_trash = lib_control.unpause_trash
 local get_network_entity = lib_control.get_network_entity
 local in_network = lib_control.in_network
 local item_prototype = lib_control.item_prototype
+local remove_invalid_items = lib_control.remove_invalid_items
 
 local function requested_items(player)
     if not player.character then
@@ -79,7 +80,7 @@ local function on_player_trash_inventory_changed(event)
     local temporary_trash = global._pdata[event.player_index].temporary_trash
     for name, saved_count in pairs(temporary_trash) do
         if trash_filters[name] then
-             desired = requests[name] and requests[name] or 0
+            desired = requests[name] and requests[name] or 0
             if main_inventory_count(name) <= desired then
                 player.print({"", "Removed ", item_prototype(name).localised_name, " from temporary trash"})
                 trash_filters[name] = saved_count >= 0 and saved_count or nil
@@ -114,11 +115,6 @@ local function enable_mod_gui_button(player, pdata)
     end
 end
 
-local function on_load()
-    register_conditional_events()
-    gui.build_lookup_tables()
-end
-
 local function on_init()
     gui.init()
     gui.build_lookup_tables()
@@ -145,151 +141,13 @@ local function on_init()
     end
     register_conditional_events()
 end
+event.on_init(on_init)
 
-local function on_player_removed(event)
-    global._pdata[event.player_index] = nil
+local function on_load()
     register_conditional_events()
+    gui.build_lookup_tables()
 end
-
-local function remove_invalid_items(pdata, tbl, unselect)
-    local item_config
-    for i = tbl.max_slot, 1, -1 do
-        item_config = tbl.config[i]
-        if item_config then
-            if not item_prototype(item_config.name) then
-                if tbl.config[i].request > 0 then
-                    tbl.c_requests = tbl.c_requests - 1
-                end
-                tbl.config[i] = nil
-                if tbl.max_slot == i then
-                    tbl.max_slot = false
-                end
-                if unselect and pdata.selected and pdata.selected == i then
-                    pdata.selected = false
-                end
-            else
-                tbl.max_slot = tbl.max_slot or i
-            end
-        end
-    end
-end
-
-local migrations = {
-    ["4.1.2"] = function()
-        log("Resetting all AutoTrash settings")
-        global = {}
-        global_data.init()
-        for player_index in pairs(game.players) do
-            player_data.init(player_index)
-        end
-    end,
-    ["5.1.0"] = function()
-        for _, pdata in pairs(global._pdata) do
-            pdata.infinite = nil
-        end
-    end,
-    ["5.2.2"] = function()
-        global.unlocked_by_force = {}
-    end,
-    ["5.2.3"] = function()
-        for player_index, player in pairs(game.players) do
-            local pdata = global._pdata[player_index]
-            if pdata then
-                local psettings = pdata.settings
-                pdata.flags = {
-                    can_open_gui = player.force.character_logistic_requests,
-                    gui_open = false,
-                    status_display_open = false,
-                    trash_above_requested = psettings.trash_above_requested or false,
-                    trash_unrequested = psettings.trash_unrequested or false,
-                    trash_network = psettings.trash_network or false,
-                    pause_trash = psettings.pause_trash or false,
-                    pause_requests = psettings.pause_requests or false,
-                }
-                pdata.gui = {
-                    mod_gui = {},
-                    import = {},
-                    main = {}
-                }
-                pdata.presets = pdata.storage_new
-                if pdata.presets then
-                    for _, stored in pairs(pdata.presets) do
-                        remove_invalid_items(pdata, stored)
-                    end
-                else
-                    pdata.presets = {}
-                end
-                pdata.storage_new = nil
-                pdata.gui_actions = nil
-                pdata.gui_elements = nil
-                pdata.gui_location = nil
-
-                player_data.update_settings(player, pdata)
-            else
-                pdata = player_data.init(player_index)
-            end
-            --keep the status flow in gui.left, everything else goes boom (from AutoTrash)
-            local mod_gui_flow = mod_gui.get_frame_flow(player)
-            if mod_gui_flow and mod_gui_flow.valid then
-                for _, egui in pairs(player.gui.left.mod_gui_frame_flow.children) do
-                    if egui.get_mod() == "AutoTrash" then
-                        if egui.name == "autotrash_status_flow" then
-                            pdata.gui.status_flow = egui
-                            egui.clear()
-                        else
-                            egui.destroy()
-                        end
-                    end
-                end
-            end
-            local button_flow = mod_gui.get_button_flow(player).autotrash_main_flow
-            if button_flow and button_flow.valid then
-                pdata.gui.mod_gui.flow = button_flow
-                button_flow.clear()
-            end
-            for _, egui in pairs(player.gui.screen.children) do
-                if egui.get_mod() == "AutoTrash" then
-                    egui.destroy()
-                end
-            end
-        end
-
-        gui.init()
-        gui.build_lookup_tables()
-        for pi, player in pairs(game.players) do
-            local pdata = global._pdata[pi]
-            at_gui.init(player, pdata)
-            player_data.refresh(player, pdata)
-            if pdata.flags.can_open_gui and not (pdata.gui.main.window and pdata.gui.main.window.valid) then
-                at_gui.create_main_window(player, pdata)
-            end
-        end
-
-        --TODO: remove
-        global._pdata[1].config_tmp = table.deep_copy(global._pdata[1].config_new)
-        set_requests(game.players[1], global._pdata[1])
-        at_gui.open(game.players[1], global._pdata[1])
-        -- global._pdata[1].presets["preset2"]["config"][14] = global._pdata[1].presets["preset2"]["config"][7]
-        -- global._pdata[1].presets["preset2"]["config"][7] = nil
-        -- global._pdata[1].presets["preset2"].max_slot = 14
-        -- for i = 1, 13 do
-        --     global._pdata[1].presets["fpp" .. i] = table.deep_copy(global._pdata[1].presets["preset1"])
-        -- end
-
-
-
-    end,
-    ["5.2.4"] = function()
-        for player_index, player in pairs(game.players) do
-            local pdata = global._pdata[player_index]
-            pdata.flags.dirty = false
-            pdata.dirty = nil
-            at_gui.init_status_display(player, pdata)
-            at_gui.open_status_display(player, pdata)
-        end
-    end
-}
-
+event.on_load(on_load)
 local function on_configuration_changed(data)
     for pi in pairs(game.players) do
         local pdata = global._pdata[pi]
@@ -324,21 +182,9 @@ local function on_configuration_changed(data)
         at_gui.update_status_display(player, pdata)
     end
 end
+event.on_configuration_changed(on_configuration_changed)
 
-local function on_player_created(event)
-    local player = game.get_player(event.player_index)
-    player_data.init(event.player_index)
-    at_gui.init(player, global._pdata[event.player_index])
-end
-
-local trash_blacklist = {
-    ["blueprint"] = true,
-    ["blueprint-book"] = true,
-    ["deconstruction-item"] = true,
-    ["upgrade-item"] = true,
-    ["copy-paste-tool"] = true,
-    ["selection-tool"] = true,
-}
+at_gui.register_handlers()
 
 --that's a bad event to handle unrequested, since adding stuff to the trash filters immediately triggers the next on_main_inventory_changed event
 -- on_nth_tick might work better or only registering when some player has trash_unrequested set to true
@@ -383,6 +229,7 @@ local function on_player_toggled_map_editor(event)
         debugDump(err, event.player_index, true)
     end
 end
+event.on_player_toggled_map_editor(on_player_toggled_map_editor)
 
 --TODO Display paused icons/checkboxes without clearing the requests?
 -- Vanilla now pauses logistic requests and trash when dying
@@ -411,6 +258,7 @@ local function on_player_respawned(event)
         debugDump(err, event.player_index, true)
     end
 end
+event.on_player_respawned(on_player_respawned)
 
 local function on_player_changed_position(event)
     local player = game.get_player(event.player_index)
@@ -454,17 +302,22 @@ local function on_player_changed_position(event)
         end
     end
 end
+event.on_player_changed_position(on_player_changed_position)
 
-event.on_init(on_init)
-event.on_load(on_load)
-event.on_configuration_changed(on_configuration_changed)
-event.on_player_created(on_player_created)
 event.on_player_main_inventory_changed(on_player_main_inventory_changed)
 
-event.on_player_toggled_map_editor(on_player_toggled_map_editor)
+local function on_player_created(event)
+    local player = game.get_player(event.player_index)
+    player_data.init(event.player_index)
+    at_gui.init(player, global._pdata[event.player_index])
+end
+
+local function on_player_removed(event)
+    global._pdata[event.player_index] = nil
+    register_conditional_events()
+end
+event.on_player_created(on_player_created)
 event.on_player_removed(on_player_removed)
-event.on_player_respawned(on_player_respawned)
-event.on_player_changed_position(on_player_changed_position)
 
 local function update_network(entity, player_index, pdata, main)
     local newEntity = false
@@ -504,23 +357,11 @@ local function on_pre_mined_item(event)
         debugDump(err, event.player_index, true)
     end
 end
-
-local function on_script_raised_destroy(event)
-    local status, err = pcall(function()
-        if event.entity and event.entity.type == "roboport" then
-            on_pre_mined_item(event)
-        end
-    end)
-    if not status then
-        debugDump(err, event.player_index, true)
-    end
-end
-
 local robofilter = {{filter = "type", type = "roboport"}}
 event.on_pre_player_mined_item(on_pre_mined_item, robofilter)
 event.on_robot_pre_mined(on_pre_mined_item, robofilter)
 event.on_entity_died(on_pre_mined_item, robofilter)
-event.script_raised_destroy(on_script_raised_destroy, robofilter)
+event.script_raised_destroy(on_pre_mined_item, robofilter)
 
 --[[
 Temporary requests:
@@ -560,6 +401,9 @@ local function toggle_autotrash_pause(player)
         debugDump(err, player.index, true)
     end
 end
+event.register("autotrash_pause", function(e)
+    toggle_autotrash_pause(game.get_player(e.player_index))
+end)
 
 local function toggle_autotrash_pause_requests(player)
     local status, err = pcall(function()
@@ -577,6 +421,9 @@ local function toggle_autotrash_pause_requests(player)
         debugDump(err, player.index, true)
     end
 end
+event.register("autotrash_pause_requests", function(e)
+    toggle_autotrash_pause_requests(game.get_player(e.player_index))
+end)
 
 local function on_runtime_mod_setting_changed(event)
     local status, err = pcall(function()
@@ -599,9 +446,6 @@ local function on_runtime_mod_setting_changed(event)
         debugDump(err, false, true)
     end
 end
-
-at_gui.register_handlers()
-
 event.on_runtime_mod_setting_changed(on_runtime_mod_setting_changed)
 
 local function on_research_finished(event)
@@ -614,22 +458,6 @@ local function on_research_finished(event)
     end
 end
 event.on_research_finished(on_research_finished)
-
-event.register("autotrash_pause", function(e)
-    toggle_autotrash_pause(game.get_player(e.player_index))
-end)
-
-event.register("autotrash_pause_requests", function(e)
-    toggle_autotrash_pause_requests(game.get_player(e.player_index))
-end)
-
-event.on_gui_location_changed(function(e)
-    -- local pdata = global._pdata[e.player_index]
-    -- if not (e.player_index and pdata) then return end
-    -- if e.element == pdata.gui_elements.container then
-    --     pdata.gui_location = e.element.location
-    -- end
-end)
 
 local function autotrash_trash_cursor(event)
     local status, err = pcall(function()
