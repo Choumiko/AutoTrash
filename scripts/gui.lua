@@ -532,15 +532,14 @@ at_gui.handlers = {
             on_gui_click = function (e)
                 local player = e.player
                 local old_slots = player.character_logistic_slot_count
-                local slots = old_slots > 9 and old_slots - 10 or old_slots
-                at_gui.decrease_slots(player, e.pdata, slots, old_slots)
+                at_gui.adjust_slots(player, e.pdata, old_slots - 10, old_slots)
             end,
         },
         increase = {
             on_gui_click = function(e)
                 local player = e.player
                 local old_slots = player.character_logistic_slot_count
-                at_gui.increase_slots(player, e.pdata, old_slots + 10, old_slots)
+                at_gui.adjust_slots(player, e.pdata, old_slots + 10, old_slots)
             end,
         },
     },
@@ -574,7 +573,7 @@ at_gui.handlers = {
                     local diff = pdata.config_tmp.max_slot - slots
                     if diff > 0 then
                         local inc = math.ceil(diff / 10) * 10
-                        at_gui.increase_slots(player, pdata, slots + inc, slots)
+                        at_gui.adjust_slots(player, pdata, slots + inc, slots)
                     end
                 else
                     local selected_presets = pdata.selected_presets
@@ -813,14 +812,35 @@ at_gui.update_trash_config = function(number, pdata)
     at_gui.update_button(pdata, pdata.selected)
 end
 
-at_gui.decrease_slots = function(player, pdata, slots, old_slots)
+local clamp = function(value, min, max)
+    if value < min then
+        return min
+    elseif value > max then
+        return max
+    end
+    return value
+end
+
+at_gui.adjust_slots = function(player, pdata, slots, old_slots)
     if slots < pdata.config_tmp.max_slot then return end
-    player.character_logistic_slot_count = slots
-    local cols = constants.slot_columns
-    local rows = constants.slot_rows
-    local width = constants.slot_table_width
-    width = (slots <= (rows*cols)) and width or (width + 12)
+    slots = clamp(slots, 9, 65529)
     local slot_table = pdata.gui.main.slot_table
+    local children_count = #slot_table.children - 1
+    --to resync in case the player changed the slots via vanilla gui
+    if children_count ~= old_slots then
+        old_slots = children_count
+    end
+
+    local diff = slots - old_slots
+    if diff > 0 then
+        gui.update_filters("slots.decrease", player.index, nil, "remove")
+        gui.update_filters("slots.increase", player.index, nil, "remove")
+        slot_table.count_change.destroy()
+        for i = old_slots+1, slots do
+            gui.build(slot_table, {gui.templates.slot_table.button(i, pdata)})
+        end
+        gui.build(slot_table, {gui.templates.slot_table.count_change()})
+    elseif diff < 0 then
     for i = old_slots, slots+1, -1 do
         local btn = slot_table.children[i]
         gui.update_filters("slots.item_button", player.index, {btn.index}, "remove")
@@ -829,28 +849,11 @@ at_gui.decrease_slots = function(player, pdata, slots, old_slots)
     if slots == 9 then
         slot_table.count_change.children[1].enabled = false
     end
-    pdata.gui.main.config_rows.style.width = width
-    pdata.gui.main.config_rows.scroll_to_bottom()
 end
 
-at_gui.increase_slots = function(player, pdata, slots, old_slots)
-    slots = slots <= 65529 and slots or 65529
     player.character_logistic_slot_count = slots
-    local cols = constants.slot_columns
-    local rows = constants.slot_rows
     local width = constants.slot_table_width
-    width = (slots <= (rows*cols)) and width or (width + 12)
-
-
-    local slot_table = pdata.gui.main.slot_table
-    gui.update_filters("slots.decrease", player.index, nil, "remove")
-    gui.update_filters("slots.increase", player.index, nil, "remove")
-    slot_table.count_change.destroy()
-    for i = old_slots+1, slots do
-        gui.build(slot_table, {gui.templates.slot_table.button(i, pdata)})
-    end
-    gui.build(slot_table, {gui.templates.slot_table.count_change()})
-
+    width = (slots <= (constants.slot_rows * constants.slot_columns)) and width or (width + 12)
     pdata.gui.main.config_rows.style.width = width
     pdata.gui.main.config_rows.scroll_to_bottom()
 end
@@ -1048,6 +1051,7 @@ function at_gui.create_main_window(player, pdata)
                                 {type = "scroll-pane", style = "at_slot_table_scroll_pane", name = "config_rows", save_as = "main.config_rows",
                                     style_mods = {
                                         width = width,
+                                        height = constants.slot_table_height
                                     },
                                     children = {
                                         gui.templates.slot_table.main(btns, pdata),
