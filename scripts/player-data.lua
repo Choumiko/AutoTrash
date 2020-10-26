@@ -5,6 +5,7 @@ local player_data = {}
 function player_data.init(player_index)
     global._pdata[player_index] = {
         flags = {
+            can_open_gui = false,
             gui_open = false,
             dirty = false,
             status_display_open = false,
@@ -16,7 +17,8 @@ function player_data.init(player_index)
         },
         gui = {
             mod_gui = {},
-            import = {}
+            import = {},
+            main = {}
         },
         config_new = {config = {}, c_requests = 0, max_slot = 0},
         config_tmp = {config = {}, c_requests = 0, max_slot = 0},

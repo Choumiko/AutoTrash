@@ -832,15 +832,15 @@ at_gui.adjust_slots = function(player, pdata, slots, old_slots)
         end
         gui.build(slot_table, {gui.templates.slot_table.count_change()})
     elseif diff < 0 then
-    for i = old_slots, slots+1, -1 do
-        local btn = slot_table.children[i]
-        gui.update_filters("slots.item_button", player.index, {btn.index}, "remove")
-        btn.destroy()
+        for i = old_slots, slots+1, -1 do
+            local btn = slot_table.children[i]
+            gui.update_filters("slots.item_button", player.index, {btn.index}, "remove")
+            btn.destroy()
+        end
+        if slots == 9 then
+            slot_table.count_change.children[1].enabled = false
+        end
     end
-    if slots == 9 then
-        slot_table.count_change.children[1].enabled = false
-    end
-end
 
     player.character_logistic_slot_count = slots
     local width = constants.slot_table_width
@@ -1015,7 +1015,6 @@ function at_gui.create_main_window(player, pdata)
     local rows = constants.slot_rows
     local btns = player.character_logistic_slot_count
     local width = constants.slot_table_width
-    local height = constants.slot_table_height
     width = (btns <= (rows*cols)) and width or (width + 12)
     local gui_data = gui.build(player.gui.screen,{
         {type = "frame", style = "outer_frame", handlers = "main.window", save_as = "main.window", children = {
@@ -1136,7 +1135,6 @@ end
 
 function at_gui.init(player, pdata)
     at_gui.destroy(player, pdata)
-    --at_gui.create_main_window(player, pdata)
     local visible = pdata.flags.can_open_gui
 
     local main_button_flow = pdata.gui.mod_gui.flow
@@ -1158,8 +1156,8 @@ at_gui.init_status_display = function(player, pdata, keep_status)
         if not (status_flow and status_flow.valid) then
             status_flow = mod_gui.get_frame_flow(player).add{type = "flow", name = "autotrash_status_flow", direction = "vertical"}
         end
-            pdata.gui.status_flow = status_flow
-        end
+        pdata.gui.status_flow = status_flow
+    end
     status_flow.clear()
 
     local visible = false
@@ -1194,8 +1192,8 @@ at_gui.open_status_display = function(player, pdata)
     if pdata.flags.can_open_gui then
         status_table.parent.visible = true
         pdata.flags.status_display_open = true
-    at_gui.update_status_display(player, pdata)
-end
+        at_gui.update_status_display(player, pdata)
+    end
 end
 
 at_gui.close_status_display = function(player, pdata)
@@ -1353,7 +1351,8 @@ function at_gui.open(player, pdata)
         at_gui.close(pdata)
         at_gui.destroy(player, pdata)
         at_gui.create_main_window(player, pdata)
-        end
+        window_frame = pdata.gui.main.window
+    end
     window_frame.visible = true
     pdata.flags.gui_open = true
     at_gui.update_button_styles(player, pdata)
