@@ -4,6 +4,7 @@ local event = require("__flib__.event")
 local gui = require("__flib__.gui")
 local migration = require("__flib__.migration")
 local table = require("__flib__.table")
+local mod_gui = require ("__core__.lualib.mod-gui")
 
 
 local global_data = require("scripts.global-data")
@@ -188,6 +189,8 @@ local migrations = {
                     for _, stored in pairs(pdata.presets) do
                         remove_invalid_items(pdata, stored)
                     end
+                else
+                    pdata.presets = {}
                 end
                 pdata.storage_new = nil
                 pdata.gui_actions = nil
@@ -310,8 +313,8 @@ local function on_configuration_changed(data)
         end
         if pdata.flags.gui_open then
             at_gui.update_buttons(pdata)
-            at_gui.update_status_display(player, pdata)
         end
+        at_gui.update_status_display(player, pdata)
     end
 end
 

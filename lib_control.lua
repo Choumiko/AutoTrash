@@ -8,7 +8,7 @@ local trash_blacklist = {
     ["selection-tool"] = true,
 }
 
-local item_prototypes = {}--luacheck: allow defined top
+local item_prototypes = {}
 local function item_prototype(name)
     if item_prototypes[name] then
         return item_prototypes[name]

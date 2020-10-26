@@ -1,6 +1,7 @@
 local gui = require("__flib__.gui")
 local table =require("__flib__.table")
 local constants = require("constants")
+local mod_gui = require ("__core__.lualib.mod-gui")
 
 local lib_control = require '__AutoTrash__.lib_control'
 local format_number = lib_control.format_number
@@ -295,7 +296,20 @@ gui.add_templates(at_gui.templates)
 at_gui.handlers = {
     mod_gui_button = {
         on_gui_click = function(e)
-            at_gui.toggle(e.player, e.pdata)
+            if e.control and e.button == defines.mouse_button_type.right then
+                local pdata = e.pdata
+                local status_table = pdata.gui.status_table
+                if pdata.flags.status_display_open then
+                    status_table.parent.visible = false
+                    pdata.flags.status_display_open = false
+                else
+                    status_table.parent.visible = true
+                    pdata.flags.status_display_open = true
+                    at_gui.update_status_display(e.player, pdata)
+                end
+            elseif e.button == defines.mouse_button_type.left then
+                at_gui.toggle(e.player, e.pdata)
+            end
         end,
     },
     main = {
@@ -1128,20 +1142,7 @@ end
 function at_gui.init(player, pdata)
     at_gui.destroy(player, pdata)
     at_gui.create_main_window(player, pdata)
-    local status_flow = pdata.gui.status_flow
     local visible = player.force.character_logistic_requests
-    if status_flow and status_flow then
-        status_flow.clear()
-    else
-        status_flow = mod_gui.get_frame_flow(player).autotrash_status_flow
-        if status_flow and status_flow.valid then
-            pdata.gui.status_flow = status_flow
-            status_flow.clear()
-        else
-            pdata.gui.status_flow = mod_gui.get_frame_flow(player).add{type = "flow", name = "autotrash_status_flow", direction = "vertical"}
-        end
-    end
-    pdata.gui.status_flow.visible = visible
 
     local main_button_flow = pdata.gui.mod_gui.flow
     if main_button_flow and main_button_flow.valid then
@@ -1152,16 +1153,24 @@ function at_gui.init(player, pdata)
     pdata.gui.mod_gui.button = pdata.gui.mod_gui.flow.add{type = "sprite-button", name = "at_config_button", style = "at_sprite_button", sprite = "autotrash_trash"}
     gui.update_filters("mod_gui_button", player.index, {pdata.gui.mod_gui.button.index}, "add")
     pdata.gui.mod_gui.flow.visible = visible
+    at_gui.init_status_display(player, pdata)
 end
 
 at_gui.init_status_display = function(player, pdata)
-    local status_table = pdata.gui.status_table
-    if status_table and status_table.valid then
-        status_table.destroy()
-        pdata.gui.status_table = nil
+    local status_flow = pdata.gui.status_flow
+    if not (status_flow and status_flow.valid) then
+        status_flow = mod_gui.get_frame_flow(player).autotrash_status_flow
+        if status_flow and status_flow.valid then
+            pdata.gui.status_flow = status_flow
+        else
+            pdata.gui.status_flow = mod_gui.get_frame_flow(player).add{type = "flow", name = "autotrash_status_flow", direction = "vertical"}
+        end
     end
+    pdata.gui.status_flow.clear()
+    pdata.gui.status_flow.visible = player.force.character_logistic_requests
+    pdata.gui.status_table = nil
 
-    status_table = pdata.gui.status_flow.add{
+    local status_table = pdata.gui.status_flow.add{
         type = "table",
         style = "at_request_status_table",
         column_count = pdata.settings.status_columns
@@ -1174,6 +1183,7 @@ at_gui.init_status_display = function(player, pdata)
             visible = false
         }
     end
+    pdata.flags.status_display_open = player.force.character_logistic_requests
     at_gui.update_status_display(player, pdata)
 end
 
@@ -1201,8 +1211,12 @@ at_gui.update_status_display_cached = function(pdata, cache)
 end
 
 at_gui.update_status_display = function(player, pdata, cache)
-    if cache then return at_gui.update_status_display_cached(pdata, cache) end
+    if not pdata.flags.status_display_open then return end
     local status_table = pdata.gui.status_table
+    if not (status_table and status_table.valid) then
+        at_gui.init_status_display(player, pdata)
+    end
+    if cache then return at_gui.update_status_display_cached(pdata, cache) end
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
     if not (available and not pdata.flags.pause_requests) then
         for _, child in pairs(status_table.children) do
@@ -1301,14 +1315,18 @@ end
 
 function at_gui.open(player, pdata)
     local window_frame = pdata.gui.main.window
-    if window_frame and window_frame.valid then
-        window_frame.visible = true
-        pdata.flags.gui_open = true
-        at_gui.update_button_styles(player, pdata)
-        at_gui.update_settings(pdata)
-        at_gui.update_sliders(pdata)
-        at_gui.update_presets(pdata)
+    if not (window_frame and window_frame.valid) then
+        player.print{"autotrash_invalid_gui"}
+        at_gui.close(pdata)
+        at_gui.destroy(player, pdata)
+        return
     end
+    window_frame.visible = true
+    pdata.flags.gui_open = true
+    at_gui.update_button_styles(player, pdata)
+    at_gui.update_settings(pdata)
+    at_gui.update_sliders(pdata)
+    at_gui.update_presets(pdata)
     --player.opened = pdata.gui.window
 end
 
@@ -1316,12 +1334,12 @@ function at_gui.close(pdata, no_reset)
     local window_frame = pdata.gui.main.window
     if window_frame and window_frame.valid then
         window_frame.visible = false
-        pdata.flags.gui_open = false
-        if not no_reset and pdata.settings.reset_on_close then
-            pdata.config_tmp = table.deep_copy(pdata.config_new)
-            pdata.gui.main.reset_button.enabled = false
-            pdata.dirty = false
-        end
+    end
+    pdata.flags.gui_open = false
+    if not no_reset and pdata.settings.reset_on_close then
+        pdata.config_tmp = table.deep_copy(pdata.config_new)
+        pdata.gui.main.reset_button.enabled = false
+        pdata.dirty = false
     end
     --player.opened = nil
 end
