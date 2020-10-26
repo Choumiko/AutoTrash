@@ -148,6 +148,7 @@ local function on_load()
     gui.build_lookup_tables()
 end
 event.on_load(on_load)
+
 local function on_configuration_changed(data)
     for pi in pairs(game.players) do
         local pdata = global._pdata[pi]
@@ -218,15 +219,10 @@ local function add_to_trash(player, item)
 end
 
 local function on_player_toggled_map_editor(event)
-    local status, err = pcall(function()
     local player = game.get_player(event.player_index)
     if not player.character then
         player.print{"autotrash_no_character"}
         at_gui.close(global._pdata[event.player_index], true)
-    end
-    end)
-    if not status then
-        debugDump(err, event.player_index, true)
     end
 end
 event.on_player_toggled_map_editor(on_player_toggled_map_editor)
@@ -319,42 +315,38 @@ end
 event.on_player_created(on_player_created)
 event.on_player_removed(on_player_removed)
 
-local function update_network(entity, player_index, pdata, main)
-    local newEntity = false
-    --get another roboport from the network
-    if newEntity == false and entity.logistic_network and entity.logistic_network.valid then
-        for _, cell in pairs(entity.logistic_network.cells) do
-            newEntity = nil
-            if cell.owner ~= entity and cell.owner.valid then
-                newEntity = cell.owner
-                break
-            end
-        end
-    end
-    if main and not newEntity and entity then
-        local player = game.get_player(player_index)
-        player.print("Autotrash main network has been unset")
-    end
-    at_gui.update_settings(pdata)
-    return newEntity
-end
-
 local function on_pre_mined_item(event)
-    local status, err = pcall(function()
-        if event.entity and event.entity.type == "roboport" then
-            local entity = event.entity
-            for pi, pdata in pairs(global._pdata) do
-                if entity == pdata.main_network then
-                    pdata.main_network = update_network(entity, pi, pdata, true)
+    local entity = event.entity
+    for pi, pdata in pairs(global._pdata) do
+        local main = pdata.main_network
+        local current = pdata.current_network
+        --TODO: should always be valid?
+        if entity.logistic_network and entity.logistic_network.valid then
+            local cells = entity.logistic_network.cells
+            if main and main.valid and entity == main then
+                pdata.main_network = false
+                for _, cell in pairs(cells) do
+                    if cell.owner.valid and cell.owner ~= entity then
+                        pdata.main_network = cell.owner
+                        break
+                    end
                 end
-                if entity == pdata.current_network then
-                    pdata.current_network = update_network(entity, pi, pdata)
+                if not pdata.main_network then
+                    local player = game.get_player(pi)
+                    player.print("Autotrash main network has been unset")
                 end
             end
+            if current and current.valid and entity == current then
+                pdata.current_network = false
+                for _, cell in pairs(cells) do
+                    if cell.owner.valid and cell.owner ~= entity then
+                        pdata.current_network = cell.owner
+                        break
+                    end
+                end
+            end
+            at_gui.update_settings(pdata)
         end
-    end)
-    if not status then
-        debugDump(err, event.player_index, true)
     end
 end
 local robofilter = {{filter = "type", type = "roboport"}}
