@@ -12,10 +12,8 @@ local migrations = require("scripts.migrations")
 local at_gui = require("scripts.gui")
 
 local lib_control = require '__AutoTrash__/lib_control'
-local GUI = require "__AutoTrash__/gui"
 local presets = require "__AutoTrash__/presets"
 
-local saveVar = lib_control.saveVar
 local debugDump = lib_control.debugDump
 local display_message = lib_control.display_message
 local set_requests = lib_control.set_requests

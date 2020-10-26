@@ -8,6 +8,14 @@ local trash_blacklist = {
     ["selection-tool"] = true,
 }
 
+local item_prototypes = {}--luacheck: allow defined top
+local function item_prototype(name)
+    if item_prototypes[name] then
+        return item_prototypes[name]
+    end
+    item_prototypes[name] = game.item_prototypes[name]
+    return item_prototypes[name]
+end
 
 local function get_requests(player)
     local character = player.character
@@ -76,9 +84,8 @@ local function set_requests(player, pdata)
     end
 
     if contents and not trash_paused then
-        local item_protos = game.item_prototypes
         for name, _ in pairs(contents) do
-            if trash_blacklist[item_protos[name].type] then
+            if trash_blacklist[item_prototype(name).type] then
                 contents[name] = nil
             end
         end
@@ -158,15 +165,6 @@ local function in_network(player, pdata)
         return true
     end
     return false
-end
-
-item_prototypes = {}--luacheck: allow defined top
-local function item_prototype(name)
-    if item_prototypes[name] then
-        return item_prototypes[name]
-    end
-    item_prototypes[name] = game.item_prototypes[name]
-    return item_prototypes[name]
 end
 
 local function combine_from_vanilla(player)
