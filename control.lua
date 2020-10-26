@@ -106,6 +106,14 @@ local function register_conditional_events()
     event.on_nth_tick(settings.global["autotrash_update_rate"].value + 1, on_nth_tick)
 end
 
+local function enable_mod_gui_button(player, pdata)
+    pdata.flags.can_open_gui = true
+    pdata.gui.mod_gui.flow.visible = true
+    if player.character then
+        at_gui.create_main_window(player, pdata)
+    end
+end
+
 local function on_load()
     register_conditional_events()
     gui.build_lookup_tables()
@@ -113,13 +121,29 @@ end
 
 local function on_init()
     gui.init()
+    gui.build_lookup_tables()
 
     global_data.init()
-    for i in pairs(game.players) do
-        player_data.init(i)
+
+    for _, force in pairs(game.forces) do
+        if force.character_logistic_requests then
+            global.unlocked_by_force[force.name] = true
+        end
+        for player_index, player in pairs(force.players) do
+            local pdata = player_data.init(player_index)
+            at_gui.init(player, pdata)
+            if player.character and force.character_logistic_requests then
+                pdata.config_tmp = lib_control.combine_from_vanilla(player)
+                if next(pdata.config_tmp.config) then
+                    pdata.presets["at_imported"] = table.deep_copy(pdata.config_tmp)
+                    pdata.selected_presets = {at_imported = true}
+                end
+                enable_mod_gui_button(player, pdata)
+                at_gui.open(player, pdata)
+            end
+        end
     end
     register_conditional_events()
-    gui.build_lookup_tables()
 end
 
 local function on_player_removed(event)
@@ -233,7 +257,12 @@ local migrations = {
         gui.init()
         gui.build_lookup_tables()
         for pi, player in pairs(game.players) do
-            at_gui.init(player, global._pdata[pi])
+            local pdata = global._pdata[pi]
+            at_gui.init(player, pdata)
+            player_data.refresh(player, pdata)
+            if pdata.flags.can_open_gui and not (pdata.gui.main.window and pdata.gui.main.window.valid) then
+                at_gui.create_main_window(player, pdata)
+            end
         end
 
         --TODO: remove
@@ -279,30 +308,11 @@ local function on_configuration_changed(data)
 
     if migration.on_config_changed(data, migrations) then
         gui.check_filter_validity()
-    else
-        for player_index, player in pairs(game.players) do
-            player_data.init(player_index)
-            if player.character and player.force.technologies["logistic-robotics"].researched then
-                local pdata = global._pdata[player_index]
-                local status, err = pcall(function()
-                    at_gui.close(pdata)
-                    pdata.config_tmp = lib_control.combine_from_vanilla(player)
-                    if next(pdata.config_tmp.config) then
-                        pdata.presets["at_imported"] = table.deep_copy(pdata.config_tmp)
-                        pdata.selected_presets = {at_imported = true}
-                        at_gui.init(player, pdata)
-                        at_gui.open(player, pdata)
-                    end
-                end)
-                if not status then
-                    at_gui.close(pdata)
-                    pdata.config_tmp = nil
-                    pdata.presets["at_imported"] = nil
-                    pdata.selected_presets = {}
-                    player_data.init(player_index)
-                    debugDump(err, player_index, true)
-                end
-            end
+
+        for i, player in pairs(game.players) do
+            local pdata = global._pdata[i]
+            player_data.refresh(player, pdata)
+            at_gui.close(pdata, true)
         end
     end
     register_conditional_events()
@@ -339,6 +349,7 @@ local function on_player_main_inventory_changed(event)
     local flags = pdata.flags
     if flags.pause_trash or not flags.trash_unrequested then return end
     set_requests(player, pdata)
+    --TODO: adjust_slots ?
 end
 
 local function add_to_trash(player, item)
@@ -391,6 +402,7 @@ local function on_player_respawned(event)
         pdata.config_new = table.deep_copy(tmp)
 
         set_requests(player, pdata)
+        --TODO: adjust_slots?
         player.character_personal_logistic_requests_enabled = true
         at_gui.update_status_display(player, pdata)
     end
@@ -593,22 +605,12 @@ at_gui.register_handlers()
 event.on_runtime_mod_setting_changed(on_runtime_mod_setting_changed)
 
 local function on_research_finished(event)
-    local status, err = pcall(function()
-        local force = event.research.force
-        if not global.unlocked_by_force[force.name] and force.character_logistic_requests then
-            for _, player in pairs(event.research.force.players) do
-                local pdata = global._pdata[player.index]
-                pdata.flags.can_open_gui = true
-                pdata.gui.mod_gui.flow.visible = true
-                if player.character then
-                    at_gui.create_main_window(player, pdata)
-                end
-            end
-            global.unlocked_by_force[force.name] = true
+    local force = event.research.force
+    if not global.unlocked_by_force[force.name] and force.character_logistic_requests then
+        for _, player in pairs(force.players) do
+            enable_mod_gui_button(player, global._pdata[player.index])
         end
-    end)
-    if not status then
-        debugDump(err, false, true)
+        global.unlocked_by_force[force.name] = true
     end
 end
 event.on_research_finished(on_research_finished)

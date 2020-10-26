@@ -3,9 +3,10 @@ local table = require("__flib__.table")
 local player_data = {}
 
 function player_data.init(player_index)
+    local player = game.get_player(player_index)
     global._pdata[player_index] = {
         flags = {
-            can_open_gui = false,
+            can_open_gui = player.character and player.force.character_logistic_requests,
             gui_open = false,
             dirty = false,
             status_display_open = false,
@@ -51,6 +52,11 @@ function player_data.update_settings(player, pdata)
         trash_equals_requests = player_settings["autotrash_trash_equals_requests"].value,
     }
     pdata.settings = settings
+end
+
+function player_data.refresh(player, pdata)
+    pdata.flags.can_open_gui = player.character and player.force.character_logistic_requests
+    player_data.update_settings(player, pdata)
 end
 
 return player_data
