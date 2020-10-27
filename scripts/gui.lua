@@ -434,10 +434,12 @@ at_gui.handlers = {
                     if e.shift then
                         local config_tmp = pdata.config_tmp
                         local cursor_ghost = player.cursor_ghost
+                        --pickup ghost
                         if elem_value and not cursor_ghost and not player.cursor_stack.valid_for_read then
                             pdata.selected = index
                             player.cursor_ghost = elem_value
-                        elseif cursor_ghost and cursor_ghost.name == config_tmp.config[old_selected].name then
+                        --drop ghost
+                        elseif cursor_ghost and old_selected and cursor_ghost.name == config_tmp.config[old_selected].name then
                             if elem_value then--always true, even when shift clicking an empty button with a ghost, since it gets set before on_click
                                 local tmp = table.deep_copy(config_tmp.config[index])
                                 config_tmp.config[index] = table.deep_copy(config_tmp.config[old_selected])
@@ -471,10 +473,10 @@ at_gui.handlers = {
             end,
             on_gui_elem_changed = function(e)
                 local player = e.player
-                if player.cursor_ghost then return end--dragging to an empty slot, on_gui_click raised later
                 local pdata = e.pdata
-                local elem_value = e.element.elem_value
                 local old_selected = pdata.selected
+                if player.cursor_ghost and old_selected then return end--dragging to an empty slot, on_gui_click raised later
+                local elem_value = e.element.elem_value
                 local index = tonumber(e.element.name)
                 if elem_value then
                     local item_config = pdata.config_tmp.config[index]
