@@ -18,9 +18,9 @@ local function get_requests(player)
     local requests = {}
     local count = 0
     local get_request_slot = character.get_request_slot
-    local t, max_slot
+    local max_slot
     for c = player.character_logistic_slot_count, 1, -1 do
-        t = get_request_slot(c)
+        local t = get_request_slot(c)
         if t then
             max_slot = not max_slot and c or max_slot
             requests[t.name] = {name = t.name, request = t.count, slot = c}
@@ -219,34 +219,34 @@ local function display_message(player, message, sound)
 end
 
 local function format_number(n, append_suffix)
-  local amount = tonumber(n)
+    local amount = tonumber(n)
     if not amount then
     return n
-  end
-  local suffix = ""
-  if append_suffix then
-    local suffix_list = {
-        ["T"] = 1000000000000,
-        ["B"] = 1000000000,
-        ["M"] = 1000000,
-        ["k"] = 1000
-    }
-    for letter, limit in pairs (suffix_list) do
-      if math.abs(amount) >= limit then
-        amount = floor(amount/(limit/10))/10
-        suffix = letter
-        break
-      end
     end
-  end
-  local formatted, k = amount
-  while true do
-    formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
-    if (k == 0) then
-      break
+    local suffix = ""
+    if append_suffix then
+        local suffix_list = {
+            ["T"] = 1000000000000,
+            ["B"] = 1000000000,
+            ["M"] = 1000000,
+            ["k"] = 1000
+        }
+        for letter, limit in pairs (suffix_list) do
+            if math.abs(amount) >= limit then
+                amount = floor(amount/(limit/10))/10
+                suffix = letter
+                break
+            end
+        end
     end
-  end
-  return formatted..suffix
+    local formatted, k = amount
+    while true do
+        formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
+        if (k == 0) then
+            break
+        end
+    end
+    return formatted..suffix
 end
 
 local function format_request(item_config)
@@ -293,9 +293,8 @@ local function convert_to_slider(n)
 end
 
 local function remove_invalid_items(pdata, tbl, unselect)
-    local item_config
     for i = tbl.max_slot, 1, -1 do
-        item_config = tbl.config[i]
+        local item_config = tbl.config[i]
         if item_config then
             if not item_prototype(item_config.name) then
                 if tbl.config[i].request > 0 then

@@ -29,11 +29,9 @@ local function requested_items(player)
     end
     local requests = {}
     local get_request_slot = player.character.get_request_slot
-    local t, max_slot
     for c = player.character_logistic_slot_count, 1, -1 do
-        t = get_request_slot(c)
+        local t = get_request_slot(c)
         if t then
-            max_slot = not max_slot and c or max_slot
             requests[t.name] = t.count
         end
     end
@@ -73,11 +71,11 @@ local function on_player_trash_inventory_changed(event)
     local main_inventory_count = player.get_main_inventory().get_item_count
     local trash_filters = player.auto_trash_filters
     local requests = requested_items(player)
-    local desired, changed
+    local changed
     local temporary_trash = global._pdata[event.player_index].temporary_trash
     for name, saved_count in pairs(temporary_trash) do
         if trash_filters[name] then
-            desired = requests[name] and requests[name] or 0
+            local desired = requests[name] and requests[name] or 0
             if main_inventory_count(name) <= desired then
                 player.print({"", "Removed ", item_prototype(name).localised_name, " from temporary trash"})
                 trash_filters[name] = saved_count >= 0 and saved_count or nil
@@ -300,12 +298,12 @@ local function on_player_created(event)
     player_data.init(event.player_index)
     at_gui.init(player, global._pdata[event.player_index])
 end
+event.on_player_created(on_player_created)
 
 local function on_player_removed(event)
     global._pdata[event.player_index] = nil
     register_conditional_events()
 end
-event.on_player_created(on_player_created)
 event.on_player_removed(on_player_removed)
 
 local function on_pre_mined_item(event)
