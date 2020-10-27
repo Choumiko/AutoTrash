@@ -102,14 +102,6 @@ local function register_conditional_events()
     event.on_nth_tick(settings.global["autotrash_update_rate"].value + 1, on_nth_tick)
 end
 
-local function enable_mod_gui_button(player, pdata)
-    pdata.flags.can_open_gui = true
-    pdata.gui.mod_gui.flow.visible = true
-    if player.character then
-        at_gui.create_main_window(player, pdata)
-    end
-end
-
 local function on_init()
     gui.init()
     gui.build_lookup_tables()
@@ -129,7 +121,7 @@ local function on_init()
                     pdata.presets["at_imported"] = table.deep_copy(pdata.config_tmp)
                     pdata.selected_presets = {at_imported = true}
                 end
-                enable_mod_gui_button(player, pdata)
+                at_gui.create_main_window(player, pdata)
                 at_gui.open(player, pdata)
             end
         end
@@ -161,6 +153,7 @@ local function on_configuration_changed(data)
     end
 
     if migration.on_config_changed(data, migrations) then
+        --only run when mod was changed
         gui.check_filter_validity()
 
         for i, player in pairs(game.players) do
@@ -291,6 +284,18 @@ event.on_player_changed_position(on_player_changed_position)
 
 event.on_player_main_inventory_changed(on_player_main_inventory_changed)
 
+local function on_cutscene_cancelled(e)
+    local player = game.get_player(e.player_index)
+    local pdata = global._pdata[e.player_index]
+    if not pdata then
+        pdata = player_data.init(e.player_index)
+    else
+        player_data.refresh(player, pdata)
+    end
+    at_gui.init(player, pdata)
+end
+event.on_cutscene_cancelled(on_cutscene_cancelled)
+
 local function on_player_created(event)
     local player = game.get_player(event.player_index)
     player_data.init(event.player_index)
@@ -418,7 +423,15 @@ local function on_research_finished(event)
     local force = event.research.force
     if not global.unlocked_by_force[force.name] and force.character_logistic_requests then
         for _, player in pairs(force.players) do
-            enable_mod_gui_button(player, global._pdata[player.index])
+            local pdata = global._pdata[player.index]
+            if not pdata then
+                pdata = player_data.init(player.index)
+            end
+            pdata.flags.can_open_gui = true
+            pdata.gui.mod_gui.flow.visible = true
+            if player.character then
+                at_gui.create_main_window(player, pdata)
+            end
         end
         global.unlocked_by_force[force.name] = true
     end

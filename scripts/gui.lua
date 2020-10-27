@@ -1137,6 +1137,9 @@ end
 
 function at_gui.init(player, pdata)
     at_gui.destroy(player, pdata)
+    if player.character then
+        at_gui.create_main_window(player, pdata)
+    end
     local visible = pdata.flags.can_open_gui
 
     local main_button_flow = pdata.gui.mod_gui.flow
@@ -1326,9 +1329,8 @@ function at_gui.mark_dirty(pdata, keep_presets)
 end
 
 function at_gui.destroy(player, pdata)
-    local player_index = player.index
     if pdata.gui.main and pdata.gui.main.window and pdata.gui.main.window.valid then
-        gui.update_filters("main", player_index, nil, "remove")
+        gui.update_filters("main", player.index, nil, "remove")
         pdata.gui.main.window.destroy()
         pdata.gui.main = nil
         pdata.flags.gui_open = false
