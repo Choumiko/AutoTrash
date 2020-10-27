@@ -81,7 +81,7 @@ local function on_player_trash_inventory_changed(e)
     if changed then
         player.auto_trash_filters = trash_filters
         if not check_temporary_trash() then
-            e.on_player_trash_inventory_changed(nil)
+            event.on_player_trash_inventory_changed(nil)
         end
     end
 end
