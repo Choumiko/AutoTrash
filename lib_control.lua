@@ -43,17 +43,16 @@ local function set_requests(player, pdata)
     local trash_above_requested = flags.trash_above_requested
     local requests_paused = flags.pause_requests
     local contents = flags.trash_unrequested and player.get_main_inventory().get_contents()
-    local req
 
     if config_new.max_slot > slot_count then
         player.character_logistic_slot_count = config_new.max_slot
         slot_count = config_new.max_slot
     end
-    local min, max
 
+    local min, max
     for c = 1, slot_count do
         clear_request_slot(c)
-        req = storage[c]
+        local req = storage[c]
         if req then
             if not requests_paused and req.request > 0 then
                 min = req.request
@@ -208,28 +207,6 @@ local function saveVar(var, name)
     game.write_file(n..".lua", serpent.block(var, {name = "global", comment = false}))
 end
 
-local function debugDump(var, player, force)
-    if false or force then
-        local msg
-        if type(var) == "string" then
-            msg = var
-        else
-            msg = serpent.dump(var, {name = "var", comment = false, sparse = false, sortkeys = true})
-        end
-        if type(player) == "number" then
-            player = game.get_player(player)
-        end
-        if player then
-            player.print(msg)
-        else
-            for _, p in pairs(game.players) do
-                p.print(msg)
-            end
-        end
-        log(msg)
-    end
-end
-
 local function display_message(player, message, sound)
     player.print(message)
     if sound then
@@ -341,7 +318,6 @@ end
 local M = {
     item_prototype = item_prototype,
     saveVar = saveVar,
-    debugDump = debugDump,
     display_message = display_message,
     format_number = format_number,
     format_request = format_request,

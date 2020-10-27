@@ -16,6 +16,7 @@ end
 --if one preset has trash set to false it is set to a non false value
 --slot from current are kept
 function presets.merge(current, preset)
+    if not (preset and preset.config) then return end
     local result = current.config
     local b = util.table.deepcopy(preset)
     local no_slot = {}
@@ -23,7 +24,7 @@ function presets.merge(current, preset)
     local max_slot = current.max_slot
     local c_requests = current.c_requests
 
-    for j, result_config in pairs(result) do
+    for _, result_config in pairs(result) do
         tmp = result_config
         for i, config in pairs(b.config) do
             if config.name == result_config.name then
@@ -38,9 +39,6 @@ function presets.merge(current, preset)
         end
     end
     --preserve slot number if possible
-    --TODO find out how b can be nil
-    if not b then return end
-
     for i, config in pairs(b.config) do
         assert(i==config.slot)
         if not result[config.slot] then

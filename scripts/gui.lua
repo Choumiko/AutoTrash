@@ -930,17 +930,20 @@ end
 
 at_gui.clear_button = function(pdata, index, button)
     local config_tmp = pdata.config_tmp
-    if config_tmp.config[index].request > 0 then
-        config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
-    end
-    if pdata.selected == index then pdata.selected = false end
-    config_tmp.config[index] = nil
-    if index == config_tmp.max_slot then
-        config_tmp.max_slot = 0
-        for i = index-1, 1, -1 do
-            if config_tmp.config[i] then
-                config_tmp.max_slot = i
-                break
+    local config = config_tmp.config[index]
+    if config then
+        if config.request > 0 then
+            config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
+        end
+        if pdata.selected == index then pdata.selected = false end
+        config_tmp.config[index] = nil
+        if index == config_tmp.max_slot then
+            config_tmp.max_slot = 0
+            for i = index-1, 1, -1 do
+                if config_tmp.config[i] then
+                    config_tmp.max_slot = i
+                    break
+                end
             end
         end
     end

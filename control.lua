@@ -1,6 +1,5 @@
 require "__core__/lualib/util"
 --TODO: check every GUI/at_gui call
---TODO: remove pcalls
 local event = require("__flib__.event")
 local gui = require("__flib__.gui")
 local migration = require("__flib__.migration")
@@ -15,7 +14,6 @@ local at_gui = require("scripts.gui")
 local lib_control = require '__AutoTrash__/lib_control'
 local presets = require "__AutoTrash__/presets"
 
-local debugDump = lib_control.debugDump
 local display_message = lib_control.display_message
 local set_requests = lib_control.set_requests
 local pause_trash = lib_control.pause_trash
@@ -43,14 +41,13 @@ local function requested_items(player)
 end
 
 local function on_nth_tick()
-    local pdata
     for i, p in pairs(game.players) do
         if p.character then
             --TODO: remove
             if __Profiler then
                 p.character_personal_logistic_requests_enabled = true
             end
-            pdata = global._pdata[i]
+            local pdata = global._pdata[i]
             local cache
             if pdata.flags.gui_open then
                 cache = at_gui.update_button_styles(p, pdata)
@@ -231,11 +228,11 @@ event.on_player_toggled_map_editor(on_player_toggled_map_editor)
 -- Vanilla now pauses logistic requests and trash when dying
 
 local function on_player_respawned(event)
-    local status, err = pcall(function()
+    local player = game.get_player(event.player_index)
+    if not player.character then return end
     local pdata = global._pdata[event.player_index]
     local selected_presets = pdata.death_presets
     if table_size(selected_presets) > 0 then
-        local player = game.get_player(event.player_index)
         local tmp = {config = {}, max_slot = 0, c_requests = 0}
         for key, _ in pairs(selected_presets) do
             presets.merge(tmp, pdata.presets[key])
@@ -248,10 +245,6 @@ local function on_player_respawned(event)
         --TODO: adjust_slots?
         player.character_personal_logistic_requests_enabled = true
         at_gui.update_status_display(player, pdata)
-    end
-    end)
-    if not status then
-        debugDump(err, event.player_index, true)
     end
 end
 event.on_player_respawned(on_player_respawned)
@@ -379,7 +372,6 @@ function add_to_requests(player, item, count)--luacheck: ignore
 end
 
 local function toggle_autotrash_pause(player)
-    local status, err = pcall(function()
     local pdata = global._pdata[player.index]
     if pdata.flags.pause_trash then
         unpause_trash(player, pdata)
@@ -388,17 +380,12 @@ local function toggle_autotrash_pause(player)
     end
     at_gui.update_main_button(pdata)
     at_gui.close(pdata)
-    end)
-    if not status then
-        debugDump(err, player.index, true)
-    end
 end
 event.register("autotrash_pause", function(e)
     toggle_autotrash_pause(game.get_player(e.player_index))
 end)
 
 local function toggle_autotrash_pause_requests(player)
-    local status, err = pcall(function()
     local pdata = global._pdata[player.index]
     if pdata.flags.pause_requests then
         lib_control.unpause_requests(player, pdata)
@@ -408,17 +395,12 @@ local function toggle_autotrash_pause_requests(player)
     at_gui.update_status_display(player, pdata)
     at_gui.update_main_button(pdata)
     at_gui.close(pdata)
-    end)
-    if not status then
-        debugDump(err, player.index, true)
-    end
 end
 event.register("autotrash_pause_requests", function(e)
     toggle_autotrash_pause_requests(game.get_player(e.player_index))
 end)
 
 local function on_runtime_mod_setting_changed(event)
-    local status, err = pcall(function()
     if event.setting == "autotrash_update_rate" then
         register_conditional_events()
         return
@@ -432,10 +414,6 @@ local function on_runtime_mod_setting_changed(event)
 
     if event.setting == "autotrash_status_count" or event.setting == "autotrash_status_columns" then
         at_gui.init_status_display(player, pdata, true)
-    end
-    end)
-    if not status then
-        debugDump(err, false, true)
     end
 end
 event.on_runtime_mod_setting_changed(on_runtime_mod_setting_changed)
@@ -452,19 +430,14 @@ end
 event.on_research_finished(on_research_finished)
 
 local function autotrash_trash_cursor(event)
-    local status, err = pcall(function()
     local player = game.get_player(event.player_index)
-    if player.force.technologies["logistic-robotics"].researched then
+    if player.force.character_trash_slot_count > 0 then
         local cursorStack = player.cursor_stack
         if cursorStack.valid_for_read then
             add_to_trash(player, cursorStack.name)
         else
             toggle_autotrash_pause(player)
         end
-    end
-    end)
-    if not status then
-        debugDump(err, event.player_index, true)
     end
 end
 event.register("autotrash_trash_cursor", autotrash_trash_cursor)
@@ -488,18 +461,10 @@ local at_commands = {
         local player_index = args.player_index
         local pdata = global._pdata[player_index]
         local player = game.get_player(player_index)
-        local status, err = pcall(function()
-            at_gui.close(pdata)
-            pdata.config_tmp = lib_control.combine_from_vanilla(player)
-            at_gui.open(player, pdata)
-            at_gui.mark_dirty(pdata)
-        end)
-        if not status then
-            at_gui.close(pdata)
-            pdata.config_tmp = nil
-            player_data.init(player_index)
-            debugDump(err, player_index, true)
-        end
+        at_gui.close(pdata)
+        pdata.config_tmp = lib_control.combine_from_vanilla(player)
+        at_gui.open(player, pdata)
+        at_gui.mark_dirty(pdata)
     end
 }
 
