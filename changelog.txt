@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.4
-Date: ????
+Date: 2020-10-27
   Changes:
     - Updated the gui to look more like the vanilla gui
     - Removed mod settings to adjust the number of displayed rows/columns
