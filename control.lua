@@ -1,5 +1,4 @@
 require "__core__/lualib/util"
---TODO: check every GUI/at_gui call
 local event = require("__flib__.event")
 local gui = require("__flib__.gui")
 local migration = require("__flib__.migration")

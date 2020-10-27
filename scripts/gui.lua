@@ -1036,7 +1036,7 @@ function at_gui.create_main_window(player, pdata)
                                 sprite = "utility/check_mark_white", tooltip = {"module-inserter-config-button-apply"}},
                             {type = "sprite-button", style = "tool_button_red", save_as = "main.reset_button", handlers = "main.reset", sprite = "utility/reset_white"},
                             {type = "sprite-button", style = "tool_button", handlers = "main.export", sprite = "utility/export_slot", tooltip = {"autotrash_export_tt"}},
-                            {type = "sprite-button", style = "tool_button", handlers = "main.import", sprite = "mi_import_string", tooltip = {"autotrash_import_tt"}}
+                            {type = "sprite-button", style = "tool_button", handlers = "main.import", sprite = "at_import_string", tooltip = {"autotrash_import_tt"}}
                         }},
                         {type = "flow", direction="vertical", style_mods = {padding= 12, top_padding = 8, vertical_spacing = 10}, children = {
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
@@ -1087,7 +1087,7 @@ function at_gui.create_main_window(player, pdata)
                             {type = "label", style = "subheader_caption_label", caption = "Presets"},
                             {template = "pushers.horizontal"},
                             {type = "sprite-button", style = "tool_button", handlers = "main.export_all", sprite = "utility/export_slot", tooltip = {"autotrash_export_tt_all"}},
-                            {type = "sprite-button", style = "tool_button", handlers = "main.import_all", sprite = "mi_import_string", tooltip = {"autotrash_import_tt_all"}},
+                            {type = "sprite-button", style = "tool_button", handlers = "main.import_all", sprite = "at_import_string", tooltip = {"autotrash_import_tt_all"}},
                         }},
                         {type = "flow", direction="vertical", style_mods = {maximal_width = 274, padding= 12, top_padding = 8, vertical_spacing = 12}, children = {
                             {type = "flow", children = {

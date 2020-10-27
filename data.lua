@@ -234,7 +234,7 @@ data:extend{
     {
         type = "sprite",
         name = "at_import_string",
-        filename = "__base__/graphics/icons/shortcut-toolbar/mip/import-string-x24-white.png",
+        filename = "__base__/graphics/icons/shortcut-toolbar/mip/import-string-x24.png",
         priority = "extra-high-no-scale",
         size = 24,
         scale = 0.5,
