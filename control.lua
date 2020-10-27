@@ -191,7 +191,6 @@ local function on_player_main_inventory_changed(event)
     local flags = pdata.flags
     if flags.pause_trash or not flags.trash_unrequested then return end
     set_requests(player, pdata)
-    --TODO: adjust_slots ?
 end
 
 local function add_to_trash(player, item)
@@ -240,7 +239,6 @@ local function on_player_respawned(event)
         pdata.config_new = table.deep_copy(tmp)
 
         set_requests(player, pdata)
-        --TODO: adjust_slots?
         player.character_personal_logistic_requests_enabled = true
         at_gui.update_status_display(player, pdata)
     end

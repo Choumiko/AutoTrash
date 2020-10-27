@@ -77,6 +77,7 @@ local function import_presets(player, pdata, add_presets, stack)
                 pdata.config_tmp = preset
                 player.print({"string-import-successful", "AutoTrash configuration"})
                 pdata.selected = false
+                at_gui.adjust_slots(player, pdata, preset.max_slot)
                 at_gui.update_buttons(pdata)
                 at_gui.update_sliders(pdata)
                 at_gui.mark_dirty(pdata)
@@ -338,8 +339,9 @@ at_gui.handlers = {
                     pdata.selected_presets = {}
                     pdata.selected = false
                     pdata.flags.dirty = false
-                    at_gui.update_sliders(pdata)
+                    at_gui.adjust_slots(e.player, pdata, pdata.config_tmp.max_slot)
                     at_gui.update_buttons(pdata)
+                    at_gui.update_sliders(pdata)
                     at_gui.update_presets(pdata)
                 end
             end
@@ -525,14 +527,14 @@ at_gui.handlers = {
             on_gui_click = function (e)
                 local player = e.player
                 local old_slots = player.character_logistic_slot_count
-                at_gui.adjust_slots(player, e.pdata, old_slots - 10, old_slots)
+                at_gui.adjust_slots(player, e.pdata, old_slots - 10)
             end,
         },
         increase = {
             on_gui_click = function(e)
                 local player = e.player
                 local old_slots = player.character_logistic_slot_count
-                at_gui.adjust_slots(player, e.pdata, old_slots + 10, old_slots)
+                at_gui.adjust_slots(player, e.pdata, old_slots + 10)
             end,
         },
     },
@@ -562,12 +564,6 @@ at_gui.handlers = {
                     pdata.config_tmp = table.deep_copy(pdata.presets[name])
                     pdata.selected = false
                     pdata.gui.main.preset_textfield.text = name
-                    local slots = player.character_logistic_slot_count
-                    local diff = pdata.config_tmp.max_slot - slots
-                    if diff > 0 then
-                        local inc = math.ceil(diff / 10) * 10
-                        at_gui.adjust_slots(player, pdata, slots + inc, slots)
-                    end
                 else
                     local selected_presets = pdata.selected_presets
                     if not selected_presets[name] then
@@ -582,8 +578,9 @@ at_gui.handlers = {
                     pdata.config_tmp = tmp
                     pdata.selected = false
                 end
-                at_gui.mark_dirty(pdata, true)
+                at_gui.adjust_slots(player, pdata, pdata.config_tmp.max_slot)
                 at_gui.update_buttons(pdata)
+                at_gui.mark_dirty(pdata, true)
                 at_gui.update_presets(pdata)
                 at_gui.update_sliders(pdata)
             end
@@ -805,24 +802,25 @@ at_gui.update_trash_config = function(number, pdata)
     at_gui.update_button(pdata, pdata.selected)
 end
 
-local clamp = function(value, min, max)
-    if value < min then
+local clamp = function(v, min, max)
+    if v < min then
         return min
-    elseif value > max then
+    elseif v > max then
         return max
     end
-    return value
+    return v
 end
 
-at_gui.adjust_slots = function(player, pdata, slots, old_slots)
-    if slots < pdata.config_tmp.max_slot then return end
-    slots = clamp(slots, 9, 65529)
-    local slot_table = pdata.gui.main.slot_table
-    local children_count = #slot_table.children - 1
-    --to resync in case the player changed the slots via vanilla gui
-    if children_count ~= old_slots then
-        old_slots = children_count
+at_gui.adjust_slots = function(player, pdata, slots)
+    if slots < pdata.config_tmp.max_slot then
+        slots = pdata.config_tmp.max_slot
     end
+    slots = clamp(slots, 9, 65529)
+    player.character_logistic_slot_count = slots
+    slots = player.character_logistic_slot_count
+    local slot_table = pdata.gui.main.slot_table
+    local old_slots = #slot_table.children - 1
+    if old_slots == slots then return end
 
     local diff = slots - old_slots
     if diff > 0 then
@@ -844,7 +842,6 @@ at_gui.adjust_slots = function(player, pdata, slots, old_slots)
         end
     end
 
-    player.character_logistic_slot_count = slots
     local width = constants.slot_table_width
     width = (slots <= (constants.slot_rows * constants.slot_columns)) and width or (width + 12)
     pdata.gui.main.config_rows.style.width = width
@@ -1360,6 +1357,7 @@ function at_gui.open(player, pdata)
     end
     window_frame.visible = true
     pdata.flags.gui_open = true
+    at_gui.adjust_slots(player, pdata, player.character_logistic_slot_count)
     at_gui.update_button_styles(player, pdata)
     at_gui.update_settings(pdata)
     at_gui.update_sliders(pdata)
