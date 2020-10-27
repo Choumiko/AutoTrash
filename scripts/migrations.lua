@@ -1,5 +1,4 @@
 local gui = require("__flib__.gui")
-local table = require("__flib__.table")
 
 local global_data = require("scripts.global-data")
 local player_data = require("scripts.player-data")
@@ -7,7 +6,6 @@ local at_gui = require("scripts.gui")
 
 local mod_gui = require ("__core__.lualib.mod-gui")
 local lib_control = require '__AutoTrash__/lib_control'
-local set_requests = lib_control.set_requests
 local remove_invalid_items = lib_control.remove_invalid_items
 
 local migrations = {
@@ -100,20 +98,6 @@ local migrations = {
                 at_gui.create_main_window(player, pdata)
             end
         end
-
-        --TODO: remove
-        global._pdata[1].config_tmp = table.deep_copy(global._pdata[1].config_new)
-        set_requests(game.players[1], global._pdata[1])
-        at_gui.open(game.players[1], global._pdata[1])
-        -- global._pdata[1].presets["preset2"]["config"][14] = global._pdata[1].presets["preset2"]["config"][7]
-        -- global._pdata[1].presets["preset2"]["config"][7] = nil
-        -- global._pdata[1].presets["preset2"].max_slot = 14
-        -- for i = 1, 13 do
-        --     global._pdata[1].presets["fpp" .. i] = table.deep_copy(global._pdata[1].presets["preset1"])
-        -- end
-
-
-
     end,
     ["5.2.4"] = function()
         for player_index, player in pairs(game.players) do

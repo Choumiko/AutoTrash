@@ -41,17 +41,12 @@ end
 local function on_nth_tick()
     for i, p in pairs(game.players) do
         if p.character then
-            --TODO: remove
-            if __Profiler then
-                p.character_personal_logistic_requests_enabled = true
-            end
             local pdata = global._pdata[i]
-            local cache
             if pdata.flags.gui_open then
-                cache = at_gui.update_button_styles(p, pdata)
+                at_gui.update_button_styles(p, pdata)
             end
             if pdata.flags.status_display_open then
-                at_gui.update_status_display(p, pdata, cache)
+                at_gui.update_status_display(p, pdata)
             end
         end
     end
@@ -65,14 +60,14 @@ local function check_temporary_trash()
     end
 end
 
-local function on_player_trash_inventory_changed(event)
-    local player = game.get_player(event.player_index)
+local function on_player_trash_inventory_changed(e)
+    local player = game.get_player(e.player_index)
     if not (player.character and player.get_inventory(defines.inventory.character_trash).is_empty()) then return end
     local main_inventory_count = player.get_main_inventory().get_item_count
     local trash_filters = player.auto_trash_filters
     local requests = requested_items(player)
     local changed
-    local temporary_trash = global._pdata[event.player_index].temporary_trash
+    local temporary_trash = global._pdata[e.player_index].temporary_trash
     for name, saved_count in pairs(temporary_trash) do
         if trash_filters[name] then
             local desired = requests[name] and requests[name] or 0
@@ -87,7 +82,7 @@ local function on_player_trash_inventory_changed(event)
     if changed then
         player.auto_trash_filters = trash_filters
         if not check_temporary_trash() then
-            event.on_player_trash_inventory_changed(nil)
+            e.on_player_trash_inventory_changed(nil)
         end
     end
 end
@@ -177,10 +172,10 @@ at_gui.register_handlers()
 
 --that's a bad event to handle unrequested, since adding stuff to the trash filters immediately triggers the next on_main_inventory_changed event
 -- on_nth_tick might work better or only registering when some player has trash_unrequested set to true
-local function on_player_main_inventory_changed(event)
-    local player = game.get_player(event.player_index)
+local function on_player_main_inventory_changed(e)
+    local player = game.get_player(e.player_index)
     if not (player.character) then return end
-    local pdata = global._pdata[event.player_index]
+    local pdata = global._pdata[e.player_index]
     local flags = pdata.flags
     if flags.pause_trash or not flags.trash_unrequested then return end
     set_requests(player, pdata)
@@ -205,11 +200,11 @@ local function add_to_trash(player, item)
     player.print({"", "Added ", item_prototype(item).localised_name, " to temporary trash"})
 end
 
-local function on_player_toggled_map_editor(event)
-    local player = game.get_player(event.player_index)
+local function on_player_toggled_map_editor(e)
+    local player = game.get_player(e.player_index)
     if not player.character then
         player.print{"autotrash_no_character"}
-        at_gui.close(global._pdata[event.player_index], true)
+        at_gui.close(global._pdata[e.player_index], true)
     end
 end
 event.on_player_toggled_map_editor(on_player_toggled_map_editor)
@@ -217,10 +212,10 @@ event.on_player_toggled_map_editor(on_player_toggled_map_editor)
 --TODO Display paused icons/checkboxes without clearing the requests?
 -- Vanilla now pauses logistic requests and trash when dying
 
-local function on_player_respawned(event)
-    local player = game.get_player(event.player_index)
+local function on_player_respawned(e)
+    local player = game.get_player(e.player_index)
     if not player.character then return end
-    local pdata = global._pdata[event.player_index]
+    local pdata = global._pdata[e.player_index]
     local selected_presets = pdata.death_presets
     if table_size(selected_presets) > 0 then
         local tmp = {config = {}, max_slot = 0, c_requests = 0}
@@ -238,13 +233,13 @@ local function on_player_respawned(event)
 end
 event.on_player_respawned(on_player_respawned)
 
-local function on_player_changed_position(event)
-    local player = game.get_player(event.player_index)
+local function on_player_changed_position(e)
+    local player = game.get_player(e.player_index)
     if not player.character then return end
-    local pdata = global._pdata[event.player_index]
+    local pdata = global._pdata[e.player_index]
     --Rocket rush scenario might teleport before AutoTrash gets a chance to init?!
     if not pdata then
-        player_data.init(event.player_index)
+        player_data.init(e.player_index)
     end
     local current = (pdata.current_network and pdata.current_network.valid) and pdata.current_network.logistic_network
     local maybe_new = get_network_entity(player)
@@ -296,21 +291,21 @@ local function on_cutscene_cancelled(e)
 end
 event.on_cutscene_cancelled(on_cutscene_cancelled)
 
-local function on_player_created(event)
-    local player = game.get_player(event.player_index)
-    player_data.init(event.player_index)
-    at_gui.init(player, global._pdata[event.player_index])
+local function on_player_created(e)
+    local player = game.get_player(e.player_index)
+    player_data.init(e.player_index)
+    at_gui.init(player, global._pdata[e.player_index])
 end
 event.on_player_created(on_player_created)
 
-local function on_player_removed(event)
-    global._pdata[event.player_index] = nil
+local function on_player_removed(e)
+    global._pdata[e.player_index] = nil
     register_conditional_events()
 end
 event.on_player_removed(on_player_removed)
 
-local function on_pre_mined_item(event)
-    local entity = event.entity
+local function on_pre_mined_item(e)
+    local entity = e.entity
     for pi, pdata in pairs(global._pdata) do
         local main = pdata.main_network
         local current = pdata.current_network
@@ -401,26 +396,26 @@ event.register("autotrash_pause_requests", function(e)
     toggle_autotrash_pause_requests(game.get_player(e.player_index))
 end)
 
-local function on_runtime_mod_setting_changed(event)
-    if event.setting == "autotrash_update_rate" then
+local function on_runtime_mod_setting_changed(e)
+    if e.setting == "autotrash_update_rate" then
         register_conditional_events()
         return
     end
 
-    local player_index = event.player_index
+    local player_index = e.player_index
     local player = game.get_player(player_index)
     local pdata = global._pdata[player_index]
     if not (player_index and pdata) then return end
     player_data.update_settings(player, pdata)
 
-    if event.setting == "autotrash_status_count" or event.setting == "autotrash_status_columns" then
+    if e.setting == "autotrash_status_count" or e.setting == "autotrash_status_columns" then
         at_gui.init_status_display(player, pdata, true)
     end
 end
 event.on_runtime_mod_setting_changed(on_runtime_mod_setting_changed)
 
-local function on_research_finished(event)
-    local force = event.research.force
+local function on_research_finished(e)
+    local force = e.research.force
     if not global.unlocked_by_force[force.name] and force.character_logistic_requests then
         for _, player in pairs(force.players) do
             local pdata = global._pdata[player.index]
@@ -438,8 +433,8 @@ local function on_research_finished(event)
 end
 event.on_research_finished(on_research_finished)
 
-local function autotrash_trash_cursor(event)
-    local player = game.get_player(event.player_index)
+local function autotrash_trash_cursor(e)
+    local player = game.get_player(e.player_index)
     if player.force.character_trash_slot_count > 0 then
         local cursorStack = player.cursor_stack
         if cursorStack.valid_for_read then

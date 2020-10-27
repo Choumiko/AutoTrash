@@ -1,7 +1,10 @@
 ---------------------------------------------------------------------------------------------------
-Version: 5.2.3
+Version: 5.2.4
 Date: ????
   Changes:
+    - Updated the gui to look more like the vanilla gui
+    - Removed mod settings to adjust the number of displayed rows/columns
+    - Added flib as a dependency
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.2
 Date: 2020-09-20

@@ -1,5 +1,3 @@
-local table = require("__flib__.table")
-
 local player_data = {}
 
 function player_data.init(player_index)

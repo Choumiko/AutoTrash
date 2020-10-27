@@ -1201,7 +1201,7 @@ at_gui.open_status_display = function(player, pdata)
     end
 end
 
-at_gui.close_status_display = function(player, pdata)
+at_gui.close_status_display = function(pdata)
     pdata.flags.status_display_open = false
     local status_table = pdata.gui.status_table
     if not (status_table and status_table.valid) then
@@ -1212,42 +1212,18 @@ end
 
 at_gui.toggle_status_display = function(player, pdata)
     if pdata.flags.status_display_open then
-        at_gui.close_status_display(player, pdata)
+        at_gui.close_status_display(pdata)
     else
         at_gui.open_status_display(player, pdata)
     end
 end
 
-at_gui.update_status_display_cached = function(pdata, cache)
-    local status_table = pdata.gui.status_table
-    local max_count = pdata.settings.status_count
-    local children = status_table.children
-    local c = 1
-    for name, data in pairs(cache) do
-        if c > max_count then return true end
-            local style = data[1]
-            if style ~= "at_button_slot" then
-                local button = children[c]
-                button.style = style
-                button.sprite = "item/" .. name
-                button.number = data[2]
-                button.visible = true
-                c = c + 1
-            end
-    end
-    for i = c, max_count do
-        children[i].visible = false
-    end
-    return true
-end
-
-at_gui.update_status_display = function(player, pdata, cache)
+at_gui.update_status_display = function(player, pdata)
     if not pdata.flags.status_display_open then return end
     local status_table = pdata.gui.status_table
     if not (status_table and status_table.valid) then
         at_gui.init_status_display(player, pdata)
     end
-    if cache then return at_gui.update_status_display_cached(pdata, cache) end
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
     if not (available and not pdata.flags.pause_requests) then
         for _, child in pairs(status_table.children) do
