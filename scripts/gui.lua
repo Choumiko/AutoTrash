@@ -3,7 +3,7 @@ local table =require("__flib__.table")
 local constants = require("constants")
 local mod_gui = require ("__core__.lualib.mod-gui")
 
-local at_util = require("lib_control")
+local at_util = require("scripts.util")
 local format_number = at_util.format_number
 local format_request = at_util.format_request
 local format_trash = at_util.format_trash
@@ -16,7 +16,7 @@ local get_non_equipment_network = at_util.get_non_equipment_network
 local set_requests = at_util.set_requests
 local pause_trash = at_util.pause_trash
 local unpause_trash = at_util.unpause_trash
-local presets = require("presets")
+local presets = require("scripts.presets")
 
 local function tonumber_max(n)
     n = tonumber(n)

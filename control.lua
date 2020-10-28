@@ -10,8 +10,8 @@ local player_data = require("scripts.player-data")
 local migrations = require("scripts.migrations")
 local at_gui = require("scripts.gui")
 
-local at_util = require("lib_control")
-local presets = require("presets")
+local at_util = require("scripts.util")
+local presets = require("scripts.presets")
 
 local display_message = at_util.display_message
 local set_requests = at_util.set_requests
