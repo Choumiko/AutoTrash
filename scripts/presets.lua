@@ -1,3 +1,5 @@
+local table = require("__flib__.table")
+
 local presets = {}
 
 local function log_blueprint_entities(ents)--luacheck: ignore
@@ -18,7 +20,7 @@ end
 function presets.merge(current, preset)
     if not (preset and preset.config) then return end
     local result = current.config
-    local b = util.table.deepcopy(preset)
+    local b = table.deep_copy(preset)
     local no_slot = {}
     local tmp
     local max_slot = current.max_slot

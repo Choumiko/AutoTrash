@@ -1,4 +1,3 @@
-require "__core__/lualib/util"
 local event = require("__flib__.event")
 local gui = require("__flib__.gui")
 local migration = require("__flib__.migration")
