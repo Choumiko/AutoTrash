@@ -23,6 +23,16 @@ local function tonumber_max(n)
     return (n and n > constants.max_request) and constants.max_request or n
 end
 
+local function gcd(a, b)
+    if a == b then
+        return a
+    elseif a > b then
+        return gcd(a - b, b)
+    elseif b > a then
+        return gcd(a, b-a)
+    end
+end
+
 local function get_network_data(player)
     local character = player.character
     if not character then return end
@@ -526,15 +536,23 @@ at_gui.handlers = {
         decrease = {
             on_gui_click = function (e)
                 local player = e.player
+                local pdata = e.pdata
                 local old_slots = player.character_logistic_slot_count
-                at_gui.adjust_slots(player, e.pdata, old_slots - 10)
+                local step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
+                local correct = (old_slots + 1) % step
+                local new_slots = old_slots - correct - step
+                at_gui.adjust_slots(player, e.pdata, new_slots)
             end,
         },
         increase = {
             on_gui_click = function(e)
                 local player = e.player
+                local pdata = e.pdata
                 local old_slots = player.character_logistic_slot_count
-                at_gui.adjust_slots(player, e.pdata, old_slots + 10)
+                local step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
+                local correct = (old_slots + 1) % step
+                local new_slots = old_slots - correct + step
+                at_gui.adjust_slots(player, e.pdata, new_slots)
             end,
         },
     },
@@ -815,7 +833,8 @@ at_gui.adjust_slots = function(player, pdata, slots)
     if slots < pdata.config_tmp.max_slot then
         slots = pdata.config_tmp.max_slot
     end
-    slots = clamp(slots, 9, 65529)
+    local step = (10*pdata.settings.columns) / gcd(10, pdata.settings.columns)
+    slots = clamp(slots, step-1, 65529)
     player.character_logistic_slot_count = slots
     slots = player.character_logistic_slot_count
     local slot_table = pdata.gui.main.slot_table
@@ -837,7 +856,7 @@ at_gui.adjust_slots = function(player, pdata, slots)
             gui.update_filters("slots.item_button", player.index, {btn.index}, "remove")
             btn.destroy()
         end
-        if slots == 9 then
+        if slots < step then
             slot_table.count_change.children[1].enabled = false
         end
     end

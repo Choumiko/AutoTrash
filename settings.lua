@@ -55,14 +55,15 @@ data:extend({
         name = prefix .. "gui_displayed_columns",
         setting_type = "runtime-per-user",
         default_value = 10,
-        minimum_value = 1,
+        minimum_value = 5,
+        allowed_values = {5, 10, 15, 20, 25, 30, 35, 40},
         order = "v"
     },
     {
         type = "int-setting",
         name = prefix .. "gui_rows_before_scroll",
         setting_type = "runtime-per-user",
-        default_value = 7,
+        default_value = 6,
         minimum_value = 1,
         order = "w"
     },
