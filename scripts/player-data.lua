@@ -48,6 +48,8 @@ function player_data.update_settings(player, pdata)
         reset_on_close = player_settings["autotrash_reset_on_close"].value,
         overwrite = player_settings["autotrash_overwrite"].value,
         trash_equals_requests = player_settings["autotrash_trash_equals_requests"].value,
+        columns = player_settings["autotrash_gui_displayed_columns"].value,
+        rows = player_settings["autotrash_gui_rows_before_scroll"].value,
     }
     pdata.settings = settings
 end

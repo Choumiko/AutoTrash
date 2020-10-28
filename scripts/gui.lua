@@ -167,8 +167,8 @@ at_gui.toggle_setting = {
 at_gui.templates = {
     slot_table = {
         main = function(btns, pdata)
-            local ret = {type = "table", column_count = constants.slot_columns, style = "at_filter_group_table", save_as = "main.slot_table",
-                style_mods = {minimal_height = constants.slot_table_height}, children = {}}
+            local ret = {type = "table", column_count = pdata.settings.columns, style = "at_filter_group_table", save_as = "main.slot_table",
+                style_mods = {minimal_height = pdata.settings.rows * 40}, children = {}}
             for i=1, btns do
                 ret.children[i] = gui.templates.slot_table.button(i, pdata)
             end
@@ -842,8 +842,8 @@ at_gui.adjust_slots = function(player, pdata, slots)
         end
     end
 
-    local width = constants.slot_table_width
-    width = (slots <= (constants.slot_rows * constants.slot_columns)) and width or (width + 12)
+    local width = pdata.settings.columns * 40
+    width = (slots <= (pdata.settings.rows * pdata.settings.columns)) and width or (width + 12)
     pdata.gui.main.config_rows.style.width = width
     pdata.gui.main.config_rows.scroll_to_bottom()
 end
@@ -1013,14 +1013,16 @@ end
 function at_gui.create_main_window(player, pdata)
     local flags = pdata.flags
     pdata.selected = false
-    local cols = constants.slot_columns
-    local rows = constants.slot_rows
+    local cols = pdata.settings.columns
+    local rows = pdata.settings.rows
     local btns = player.character_logistic_slot_count
-    local width = constants.slot_table_width
+    local width = cols * 40
     width = (btns <= (rows*cols)) and width or (width + 12)
+    local max_height = (player.display_resolution.height / player.display_scale) * 0.97
+    local max_width = (player.display_resolution.width / player.display_scale)
     local gui_data = gui.build(player.gui.screen,{
-        {type = "frame", style = "outer_frame", handlers = "main.window", save_as = "main.window", children = {
-            {type = "frame", style = "inner_frame_in_outer_frame", direction = "vertical", style_mods = {maximal_height = 656}, children = {
+        {type = "frame", style = "outer_frame", handlers = "main.window", style_mods = {maximal_width = max_width, maximal_height = max_height}, save_as = "main.window", children = {
+            {type = "frame", style = "inner_frame_in_outer_frame", direction = "vertical", children = {
                 {type = "flow", save_as = "main.titlebar.flow", children = {
                     {type = "label", style = "frame_title", caption = "Auto Trash", elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
@@ -1043,7 +1045,7 @@ function at_gui.create_main_window(player, pdata)
                                 {type = "scroll-pane", style = "at_slot_table_scroll_pane", name = "config_rows", save_as = "main.config_rows",
                                     style_mods = {
                                         width = width,
-                                        height = constants.slot_table_height
+                                        height = pdata.settings.rows * 40
                                     },
                                     children = {
                                         gui.templates.slot_table.main(btns, pdata),
@@ -1308,14 +1310,15 @@ function at_gui.destroy(player, pdata)
     if pdata.gui.main and pdata.gui.main.window and pdata.gui.main.window.valid then
         gui.update_filters("main", player.index, nil, "remove")
         pdata.gui.main.window.destroy()
-        pdata.gui.main = nil
+        pdata.gui.main = {}
         pdata.flags.gui_open = false
     end
     if pdata.gui.import and pdata.gui.import.window then
-        if pdata.gui.import.window.main then
+        gui.update_filters("import", player.index, nil, "remove")
+        if pdata.gui.import.window.main and pdata.gui.import.window.main.valid then
             pdata.gui.import.window.main.destroy()
         end
-        pdata.gui.import = nil
+        pdata.gui.import = {}
     end
 end
 
@@ -1327,7 +1330,9 @@ function at_gui.open(player, pdata)
     end
     local window_frame = pdata.gui.main.window
     if not (window_frame and window_frame.valid) then
-        player.print{"autotrash_invalid_gui"}
+        if window_frame then
+            player.print{"autotrash_invalid_gui"}
+        end
         at_gui.close(pdata)
         at_gui.destroy(player, pdata)
         at_gui.create_main_window(player, pdata)
@@ -1355,6 +1360,16 @@ function at_gui.close(pdata, no_reset)
         pdata.dirty = false
     end
     --player.opened = nil
+end
+
+function at_gui.recreate(player, pdata)
+    local was_open = pdata.flags.gui_open
+    at_gui.destroy(player, pdata)
+    if was_open then
+        at_gui.open(player, pdata)
+    else
+        at_gui.create_main_window(player, pdata)
+    end
 end
 
 function at_gui.toggle(player, pdata)

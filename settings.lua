@@ -52,20 +52,18 @@ data:extend({
     },
     {
         type = "int-setting",
-        name = prefix .. "gui_columns",
+        name = prefix .. "gui_displayed_columns",
         setting_type = "runtime-per-user",
         default_value = 10,
         minimum_value = 1,
-        hidden = true,
         order = "v"
     },
     {
         type = "int-setting",
-        name = prefix .. "gui_max_rows",
+        name = prefix .. "gui_rows_before_scroll",
         setting_type = "runtime-per-user",
-        default_value = 6,
+        default_value = 7,
         minimum_value = 1,
-        hidden = true,
         order = "w"
     },
     {

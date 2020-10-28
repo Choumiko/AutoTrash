@@ -153,7 +153,7 @@ local function on_configuration_changed(data)
         for i, player in pairs(game.players) do
             local pdata = global._pdata[i]
             player_data.refresh(player, pdata)
-            at_gui.close(pdata, true)
+            at_gui.recreate(player, pdata)
         end
     end
     register_conditional_events()
@@ -406,12 +406,23 @@ local function on_runtime_mod_setting_changed(e)
     local pdata = global._pdata[player_index]
     if not (player_index and pdata) then return end
     player_data.update_settings(player, pdata)
-
+    if e.setting == "autotrash_gui_displayed_columns" or e.setting == "autotrash_gui_rows_before_scroll" then
+        at_gui.recreate(player, pdata)
+    end
     if e.setting == "autotrash_status_count" or e.setting == "autotrash_status_columns" then
         at_gui.init_status_display(player, pdata, true)
     end
 end
 event.on_runtime_mod_setting_changed(on_runtime_mod_setting_changed)
+
+local function on_player_display_resolution_changed(e)
+    local pdata = global._pdata[e.player_index]
+    local player = game.get_player(e.player_index)
+    player_data.refresh(player, pdata)
+    at_gui.recreate(player, pdata)
+end
+event.on_player_display_resolution_changed(on_player_display_resolution_changed)
+event.on_player_display_scale_changed(on_player_display_resolution_changed)
 
 local function on_research_finished(e)
     local force = e.research.force
@@ -468,7 +479,15 @@ local at_commands = {
         pdata.config_tmp = lib_control.combine_from_vanilla(player)
         at_gui.open(player, pdata)
         at_gui.mark_dirty(pdata)
-    end
+    end,
+
+    reset = function(args)
+        local pdata = global._pdata[args.player_index]
+        local player = game.get_player(args.player_index)
+        player.character_logistic_slot_count = pdata.settings.columns * pdata.settings.rows - 1
+        at_gui.destroy(player, pdata)
+        at_gui.open(player, pdata)
+    end,
 }
 
 local comms = commands.commands
@@ -480,3 +499,4 @@ end
 commands.add_command(command_prefix .. "hide", "Hide the AutoTrash button", at_commands.hide)
 commands.add_command(command_prefix .. "show", "Show the AutoTrash button", at_commands.show)
 commands.add_command(command_prefix .. "import", "Import from vanilla", at_commands.import)
+commands.add_command(command_prefix .. "reset", "Reset gui", at_commands.reset)
