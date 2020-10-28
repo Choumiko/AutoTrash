@@ -1,8 +1,10 @@
 local floor = math.floor
 local trash_blacklist = require("constants").trash_blacklist
 
+local M = {}
+
 local item_prototypes = {}
-local function item_prototype(name)
+M.item_prototype = function(name)
     if item_prototypes[name] then
         return item_prototypes[name]
     end
@@ -10,7 +12,7 @@ local function item_prototype(name)
     return item_prototypes[name]
 end
 
-local function get_requests(player)
+M.get_requests = function(player)
     local character = player.character
     if not character then
         return {}
@@ -30,7 +32,7 @@ local function get_requests(player)
     return requests, max_slot, count
 end
 
-local function set_requests(player, pdata)
+M.set_requests = function(player, pdata)
     local character = player.character
     if not character then return end
     local flags = pdata.flags
@@ -77,7 +79,7 @@ local function set_requests(player, pdata)
 
     if contents and not trash_paused then
         for name, _ in pairs(contents) do
-            if trash_blacklist[item_prototype(name).type] then
+            if trash_blacklist[M.item_prototype(name).type] then
                 contents[name] = nil
             end
         end
@@ -96,32 +98,32 @@ local function set_requests(player, pdata)
     end
 end
 
-local function pause_requests(player, pdata)
+M.pause_requests = function(player, pdata)
     local character = player.character
     if not character then return end
     pdata.flags.pause_requests = true
-    set_requests(player, pdata)
+    M.set_requests(player, pdata)
 end
 
-local function unpause_requests(player, pdata)
+M.unpause_requests = function(player, pdata)
     if not player.character then return end
     pdata.flags.pause_requests = false
-    set_requests(player, pdata)
+    M.set_requests(player, pdata)
 end
 
-local function pause_trash(player, pdata)
+M.pause_trash = function(player, pdata)
     if not player.character then return end
     pdata.flags.pause_trash = true
-    set_requests(player, pdata)
+    M.set_requests(player, pdata)
 end
 
-local function unpause_trash(player, pdata)
+M.unpause_trash = function(player, pdata)
     if not player.character then return end
     pdata.flags.pause_trash = false
-    set_requests(player, pdata)
+    M.set_requests(player, pdata)
 end
 
-local function get_non_equipment_network(character)
+M.get_non_equipment_network = function(character)
     if not character then return end
     --trash slots researched
     local logi_point = character.get_logistic_point(defines.logistic_member_index.character_provider)
@@ -132,8 +134,8 @@ local function get_non_equipment_network(character)
     return logi_point and logi_point.logistic_network
 end
 
-local function get_network_entity(player)
-    local network = get_non_equipment_network(player.character)
+M.get_network_entity = function(player)
+    local network = M.get_non_equipment_network(player.character)
     if network and network.valid then
         local cell = network.find_cell_closest_to(player.position)
         return cell and cell.owner
@@ -141,11 +143,11 @@ local function get_network_entity(player)
     return false
 end
 
-local function in_network(player, pdata)
+M.in_network = function(player, pdata)
     if not pdata.flags.trash_network then
         return true
     end
-    local currentNetwork = get_non_equipment_network(player.character)
+    local currentNetwork = M.get_non_equipment_network(player.character)
     if pdata.main_network and not pdata.main_network.valid then
         --ended up with an invalid entity, not much i can do to recover
         player.print("AutoTrash lost the main network. You will have to set it again.")
@@ -159,10 +161,10 @@ local function in_network(player, pdata)
     return false
 end
 
-local function combine_from_vanilla(player)
+M.combine_from_vanilla = function(player)
     if not player.character then return end
     local tmp = {config = {}, max_slot = 0, c_requests = 0}
-    local requests, max_slot, c_requests = get_requests(player)
+    local requests, max_slot, c_requests = M.get_requests(player)
     local trash = player.auto_trash_filters
 
     for name, config in pairs(requests) do
@@ -201,13 +203,13 @@ local function combine_from_vanilla(player)
     return tmp
 end
 
-local function saveVar(var, name)
+M.saveVar = function(var, name)
     var = var or global
     local n = name and "autotrash_" .. name or "autotrash"
     game.write_file(n..".lua", serpent.block(var, {name = "global", comment = false}))
 end
 
-local function display_message(player, message, sound)
+M.display_message = function(player, message, sound)
     player.print(message)
     if sound then
         if sound == "success" then
@@ -218,7 +220,7 @@ local function display_message(player, message, sound)
     end
 end
 
-local function format_number(n, append_suffix)
+M.format_number = function(n, append_suffix)
     local amount = tonumber(n)
     if not amount then
     return n
@@ -249,15 +251,15 @@ local function format_number(n, append_suffix)
     return formatted..suffix
 end
 
-local function format_request(item_config)
+M.format_request = function(item_config)
     return (item_config.request and item_config.request > 0) and item_config.request or (item_config.trash and 0) or ""
 end
 
-local function format_trash(item_config)
+M.format_trash = function(item_config)
     return item_config.trash and item_config.trash or (item_config.request > 0 and "∞") or ""
 end
 
-local function convert_from_slider(n)
+M.convert_from_slider = function(n)
     if not n then
         return -1
     end
@@ -276,7 +278,7 @@ local function convert_from_slider(n)
 end
 
 local huge = math.huge
-local function convert_to_slider(n)
+M.convert_to_slider = function(n)
     if n <= 10 then
         return n
     elseif n <= 100 then
@@ -292,11 +294,11 @@ local function convert_to_slider(n)
     end
 end
 
-local function remove_invalid_items(pdata, tbl, unselect)
+M.remove_invalid_items = function(pdata, tbl, unselect)
     for i = tbl.max_slot, 1, -1 do
         local item_config = tbl.config[i]
         if item_config then
-            if not item_prototype(item_config.name) then
+            if not M.item_prototype(item_config.name) then
                 if tbl.config[i].request > 0 then
                     tbl.c_requests = tbl.c_requests - 1
                 end
@@ -313,27 +315,5 @@ local function remove_invalid_items(pdata, tbl, unselect)
         end
     end
 end
-
-local M = {
-    item_prototype = item_prototype,
-    saveVar = saveVar,
-    display_message = display_message,
-    format_number = format_number,
-    format_request = format_request,
-    format_trash = format_trash,
-    convert_to_slider = convert_to_slider,
-    convert_from_slider = convert_from_slider,
-    pause_trash = pause_trash,
-    unpause_trash = unpause_trash,
-    set_requests = set_requests,
-    get_requests = get_requests,
-    pause_requests = pause_requests,
-    unpause_requests = unpause_requests,
-    get_non_equipment_network = get_non_equipment_network,
-    get_network_entity = get_network_entity,
-    in_network = in_network,
-    combine_from_vanilla = combine_from_vanilla,
-    remove_invalid_items = remove_invalid_items
-}
 
 return M

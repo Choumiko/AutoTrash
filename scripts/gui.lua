@@ -3,19 +3,19 @@ local table =require("__flib__.table")
 local constants = require("constants")
 local mod_gui = require ("__core__.lualib.mod-gui")
 
-local lib_control = require '__AutoTrash__.lib_control'
-local format_number = lib_control.format_number
-local format_request = lib_control.format_request
-local format_trash = lib_control.format_trash
-local convert_to_slider = lib_control.convert_to_slider
-local convert_from_slider = lib_control.convert_from_slider
-local display_message = lib_control.display_message
-local item_prototype = lib_control.item_prototype
-local in_network = lib_control.in_network
-local get_non_equipment_network = lib_control.get_non_equipment_network
-local set_requests = lib_control.set_requests
-local pause_trash = lib_control.pause_trash
-local unpause_trash = lib_control.unpause_trash
+local at_util = require("lib_control")
+local format_number = at_util.format_number
+local format_request = at_util.format_request
+local format_trash = at_util.format_trash
+local convert_to_slider = at_util.convert_to_slider
+local convert_from_slider = at_util.convert_from_slider
+local display_message = at_util.display_message
+local item_prototype = at_util.item_prototype
+local in_network = at_util.in_network
+local get_non_equipment_network = at_util.get_non_equipment_network
+local set_requests = at_util.set_requests
+local pause_trash = at_util.pause_trash
+local unpause_trash = at_util.unpause_trash
 local presets = require("presets")
 
 local function tonumber_max(n)
@@ -164,9 +164,9 @@ at_gui.toggle_setting = {
     end,
     pause_requests = function(player, pdata)
         if pdata.flags.pause_requests then
-            lib_control.pause_requests(player, pdata)
+            at_util.pause_requests(player, pdata)
         else
-            lib_control.unpause_requests(player, pdata)
+            at_util.unpause_requests(player, pdata)
         end
         at_gui.update_main_button(pdata)
         at_gui.update_status_display(player, pdata)
@@ -737,7 +737,7 @@ at_gui.handlers = {
                     end
                     pdata.main_network = false
                 else
-                    pdata.main_network = lib_control.get_network_entity(player)
+                    pdata.main_network = at_util.get_network_entity(player)
                     if not pdata.main_network then
                         display_message(player, {"auto-trash-not-in-network"}, true)
                     end

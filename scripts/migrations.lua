@@ -5,8 +5,7 @@ local player_data = require("scripts.player-data")
 local at_gui = require("scripts.gui")
 
 local mod_gui = require ("__core__.lualib.mod-gui")
-local lib_control = require '__AutoTrash__/lib_control'
-local remove_invalid_items = lib_control.remove_invalid_items
+local remove_invalid_items = require("lib_control").remove_invalid_items
 
 local migrations = {
     ["4.1.2"] = function()

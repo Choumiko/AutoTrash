@@ -10,17 +10,17 @@ local player_data = require("scripts.player-data")
 local migrations = require("scripts.migrations")
 local at_gui = require("scripts.gui")
 
-local lib_control = require '__AutoTrash__/lib_control'
-local presets = require "__AutoTrash__/presets"
+local at_util = require("lib_control")
+local presets = require("presets")
 
-local display_message = lib_control.display_message
-local set_requests = lib_control.set_requests
-local pause_trash = lib_control.pause_trash
-local unpause_trash = lib_control.unpause_trash
-local get_network_entity = lib_control.get_network_entity
-local in_network = lib_control.in_network
-local item_prototype = lib_control.item_prototype
-local remove_invalid_items = lib_control.remove_invalid_items
+local display_message = at_util.display_message
+local set_requests = at_util.set_requests
+local pause_trash = at_util.pause_trash
+local unpause_trash = at_util.unpause_trash
+local get_network_entity = at_util.get_network_entity
+local in_network = at_util.in_network
+local item_prototype = at_util.item_prototype
+local remove_invalid_items = at_util.remove_invalid_items
 
 local function requested_items(player)
     if not player.character then
@@ -110,7 +110,7 @@ local function on_init()
             local pdata = player_data.init(player_index)
             at_gui.init(player, pdata)
             if player.character and force.character_logistic_requests then
-                pdata.config_tmp = lib_control.combine_from_vanilla(player)
+                pdata.config_tmp = at_util.combine_from_vanilla(player)
                 if next(pdata.config_tmp.config) then
                     pdata.presets["at_imported"] = table.deep_copy(pdata.config_tmp)
                     pdata.selected_presets = {at_imported = true}
@@ -383,9 +383,9 @@ end)
 local function toggle_autotrash_pause_requests(player)
     local pdata = global._pdata[player.index]
     if pdata.flags.pause_requests then
-        lib_control.unpause_requests(player, pdata)
+        at_util.unpause_requests(player, pdata)
     else
-        lib_control.pause_requests(player, pdata)
+        at_util.pause_requests(player, pdata)
     end
     at_gui.update_status_display(player, pdata)
     at_gui.update_main_button(pdata)
@@ -476,7 +476,7 @@ local at_commands = {
         local pdata = global._pdata[player_index]
         local player = game.get_player(player_index)
         at_gui.close(pdata)
-        pdata.config_tmp = lib_control.combine_from_vanilla(player)
+        pdata.config_tmp = at_util.combine_from_vanilla(player)
         at_gui.open(player, pdata)
         at_gui.mark_dirty(pdata)
     end,
