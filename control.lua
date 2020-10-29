@@ -418,7 +418,11 @@ local function on_player_display_resolution_changed(e)
     local pdata = global._pdata[e.player_index]
     local player = game.get_player(e.player_index)
     player_data.refresh(player, pdata)
-    at_gui.recreate(player, pdata)
+    if player.character then
+        at_gui.recreate(player, pdata)
+    else
+        at_gui.close(pdata, true)
+    end
 end
 event.on_player_display_resolution_changed(on_player_display_resolution_changed)
 event.on_player_display_scale_changed(on_player_display_resolution_changed)
