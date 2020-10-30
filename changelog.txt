@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.7
-Date: ????
+Date: 2020-10-30
   Changes:
     - Made displayed columns and rows adjustable again. Columns are restricted from 5 to 40 in increments of 5
 ---------------------------------------------------------------------------------------------------
