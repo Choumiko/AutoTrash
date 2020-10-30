@@ -94,7 +94,7 @@ local function import_presets(player, pdata, add_presets, stack)
                 at_gui.update_sliders(pdata)
                 at_gui.mark_dirty(pdata)
                 --named preset
-                if stack.label and stack.label ~= "Autotrash_configuration" then
+                if stack.label and stack.label ~= "AutoTrash_configuration" then
                     local textfield = pdata.gui.main.preset_textfield
                     local preset_name = string.sub(stack.label, 11)
                     if add_presets and at_gui.add_preset(player, pdata, preset_name, preset) then
@@ -537,24 +537,12 @@ at_gui.handlers = {
         },
         decrease = {
             on_gui_click = function (e)
-                local player = e.player
-                local pdata = e.pdata
-                local old_slots = player.character_logistic_slot_count
-                local step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
-                local correct = (old_slots + 1) % step
-                local new_slots = old_slots - correct - step
-                at_gui.adjust_slots(player, e.pdata, new_slots)
+                at_gui.decrease_slots(e.player, e.pdata)
             end,
         },
         increase = {
             on_gui_click = function(e)
-                local player = e.player
-                local pdata = e.pdata
-                local old_slots = player.character_logistic_slot_count
-                local step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
-                local correct = (old_slots + 1) % step
-                local new_slots = old_slots - correct + step
-                at_gui.adjust_slots(player, e.pdata, new_slots)
+                at_gui.increase_slots(e.player, e.pdata)
             end,
         },
     },
@@ -831,11 +819,30 @@ local clamp = function(v, min, max)
     return v
 end
 
+at_gui.decrease_slots = function(player, pdata)
+    local old_slots = player.character_logistic_slot_count
+    local step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
+    local correct = (old_slots + 1) % step
+    local new_slots = old_slots - correct - step
+    if new_slots < pdata.config_tmp.max_slot then return end
+    at_gui.adjust_slots(player, pdata, new_slots)
+end
+
+at_gui.increase_slots = function(player, pdata)
+    local old_slots = player.character_logistic_slot_count
+    local step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
+    local correct = (old_slots + 1) % step
+    local new_slots = old_slots - correct + step
+    at_gui.adjust_slots(player, pdata, new_slots)
+end
+
 at_gui.adjust_slots = function(player, pdata, slots)
-    if slots < pdata.config_tmp.max_slot then
-        slots = pdata.config_tmp.max_slot
-    end
     local step = (10*pdata.settings.columns) / gcd(10, pdata.settings.columns)
+    if slots < pdata.config_tmp.max_slot then
+        local old_slots = player.character_logistic_slot_count
+        local correct = (old_slots + 1) % step
+        slots = old_slots - correct
+    end
     slots = clamp(slots, step-1, 65529)
     player.character_logistic_slot_count = slots
     slots = player.character_logistic_slot_count
@@ -1032,6 +1039,7 @@ at_gui.update_presets = function(pdata)
 end
 
 function at_gui.create_main_window(player, pdata)
+    if not player.character then return end
     local flags = pdata.flags
     pdata.selected = false
     local cols = pdata.settings.columns
@@ -1329,18 +1337,18 @@ end
 
 function at_gui.destroy(player, pdata)
     if pdata.gui.main and pdata.gui.main.window and pdata.gui.main.window.valid then
-        gui.update_filters("main", player.index, nil, "remove")
         pdata.gui.main.window.destroy()
-        pdata.gui.main = {}
-        pdata.flags.gui_open = false
     end
+    gui.update_filters("main", player.index, nil, "remove")
+    pdata.gui.main = {}
+    pdata.flags.gui_open = false
     if pdata.gui.import and pdata.gui.import.window then
-        gui.update_filters("import", player.index, nil, "remove")
         if pdata.gui.import.window.main and pdata.gui.import.window.main.valid then
             pdata.gui.import.window.main.destroy()
         end
-        pdata.gui.import = {}
     end
+    gui.update_filters("import", player.index, nil, "remove")
+    pdata.gui.import = {}
 end
 
 function at_gui.open(player, pdata)
@@ -1354,7 +1362,6 @@ function at_gui.open(player, pdata)
         if window_frame then
             player.print{"autotrash_invalid_gui"}
         end
-        at_gui.close(pdata)
         at_gui.destroy(player, pdata)
         at_gui.create_main_window(player, pdata)
         window_frame = pdata.gui.main.window
@@ -1362,6 +1369,7 @@ function at_gui.open(player, pdata)
     window_frame.visible = true
     pdata.flags.gui_open = true
     at_gui.adjust_slots(player, pdata, player.character_logistic_slot_count)
+    at_gui.update_buttons(pdata)
     at_gui.update_button_styles(player, pdata)
     at_gui.update_settings(pdata)
     at_gui.update_sliders(pdata)
