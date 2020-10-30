@@ -60,12 +60,11 @@ M.set_requests = function(player, pdata)
                 min = req.request
             end
             if not trash_paused then
-                if trash_above_requested then
-                    max = req.request
-                    max = (max > (req.trash or 0)) and max or req.trash
-                else
-                    if req.trash then
-                        max = req.trash
+                if req.trash then
+                    max = req.trash
+                    if trash_above_requested then
+                        max = req.request
+                        max = (max > req.trash) and max or req.trash
                     end
                 end
                 if contents and contents[req.name] then
@@ -77,6 +76,7 @@ M.set_requests = function(player, pdata)
         end
     end
 
+    --trash unrequested items
     if contents and not trash_paused then
         for name, _ in pairs(contents) do
             if trash_blacklist[M.item_prototype(name).type] then
@@ -85,9 +85,8 @@ M.set_requests = function(player, pdata)
         end
 
         local c_contents = table_size(contents)
-        local n_slot_count = slot_count + c_contents
         if slot_count < config_new.max_slot + c_contents then
-            player.character_logistic_slot_count = n_slot_count
+            player.character_logistic_slot_count = slot_count + c_contents
         end
 
         local i = config_new.max_slot + 1

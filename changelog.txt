@@ -1,7 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.8
 Date: ????
-  Changes:
+  Bugfixes:
+    - FIxed crash when requesting 0 of an item and infinite trash amount while "Trash above requested" is active
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.7
 Date: 2020-10-30
