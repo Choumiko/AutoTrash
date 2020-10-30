@@ -107,13 +107,6 @@ local migrations = {
             at_gui.open_status_display(player, pdata)
         end
     end,
-    ["5.2.7"] = function()
-        for player_index, player in pairs(game.players) do
-            local pdata = global._pdata[player_index]
-            player_data.refresh(player, pdata)
-            at_gui.recreate(player, pdata)
-        end
-    end
 }
 
 return migrations

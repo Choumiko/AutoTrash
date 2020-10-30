@@ -56,6 +56,7 @@ data:extend({
         setting_type = "runtime-per-user",
         default_value = 10,
         minimum_value = 5,
+        maximum_value = 40,
         allowed_values = {5, 10, 15, 20, 25, 30, 35, 40},
         order = "v"
     },
