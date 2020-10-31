@@ -317,14 +317,32 @@ at_gui.handlers = {
         end,
     },
     main = {
+        pin_button = {
+            on_gui_click = function(e)
+                local pdata = e.pdata
+                if pdata.flags.pinned then
+                    pdata.gui.main.titlebar.pin_button.style = "frame_action_button"
+                    pdata.flags.pinned = false
+                    pdata.gui.main.window.force_auto_center()
+                    e.player.opened = pdata.gui.main.window
+                else
+                    pdata.gui.main.titlebar.pin_button.style = "flib_selected_frame_action_button"
+                    pdata.flags.pinned = true
+                    pdata.gui.main.window.auto_center = false
+                    e.player.opened = nil
+                end
+            end
+        },
         close_button = {
             on_gui_click = function(e)
-                at_gui.close(e.pdata)
+                at_gui.close(e.player, e.pdata)
             end
         },
         window = {
             on_gui_closed = function(e)
-                at_gui.close(e.pdata)
+                if not e.pdata.flags.pinned then
+                    at_gui.close(e.player, e.pdata)
+                end
             end
         },
         apply_changes = {
@@ -335,7 +353,7 @@ at_gui.handlers = {
                 pdata.dirty = false
                 pdata.gui.main.reset_button.enabled = false
                 if pdata.settings.close_on_apply then
-                    at_gui.close(pdata)
+                    at_gui.close(player, pdata)
                 end
 
                 set_requests(player, pdata)
@@ -1055,6 +1073,8 @@ function at_gui.create_main_window(player, pdata)
                 {type = "flow", save_as = "main.titlebar.flow", children = {
                     {type = "label", style = "frame_title", caption = "Auto Trash", elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
+                    {template="frame_action_button", tooltip={"autotrash-keep-open"}, sprite="mi_pin_white", hovered_sprite="mi_pin_black", clicked_sprite="mi_pin_black",
+                        handlers="main.pin_button", save_as="main.titlebar.pin_button"},
                     {template = "frame_action_button", sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
                         handlers = "main.close_button", save_as = "main.titlebar.close_button"}
                 }},
@@ -1142,7 +1162,11 @@ function at_gui.create_main_window(player, pdata)
     gui_data.main.titlebar.flow.drag_target = gui_data.main.window
     gui_data.main.window.force_auto_center()
     gui_data.main.window.visible = false
+
     pdata.gui.main = gui_data.main
+    if pdata.flags.pinned then
+        pdata.gui.main.titlebar.pin_button.style = "flib_selected_frame_action_button"
+    end
     pdata.selected = false
 end
 
@@ -1357,7 +1381,7 @@ end
 function at_gui.open(player, pdata)
     if not player.character then
         player.print{"autotrash_no_character"}
-        at_gui.close(pdata, true)
+        at_gui.close(player, pdata, true)
         return
     end
     local window_frame = pdata.gui.main.window
@@ -1371,6 +1395,10 @@ function at_gui.open(player, pdata)
     end
     window_frame.visible = true
     pdata.flags.gui_open = true
+    if not pdata.flags.pinned then
+        player.opened = window_frame
+    end
+
     at_gui.adjust_slots(player, pdata, player.character_logistic_slot_count)
     at_gui.update_buttons(pdata)
     at_gui.update_button_styles(player, pdata)
@@ -1380,18 +1408,20 @@ function at_gui.open(player, pdata)
     --player.opened = pdata.gui.window
 end
 
-function at_gui.close(pdata, no_reset)
+function at_gui.close(player, pdata, no_reset)
     local window_frame = pdata.gui.main.window
     if window_frame and window_frame.valid then
         window_frame.visible = false
     end
     pdata.flags.gui_open = false
+    if not pdata.flags.pinned then
+        player.opened = nil
+    end
     if not no_reset and pdata.settings.reset_on_close then
         pdata.config_tmp = table.deep_copy(pdata.config_new)
         pdata.gui.main.reset_button.enabled = false
         pdata.dirty = false
     end
-    --player.opened = nil
 end
 
 function at_gui.recreate(player, pdata)
@@ -1406,7 +1436,7 @@ end
 
 function at_gui.toggle(player, pdata)
     if pdata.flags.gui_open then
-        at_gui.close(pdata)
+        at_gui.close(player, pdata)
     else
         at_gui.open(player, pdata)
     end

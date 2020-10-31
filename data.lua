@@ -1,3 +1,13 @@
+local data_util = require("__flib__.data-util")
+
+local frame_action_icons = "__AutoTrash__/graphics/frame-action-icons.png"
+
+data:extend{
+    -- frame action icons
+    data_util.build_sprite("at_pin_black", {0, 64}, frame_action_icons, 32),
+    data_util.build_sprite("at_pin_white", {32, 64}, frame_action_icons, 32),
+}
+
 local styles = data.raw["gui-style"].default
 
 styles["at_request_label_bottom"] = {

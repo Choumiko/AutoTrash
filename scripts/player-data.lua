@@ -7,6 +7,7 @@ function player_data.init(player_index)
             can_open_gui = player.character and player.force.character_logistic_requests,
             gui_open = false,
             dirty = false,
+            pinned = true,
             status_display_open = false,
             trash_above_requested = false,
             trash_unrequested = false,

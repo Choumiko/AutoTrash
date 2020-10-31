@@ -202,7 +202,7 @@ local function on_player_toggled_map_editor(e)
     local player = game.get_player(e.player_index)
     if not player.character then
         player.print{"autotrash_no_character"}
-        at_gui.close(global._pdata[e.player_index], true)
+        at_gui.close(player, global._pdata[e.player_index], true)
     end
 end
 event.on_player_toggled_map_editor(on_player_toggled_map_editor)
@@ -220,7 +220,7 @@ local function on_player_respawned(e)
         for key, _ in pairs(selected_presets) do
             presets.merge(tmp, pdata.presets[key])
         end
-        at_gui.close(pdata)
+        at_gui.close(player, pdata)
         pdata.config_tmp = tmp
         pdata.config_new = table.deep_copy(tmp)
 
@@ -375,7 +375,7 @@ local function toggle_autotrash_pause(player)
         pause_trash(player, pdata)
     end
     at_gui.update_main_button(pdata)
-    at_gui.close(pdata)
+    at_gui.close(player, pdata)
 end
 event.register("autotrash_pause", function(e)
     toggle_autotrash_pause(game.get_player(e.player_index))
@@ -390,7 +390,7 @@ local function toggle_autotrash_pause_requests(player)
     end
     at_gui.update_status_display(player, pdata)
     at_gui.update_main_button(pdata)
-    at_gui.close(pdata)
+    at_gui.close(player, pdata)
 end
 event.register("autotrash_pause_requests", function(e)
     toggle_autotrash_pause_requests(game.get_player(e.player_index))
@@ -423,7 +423,7 @@ local function on_player_display_resolution_changed(e)
     if player.character then
         at_gui.recreate(player, pdata)
     else
-        at_gui.close(pdata, true)
+        at_gui.close(player, pdata, true)
     end
 end
 event.on_player_display_resolution_changed(on_player_display_resolution_changed)
@@ -481,7 +481,7 @@ local at_commands = {
         local player_index = args.player_index
         local pdata = global._pdata[player_index]
         local player = game.get_player(player_index)
-        at_gui.close(pdata)
+        at_gui.close(player, pdata)
         pdata.config_tmp = at_util.combine_from_vanilla(player)
         at_gui.open(player, pdata)
         at_gui.mark_dirty(pdata)
