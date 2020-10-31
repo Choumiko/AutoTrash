@@ -304,41 +304,43 @@ event.on_player_removed(on_player_removed)
 
 local function on_pre_mined_item(e)
     local entity = e.entity
+    if not (entity.logistic_network and entity.logistic_network.valid) then return end
+    local cells
     for pi, pdata in pairs(global._pdata) do
         local main = pdata.main_network
         local current = pdata.current_network
-        --TODO: should always be valid?
-        if entity.logistic_network and entity.logistic_network.valid then
-            local cells = entity.logistic_network.cells
-            if main and main.valid and entity == main then
-                pdata.main_network = false
-                for _, cell in pairs(cells) do
-                    if cell.owner.valid and cell.owner ~= entity then
-                        pdata.main_network = cell.owner
-                        break
-                    end
-                end
-                if not pdata.main_network then
-                    local player = game.get_player(pi)
-                    player.print("Autotrash main network has been unset")
+        if main and main.valid and entity == main then
+            cells = cells or entity.logistic_network.cells
+            pdata.main_network = false
+            for _, cell in pairs(cells) do
+                local owner = cell.owner
+                if owner.valid and not owner.to_be_deconstructed() and owner ~= entity then
+                    pdata.main_network = cell.owner
+                    break
                 end
             end
-            if current and current.valid and entity == current then
-                pdata.current_network = false
-                for _, cell in pairs(cells) do
-                    if cell.owner.valid and cell.owner ~= entity then
-                        pdata.current_network = cell.owner
-                        break
-                    end
-                end
+            if not pdata.main_network then
+                local player = game.get_player(pi)
+                player.print("Autotrash main network has been unset")
             end
-            at_gui.update_settings(pdata)
         end
+        if current and current.valid and entity == current then
+            pdata.current_network = false
+            cells = cells or entity.logistic_network.cells
+            for _, cell in pairs(cells) do
+                local owner = cell.owner
+                if owner.valid and not owner.to_be_deconstructed() and owner ~= entity then
+                    pdata.current_network = owner
+                    break
+                end
+            end
+        end
+        at_gui.update_settings(pdata)
     end
 end
 local robofilter = {{filter = "type", type = "roboport"}}
-event.on_pre_player_mined_item(on_pre_mined_item, robofilter)
-event.on_robot_pre_mined(on_pre_mined_item, robofilter)
+event.on_player_mined_entity(on_pre_mined_item, robofilter)
+event.on_robot_mined_entity(on_pre_mined_item, robofilter)
 event.on_entity_died(on_pre_mined_item, robofilter)
 event.script_raised_destroy(on_pre_mined_item, robofilter)
 

@@ -53,26 +53,30 @@ M.set_requests = function(player, pdata)
 
     local min, max
     for c = 1, slot_count do
-        clear_request_slot(c)
         local req = storage[c]
         if req then
-            if not requests_paused and req.request > 0 then
-                min = req.request
+            local name = req.name
+            local request = req.request
+            if not requests_paused and request > 0 then
+                min = request
             end
             if not trash_paused then
-                if req.trash then
-                    max = req.trash
+                local trash = req.trash
+                if trash then
+                    max = trash
                     if trash_above_requested then
-                        max = req.request
-                        max = (max > req.trash) and max or req.trash
+                        max = request
+                        max = (max > trash) and max or trash
                     end
                 end
-                if contents and contents[req.name] then
-                    contents[req.name] = nil
+                if contents and contents[name] then
+                    contents[name] = nil
                 end
             end
-            set_request_slot(c, {name = req.name, min = min, max = max})
+            set_request_slot(c, {name = name, min = min, max = max})
             min, max = nil, nil
+        else
+            clear_request_slot(c)
         end
     end
 
