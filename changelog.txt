@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.9
-Date: ????
+Date: 2020-10-31
   Changes:
     - Added a pin button to the gui, to keep it open when pressing E/Escape. By default the gui will stay open.
     - Added a tooltip to the top button, showing the control to toggle the status display
