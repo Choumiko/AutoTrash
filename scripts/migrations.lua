@@ -108,10 +108,10 @@ local migrations = {
         end
     end,
     ["5.2.9"] = function()
-        for player_index, player in pairs(game.players) do
+        for player_index, _ in pairs(game.players) do
             local pdata = global._pdata[player_index]
             pdata.flags.pinned = true
-            if pdata and pdata.gui and pdata.gui.mod_gui and pdata.gui.mod_gui.button and pdata.gui.mod_gui.button.valid then
+            if pdata.gui and pdata.gui.mod_gui and pdata.gui.mod_gui.button and pdata.gui.mod_gui.button.valid then
                 pdata.gui.mod_gui.button.tooltip = {"autotrash_main_button_tt", pdata.flags.status_display_open and "On" or "Off"}
             end
         end

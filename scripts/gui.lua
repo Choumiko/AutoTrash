@@ -1073,7 +1073,7 @@ function at_gui.create_main_window(player, pdata)
                 {type = "flow", save_as = "main.titlebar.flow", children = {
                     {type = "label", style = "frame_title", caption = "Auto Trash", elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
-                    {template="frame_action_button", tooltip={"autotrash-keep-open"}, sprite="mi_pin_white", hovered_sprite="mi_pin_black", clicked_sprite="mi_pin_black",
+                    {template="frame_action_button", tooltip={"autotrash-keep-open"}, sprite="at_pin_white", hovered_sprite="at_pin_black", clicked_sprite="at_pin_black",
                         handlers="main.pin_button", save_as="main.titlebar.pin_button"},
                     {template = "frame_action_button", sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
                         handlers = "main.close_button", save_as = "main.titlebar.close_button"}
