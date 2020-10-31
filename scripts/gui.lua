@@ -1179,7 +1179,8 @@ function at_gui.init(player, pdata)
     else
         pdata.gui.mod_gui.flow = mod_gui.get_button_flow(player).add{type = "flow", direction = "horizontal", name =  "autotrash_main_flow", style = "at_main_flow"}
     end
-    pdata.gui.mod_gui.button = pdata.gui.mod_gui.flow.add{type = "sprite-button", name = "at_config_button", style = "at_sprite_button", sprite = "autotrash_trash"}
+    pdata.gui.mod_gui.button = pdata.gui.mod_gui.flow.add{type = "sprite-button", name = "at_config_button", style = "at_sprite_button", sprite = "autotrash_trash",
+        tooltip = {"autotrash_main_button_tt", pdata.flags.status_display_open and "On" or "Off"}}
     gui.update_filters("mod_gui_button", player.index, {pdata.gui.mod_gui.button.index}, "add")
     pdata.gui.mod_gui.flow.visible = visible
     at_gui.init_status_display(player, pdata)
@@ -1228,12 +1229,14 @@ at_gui.open_status_display = function(player, pdata)
     if pdata.flags.can_open_gui then
         status_table.parent.visible = true
         pdata.flags.status_display_open = true
+        pdata.gui.mod_gui.button.tooltip = {"autotrash_main_button_tt", "On"}
         at_gui.update_status_display(player, pdata)
     end
 end
 
 at_gui.close_status_display = function(pdata)
     pdata.flags.status_display_open = false
+    pdata.gui.mod_gui.button.tooltip = {"autotrash_main_button_tt", "Off"}
     local status_table = pdata.gui.status_table
     if not (status_table and status_table.valid) then
         return

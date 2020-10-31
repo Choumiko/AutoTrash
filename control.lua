@@ -441,6 +441,7 @@ local function on_research_finished(e)
             pdata.gui.mod_gui.flow.visible = true
             if player.character then
                 at_gui.create_main_window(player, pdata)
+                at_gui.open_status_display(player, pdata)
             end
         end
         global.unlocked_by_force[force.name] = true

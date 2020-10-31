@@ -1,6 +1,9 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.9
 Date: ????
+  Changes:
+    - Added a tooltip to the top button, showing the control to toggle the status display
+    - Researching the personal logistics opens the status display
   Bugfixes:
     - Fixed UPS drop when deconstructing roboports with construction robots
 ---------------------------------------------------------------------------------------------------
