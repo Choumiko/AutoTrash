@@ -1007,7 +1007,7 @@ at_gui.update_sliders = function(pdata)
             sliders.request_text.text = format_request(item_config) or 0
 
             sliders.trash.slider_value = item_config.trash and convert_to_slider(item_config.trash) or 42
-            sliders.trash_text.text = format_trash(item_config) or "∞"
+            sliders.trash_text.text = format_trash(item_config)
         end
     end
     local visible = pdata.selected and true or false

@@ -255,11 +255,11 @@ M.format_number = function(n, append_suffix)
 end
 
 M.format_request = function(item_config)
-    return (item_config.request and item_config.request > 0) and item_config.request or (item_config.trash and 0) or ""
+    return (item_config.request and item_config.request >= 0) and item_config.request or (item_config.trash and 0)
 end
 
 M.format_trash = function(item_config)
-    return item_config.trash and item_config.trash or (item_config.request > 0 and "∞") or ""
+    return item_config.trash and item_config.trash or "∞"
 end
 
 M.convert_from_slider = function(n)
