@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.10
-Date: ????
+Date: 2020-11-01
   Bugfixes:
     - Fixed requests not being set properly
     - Fixed button and textfields showing nothing if request is 0 and trash is unlimited
