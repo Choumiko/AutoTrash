@@ -31,29 +31,6 @@ styles["at_button_slot"] = {
     parent = "slot_button",
 }
 
-styles["at_button_slot_selected"] = {
-    type = "button_style",
-    parent = "yellow_slot_button",
-}
-
-styles["at_button_slot_items_on_the_way"] = {
-    type = "button_style",
-    parent = "yellow_slot_button",
-    --default_graphical_set = yellowbuttongraphicalset(),
-}
-
-styles["at_button_slot_items_not_available"] = {
-    type = "button_style",
-    parent = "red_slot_button",
-    --default_graphical_set = redbuttongraphicalset(),
-}
-
-styles["at_button_slot_items_not_enough"] = {
-    type = "button_style",
-    parent = "blue_slot",
-    --default_graphical_set = bluebuttongraphicalset(),
-}
-
 styles["at_main_flow"] = {
     type = "horizontal_flow_style",
     parent = "horizontal_flow",
@@ -99,24 +76,6 @@ styles["at_delete_preset"] = {
     padding = 0
 }
 
-styles["at_shortcut_bar_button"] = {
-    type = "button_style",
-    parent = "shortcut_bar_button",
-    padding = 4
-}
-
-styles["at_shortcut_bar_button_green"] = {
-    type = "button_style",
-    parent = "shortcut_bar_button_green",
-    padding = 4
-}
-
-styles["at_shortcut_bar_button_blue"] = {
-    type = "button_style",
-    parent = "shortcut_bar_button_blue",
-    padding = 4
-}
-
 styles["at_preset_button_small"] = {
     type = "button_style",
     parent = "button",
@@ -147,36 +106,15 @@ styles["at_request_status_table"] = {
     vertical_spacing = 1
 }
 
-styles["at_logistics_frame"] = {
-    type = "frame_style",
-    minimal_width = 340
-}
-
 styles["at_preset_button"] = {
     type = "button_style",
     width = 150
-}
-
-styles["at_storage_grid_flow"] = {
-    type = "vertical_flow_style",
-    horizontally_stretchable = "on"
 }
 
 styles["at_save_as_textfield"] = {
     type = "textbox_style",
     horizontally_stretchable = "on",
     width = 150
-}
-
-styles["at_storage_frame_button_flow"] = {
-    type = "horizontal_flow_style",
-    horizontally_stretchable = "on"
-}
-
-styles["at_bordered_frame"] = {
-    type = "frame_style",
-    parent = "bordered_frame",
-    horizontally_stretchable = "on"
 }
 
 styles["at_quick_actions"] = {
@@ -189,17 +127,6 @@ styles["at_slider_flow"] = {
     vertical_align = "center"
 }
 
-styles["at_slider_table"] = {
-    type = "table_style",
-    minimal_height = 60
-}
-
-styles.at_scroll_pane = {
-    type = "scroll_pane_style",
-    extra_padding_when_activated = 0,
-    extra_right_padding_when_activated = -4
-}
-
 styles.at_slot_table_scroll_pane = {
     type = "scroll_pane_style",
     parent = "flib_naked_scroll_pane",
@@ -207,18 +134,6 @@ styles.at_slot_table_scroll_pane = {
     margin = 0,
     extra_padding_when_activated = 0,
     horizontally_squashable = "off",
-    -- background_graphical_set = {
-    --   base = {
-    --     position = {282, 17},
-    --     corner_size = 8,
-    --     overall_tiling_horizontal_padding = 4,
-    --     overall_tiling_horizontal_size = 32,
-    --     overall_tiling_horizontal_spacing = 8,
-    --     overall_tiling_vertical_padding = 4,
-    --     overall_tiling_vertical_size = 32,
-    --     overall_tiling_vertical_spacing = 8
-    --   }
-    -- }
 }
 
 styles.at_filter_group_table = {
@@ -238,7 +153,6 @@ styles.at_filter_group_table = {
         overall_tiling_vertical_spacing = 8
     }
 }
-
 
 data:extend{
     {
@@ -343,10 +257,4 @@ data:extend{
         key_sequence = "SHIFT + T",
         consuming = "none"
     },
-    -- {
-    --     type = "custom-input",
-    --     name = "autotrash_close_gui",
-    --     linked_game_control = "close-gui",
-    --     key_sequence = ""
-    -- }
 }

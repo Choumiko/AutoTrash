@@ -191,7 +191,7 @@ at_gui.templates = {
             return ret
         end,
         button = function(i, pdata)
-            local style = (i == pdata.selected) and "at_button_slot_selected" or "at_button_slot"
+            local style = (i == pdata.selected) and "yellow_slot_button" or "slot_button"
             local config = pdata.config_tmp.config[i]
             local req = config and format_number(format_request(config), true) or ""
             local trash = config and format_number(format_trash(config), true) or ""
@@ -904,25 +904,25 @@ end
 
 at_gui.get_button_style = function(i, selected, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo, paused)
     if paused or not (available and on_the_way and item and item.min > 0) then
-        return (i == selected) and "at_button_slot_selected" or "at_button_slot"
+        return (i == selected) and "yellow_slot_button" or "slot_button"
     end
     if i == selected then
-        return "at_button_slot_selected"
+        return "yellow_slot_button"
     end
     local n = item.name
     local diff = item.min - ((item_count[n] or 0) + (armor[n] or 0) + (gun[n] or 0) + (ammo[n] or 0) + (cursor_stack[n] or 0))
 
     if diff <= 0 then
-        return "at_button_slot"
+        return "slot_button"
     else
         local diff2 = diff - (on_the_way[n] or 0) - (available[n] or 0)
         if diff2 <= 0 then
-            return "at_button_slot_items_on_the_way", diff
+            return "yellow_slot_button", diff
         elseif (on_the_way[n] and not available[n]) then
         --item.name == "locomotive" then
-            return "at_button_slot_items_not_enough", diff
+            return "blue_slot", diff
         end
-        return "at_button_slot_items_not_available", diff
+        return "red_slot_button", diff
     end
 end
 
@@ -935,7 +935,7 @@ at_gui.update_button_styles = function(player, pdata)
     if not (available and on_the_way and config.c_requests > 0 and not pdata.flags.pause_requests) then
         local children = ruleset_grid.children
         for i=1, #children-1 do
-            children[i].style = (i == selected) and "at_button_slot_selected" or "at_button_slot"
+            children[i].style = (i == selected) and "yellow_slot_button" or "slot_button"
         end
         return
     end
@@ -970,7 +970,7 @@ at_gui.update_button = function(pdata, i, button)
         button.elem_value = nil
         button.locked = false
     end
-    button.style = (i == pdata.selected) and "at_button_slot_selected" or "at_button_slot"
+    button.style = (i == pdata.selected) and "yellow_slot_button" or "slot_button"
 end
 
 at_gui.clear_button = function(pdata, index, button)
@@ -1299,7 +1299,7 @@ at_gui.update_status_display = function(player, pdata)
             item.min = item.count
             if item.min > 0 then
                 local style, diff = at_gui.get_button_style(i, false, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
-                if style ~= "at_button_slot" then
+                if style ~= "slot_button" then
                     local button = children[c]
                     button.style = style
                     button.sprite = "item/" .. item.name
