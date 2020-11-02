@@ -25,7 +25,7 @@ M.get_requests = function(player)
         local t = get_request_slot(c)
         if t.name then
             max_slot = c > max_slot and c or max_slot
-            requests[c] = {name = t.name, request = t.min, trash = t.max, slot = c}
+            requests[c] = {name = t.name, min = t.min, max = t.max, slot = c}
             count = t.min > 0 and count + 1 or count
         end
     end
@@ -59,12 +59,12 @@ M.set_requests = function(player, pdata)
         local req = storage[c]
         if req then
             local name = req.name
-            local request = req.request
+            local request = req.min
             if not requests_paused then
                 min = request
             end
             if not trash_paused then
-                max = (trash_above_requested and request > 0) and request or req.trash
+                max = (trash_above_requested and request > 0) and request or req.max
                 if contents and contents[name] then
                     contents[name] = nil
                 end
@@ -214,11 +214,11 @@ M.format_number = function(n, append_suffix)
 end
 
 M.format_request = function(item_config)
-    return (item_config.request and item_config.request >= 0) and item_config.request or (item_config.trash and 0)
+    return (item_config.min and item_config.min >= 0) and item_config.min or (item_config.max and 0)
 end
 
 M.format_trash = function(item_config)
-    return (item_config.trash < constants.max_request) and item_config.trash or "∞"
+    return (item_config.max < constants.max_request) and item_config.max or "∞"
 end
 
 M.convert_from_slider = function(n)
@@ -262,7 +262,7 @@ M.remove_invalid_items = function()
             local item_config = tbl.config[i]
             if item_config then
                 if not M.item_prototype(item_config.name) then
-                    if tbl.config[i].request > 0 then
+                    if tbl.config[i].min > 0 then
                         tbl.c_requests = tbl.c_requests - 1
                     end
                     tbl.config[i] = nil

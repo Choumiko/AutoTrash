@@ -534,11 +534,11 @@ at_gui.handlers = {
                     local trash_amount = pdata.settings.trash_equals_requests and request_amount or constants.max_request
                     local config_tmp = pdata.config_tmp
                     config_tmp.config[index] = {
-                        name = elem_value, request = request_amount,
-                        trash = trash_amount, slot = index
+                        name = elem_value, min = request_amount,
+                        max = trash_amount, slot = index
                     }
                     config_tmp.max_slot = index > config_tmp.max_slot and index or config_tmp.max_slot
-                    if config_tmp.config[index].request > 0 then
+                    if config_tmp.config[index].min > 0 then
                         config_tmp.c_requests = config_tmp.c_requests + 1
                     end
                     at_gui.mark_dirty(pdata)
@@ -689,12 +689,12 @@ at_gui.handlers = {
             local config_tmp = pdata.config_tmp
             if index == 2 then
                 for _, config in pairs(config_tmp.config) do
-                    config.request = 0
+                    config.min = 0
                 end
                 config_tmp.c_requests = 0
             elseif index == 3 then
                 for _, config in pairs(config_tmp.config) do
-                    config.trash = constants.max_request
+                    config.max = constants.max_request
                 end
             elseif index == 4 then
                 config_tmp.config = {}
@@ -703,16 +703,16 @@ at_gui.handlers = {
                 pdata.selected = false
             elseif index == 5 then
                 for _, config in pairs(config_tmp.config) do
-                    if config.request > 0 then
-                        config.trash = config.request
+                    if config.min > 0 then
+                        config.max = config.min
                     end
                 end
             elseif index == 6 then
                 local c = 0
                 for _, config in pairs(config_tmp.config) do
-                    if config.trash < constants.max_request then
-                        config.request = config.trash
-                        c = config.request > 0 and c + 1 or c
+                    if config.max < constants.max_request then
+                        config.min = config.max
+                        c = config.min > 0 and c + 1 or c
                     end
                 end
                 config_tmp.c_requests = c
@@ -793,17 +793,17 @@ at_gui.update_request_config = function(number, pdata)
     local selected = pdata.selected
     local config_tmp = pdata.config_tmp
     local item_config = config_tmp.config[selected]
-    if number == item_config.request then return end
-    if item_config.request == 0 and number > 0 then
+    if number == item_config.min then return end
+    if item_config.min == 0 and number > 0 then
         config_tmp.c_requests = config_tmp.c_requests + 1
     end
-    if item_config.request > 0 and number == 0 then
+    if item_config.min > 0 and number == 0 then
         config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
     end
-    item_config.request = number
+    item_config.min = number
     --prevent trash being set to a lower value than request to prevent infinite robo loop
-    if item_config.trash < constants.max_request and number > item_config.trash then
-        item_config.trash = number
+    if item_config.max < constants.max_request and number > item_config.max then
+        item_config.max = number
     end
     at_gui.mark_dirty(pdata)
     at_gui.update_sliders(pdata)
@@ -814,15 +814,15 @@ at_gui.update_trash_config = function(number, pdata)
     local selected = pdata.selected
     local config_tmp = pdata.config_tmp
     local item_config = config_tmp.config[selected]
-    if number == item_config.trash then return end
+    if number == item_config.max then return end
 
-    if number < constants.max_request and item_config.request > number then
-        if item_config.request > 0 and number == 0 then
+    if number < constants.max_request and item_config.min > number then
+        if item_config.min > 0 and number == 0 then
             config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
         end
-        item_config.request = number
+        item_config.min = number
     end
-    item_config.trash = number
+    item_config.max = number
     at_gui.mark_dirty(pdata)
     at_gui.update_sliders(pdata)
     at_gui.update_button(pdata, pdata.selected)
@@ -903,14 +903,14 @@ at_gui.update_buttons = function(pdata)
 end
 
 at_gui.get_button_style = function(i, selected, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo, paused)
-    if paused or not (available and on_the_way and item and item.request > 0) then
+    if paused or not (available and on_the_way and item and item.min > 0) then
         return (i == selected) and "at_button_slot_selected" or "at_button_slot"
     end
     if i == selected then
         return "at_button_slot_selected"
     end
     local n = item.name
-    local diff = item.request - ((item_count[n] or 0) + (armor[n] or 0) + (gun[n] or 0) + (ammo[n] or 0) + (cursor_stack[n] or 0))
+    local diff = item.min - ((item_count[n] or 0) + (armor[n] or 0) + (gun[n] or 0) + (ammo[n] or 0) + (cursor_stack[n] or 0))
 
     if diff <= 0 then
         return "at_button_slot"
@@ -945,7 +945,7 @@ at_gui.update_button_styles = function(player, pdata)
     for i=1, #buttons-1 do
         local item = config[i]
         local style, diff = at_gui.get_button_style(i, selected, config[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
-        if item and item.request > 0 then
+        if item and item.min > 0 then
             ret[item.name] = {style, diff}
         end
         buttons[i].style = style
@@ -977,7 +977,7 @@ at_gui.clear_button = function(pdata, index, button)
     local config_tmp = pdata.config_tmp
     local config = config_tmp.config[index]
     if config then
-        if config.request > 0 then
+        if config.min > 0 then
             config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
         end
         if pdata.selected == index then pdata.selected = false end
@@ -1003,10 +1003,10 @@ at_gui.update_sliders = function(pdata)
         local sliders = pdata.gui.main.sliders
         local item_config = pdata.config_tmp.config[pdata.selected]
         if item_config then
-            sliders.request.slider_value = convert_to_slider(item_config.request)
+            sliders.request.slider_value = convert_to_slider(item_config.min)
             sliders.request_text.text = format_request(item_config) or 0
 
-            sliders.trash.slider_value = item_config.trash < constants.max_request and convert_to_slider(item_config.trash) or 42
+            sliders.trash.slider_value = item_config.max < constants.max_request and convert_to_slider(item_config.max) or 42
             sliders.trash_text.text = format_trash(item_config)
         end
     end
@@ -1296,8 +1296,8 @@ at_gui.update_status_display = function(player, pdata)
         local item = get_request_slot(i)
         if item and item.count > 0 then
             if c > max_count then return true end
-            item.request = item.count
-            if item.request > 0 then
+            item.min = item.count
+            if item.min > 0 then
                 local style, diff = at_gui.get_button_style(i, false, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
                 if style ~= "at_button_slot" then
                     local button = children[c]

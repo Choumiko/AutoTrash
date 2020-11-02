@@ -136,8 +136,13 @@ local migrations = {
                 if not config.trash then
                     config.trash = constants.max_request
                 end
+                config.max = config.trash or constants.max_request
+                config.min = config.request or 0
+                config.trash = nil
+                config.request = nil
             end
         end
+
         for _, pdata in pairs(global._pdata) do
             set_trash(pdata.config_tmp)
             set_trash(pdata.config_new)

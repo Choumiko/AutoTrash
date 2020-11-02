@@ -30,12 +30,12 @@ function presets.merge(current, preset)
         tmp = result_config
         for i, config in pairs(b.config) do
             if config.name == result_config.name then
-                tmp.request = (config.request > tmp.request) and config.request or tmp.request
-                tmp.trash = (config.trash < max_request and tmp.trash < max_request and config.trash > tmp.trash) and config.trash or tmp.trash
-                tmp.trash = tmp.trash < tmp.request and tmp.request or tmp.trash
+                tmp.min = (config.min > tmp.min) and config.min or tmp.min
+                tmp.max = (config.max < max_request and tmp.max < max_request and config.max > tmp.max) and config.max or tmp.max
+                tmp.max = tmp.max < tmp.min and tmp.min or tmp.max
                 b.config[i] = nil
                 max_slot = max_slot > tmp.slot and max_slot or tmp.slot
-                c_requests = tmp.request > 0 and c_requests + 1 or c_requests
+                c_requests = tmp.min > 0 and c_requests + 1 or c_requests
                 break
             end
         end
@@ -49,7 +49,7 @@ function presets.merge(current, preset)
             no_slot[#no_slot + 1] = config
         end
         max_slot = max_slot > config.slot and max_slot or config.slot
-        c_requests = config.request > 0 and c_requests + 1 or c_requests
+        c_requests = config.min > 0 and c_requests + 1 or c_requests
     end
 
     local start = 1
@@ -99,9 +99,9 @@ function presets.export(preset, name)
             if item_config then
                 index = item_config.slot - index_offset
                 item_signal = {name = item_config.name, type = "item"}
-                request_items[#request_items+1] = {index = index, count = item_config.request, signal = item_signal}
-                if item_config.trash < max_request then
-                    trash_items[#trash_items+1] = {index = index, count = item_config.trash, signal = item_signal}
+                request_items[#request_items+1] = {index = index, count = item_config.min, signal = item_signal}
+                if item_config.max < max_request then
+                    trash_items[#trash_items+1] = {index = index, count = item_config.max, signal = item_signal}
                 end
             end
         end
@@ -156,15 +156,15 @@ function presets.import(preset, icons)
                 for _, item_config in pairs(cc.control_behavior.filters) do
                     index = index_offset + item_config.index
                     if not config[index] then
-                        config[index] = {name = item_config.signal.name, slot = index, trash = max_request, request = 0}
+                        config[index] = {name = item_config.signal.name, slot = index, max = max_request, min = 0}
                     end
                     if (cc.position.y - 0.5) == 0 then
-                        config[index].request = item_config.count
+                        config[index].min = item_config.count
                     else
-                        config[index].trash = item_config.count
+                        config[index].max = item_config.count
                     end
                     tmp.max_slot = tmp.max_slot > index and tmp.max_slot or index
-                    tmp.c_requests = config[index].request > 0 and (tmp.c_requests + 1) or tmp.c_requests
+                    tmp.c_requests = config[index].min > 0 and (tmp.c_requests + 1) or tmp.c_requests
                 end
             end
         end
