@@ -110,9 +110,6 @@ local migrations = {
             local pdata = global._pdata[pi]
             at_gui.init(player, pdata)
             player_data.refresh(player, pdata)
-            if pdata.flags.can_open_gui and not (pdata.gui.main.window and pdata.gui.main.window.valid) then
-                at_gui.create_main_window(player, pdata)
-            end
         end
     end,
     ["5.2.4"] = function()

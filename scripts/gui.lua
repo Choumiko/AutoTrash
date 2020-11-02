@@ -1192,9 +1192,6 @@ end
 
 function at_gui.init(player, pdata)
     at_gui.destroy(player, pdata)
-    if player.character then
-        at_gui.create_main_window(player, pdata)
-    end
     local visible = pdata.flags.can_open_gui
 
     local main_button_flow = pdata.gui.mod_gui.flow
