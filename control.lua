@@ -18,7 +18,6 @@ local pause_trash = at_util.pause_trash
 local unpause_trash = at_util.unpause_trash
 local get_network_entity = at_util.get_network_entity
 local in_network = at_util.in_network
-local remove_invalid_items = at_util.remove_invalid_items
 
 --TODO: rewrite with player.get_personal_logistic_slot
 local function requested_items(player)
@@ -130,30 +129,20 @@ end
 event.on_load(on_load)
 
 local function on_configuration_changed(data)
-    for pi in pairs(game.players) do
-        local pdata = global._pdata[pi]
-        if pdata then
-            if pdata.config_new and pdata.config_tmp then
-                remove_invalid_items(pdata, pdata.config_new)
-                remove_invalid_items(pdata, pdata.config_tmp, true)
-            end
-            if pdata.presets then
-                for _, stored in pairs(pdata.presets) do
-                    remove_invalid_items(pdata, stored)
-                end
-            end
-        end
-    end
-
+    local removed
     if migration.on_config_changed(data, migrations) then
         --only run when mod was changed
         gui.check_filter_validity()
-
-        for i, player in pairs(game.players) do
-            local pdata = global._pdata[i]
+        at_util.remove_invalid_items()
+        removed = true
+        for index, pdata in pairs(global._pdata) do
+            local player = game.get_player(index)
             player_data.refresh(player, pdata)
             at_gui.recreate(player, pdata)
         end
+    end
+    if not removed then
+        at_util.remove_invalid_items()
     end
     register_conditional_events()
     for pi, player in pairs(game.players) do

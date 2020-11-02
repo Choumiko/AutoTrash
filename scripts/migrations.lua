@@ -6,7 +6,7 @@ local at_gui = require("scripts.gui")
 local constants = require("constants")
 
 local mod_gui = require ("__core__.lualib.mod-gui")
-local remove_invalid_items = require("scripts.util").remove_invalid_items
+local item_prototype = require("scripts.util").item_prototype
 
 local migrations = {
     ["4.1.2"] = function()
@@ -48,7 +48,23 @@ local migrations = {
                 pdata.presets = pdata.storage_new
                 if pdata.presets then
                     for _, stored in pairs(pdata.presets) do
-                        remove_invalid_items(pdata, stored)
+                        --remove invalid items
+                        for i = stored.max_slot, 1, -1 do
+                            local item_config = stored.config[i]
+                            if item_config then
+                                if not item_prototype(item_config.name) then
+                                    if stored.config[i].request > 0 then
+                                        stored.c_requests = stored.c_requests - 1
+                                    end
+                                    stored.config[i] = nil
+                                    if stored.max_slot == i then
+                                        stored.max_slot = false
+                                    end
+                                else
+                                    stored.max_slot = stored.max_slot or i
+                                end
+                            end
+                        end
                     end
                 else
                     pdata.presets = {}

@@ -256,23 +256,33 @@ M.convert_to_slider = function(n)
     end
 end
 
-M.remove_invalid_items = function(pdata, tbl, unselect)
-    for i = tbl.max_slot, 1, -1 do
-        local item_config = tbl.config[i]
-        if item_config then
-            if not M.item_prototype(item_config.name) then
-                if tbl.config[i].request > 0 then
-                    tbl.c_requests = tbl.c_requests - 1
+M.remove_invalid_items = function()
+    local function _remove(tbl)
+        for i = tbl.max_slot, 1, -1 do
+            local item_config = tbl.config[i]
+            if item_config then
+                if not M.item_prototype(item_config.name) then
+                    if tbl.config[i].request > 0 then
+                        tbl.c_requests = tbl.c_requests - 1
+                    end
+                    tbl.config[i] = nil
+                    if tbl.max_slot == i then
+                        tbl.max_slot = false
+                    end
+                else
+                    tbl.max_slot = tbl.max_slot or i
                 end
-                tbl.config[i] = nil
-                if tbl.max_slot == i then
-                    tbl.max_slot = false
-                end
-                if unselect and pdata.selected and pdata.selected == i then
-                    pdata.selected = false
-                end
-            else
-                tbl.max_slot = tbl.max_slot or i
+            end
+        end
+    end
+    for _, pdata in pairs(global._pdata) do
+        if pdata.config_new and pdata.config_tmp then
+            _remove(pdata.config_new)
+            _remove(pdata.config_tmp)
+        end
+        if pdata.presets then
+            for _, stored in pairs(pdata.presets) do
+                _remove(stored)
             end
         end
     end
