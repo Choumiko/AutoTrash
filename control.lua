@@ -12,15 +12,15 @@ local at_gui = require("scripts.gui")
 local at_util = require("scripts.util")
 local presets = require("scripts.presets")
 
-local display_message = at_util.display_message
 local set_requests = at_util.set_requests
+local get_requests = at_util.get_requests
 local pause_trash = at_util.pause_trash
 local unpause_trash = at_util.unpause_trash
 local get_network_entity = at_util.get_network_entity
 local in_network = at_util.in_network
-local item_prototype = at_util.item_prototype
 local remove_invalid_items = at_util.remove_invalid_items
 
+--TODO: rewrite with player.get_personal_logistic_slot
 local function requested_items(player)
     if not player.character then
         return {}
@@ -70,7 +70,7 @@ local function on_player_trash_inventory_changed(e)
         if trash_filters[name] then
             local desired = requests[name] and requests[name] or 0
             if main_inventory_count(name) <= desired then
-                player.print({"", "Removed ", item_prototype(name).localised_name, " from temporary trash"})
+                player.print({"", "Removed ", at_util.item_prototype(name).localised_name, " from temporary trash"})
                 trash_filters[name] = saved_count >= 0 and saved_count or nil
                 temporary_trash[name] = nil
                 changed = true
@@ -179,10 +179,13 @@ local function on_player_main_inventory_changed(e)
     set_requests(player, pdata)
 end
 
+
+--TODO: is this working as intended? Only sets trash if the item isn't set in the slots
+-- It should set trash to 0 if the item isn't set and set it to request if it is
 local function add_to_trash(player, item)
     if not player.character then return end
     if trash_blacklist[item] then
-        display_message(player, {"", item_prototype(item).localised_name, " is on the blacklist for trashing"}, true)
+        at_util.display_message(player, {"", at_util.item_prototype(item).localised_name, " is on the blacklist for trashing"}, true)
         return
     end
     local trash_filters = player.auto_trash_filters
@@ -195,7 +198,7 @@ local function add_to_trash(player, item)
     if check_temporary_trash() then
         event.on_player_trash_inventory_changed(on_player_trash_inventory_changed)
     end
-    player.print({"", "Added ", item_prototype(item).localised_name, " to temporary trash"})
+    player.print({"", "Added ", at_util.item_prototype(item).localised_name, " to temporary trash"})
 end
 
 local function on_player_toggled_map_editor(e)
@@ -262,14 +265,14 @@ local function on_player_changed_position(e)
         pause_trash(player, pdata)
         at_gui.update_main_button(pdata)
         if pdata.settings.display_messages then
-            display_message(player, "AutoTrash paused")
+            at_util.display_message(player, "AutoTrash paused")
         end
         return
     elseif is_in_network and paused then
         unpause_trash(player, pdata)
         at_gui.update_main_button(pdata)
         if pdata.settings.display_messages then
-            display_message(player, "AutoTrash unpaused")
+            at_util.display_message(player, "AutoTrash unpaused")
         end
     end
 end
