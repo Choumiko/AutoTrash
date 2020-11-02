@@ -1,5 +1,5 @@
 local table = require("__flib__.table")
-
+local max_request = require("constants").max_request
 local presets = {}
 
 local function log_blueprint_entities(ents)--luacheck: ignore
@@ -31,8 +31,8 @@ function presets.merge(current, preset)
         for i, config in pairs(b.config) do
             if config.name == result_config.name then
                 tmp.request = (config.request > tmp.request) and config.request or tmp.request
-                tmp.trash = (config.trash and tmp.trash and config.trash > tmp.trash) and config.trash or tmp.trash
-                tmp.trash = (tmp.trash and tmp.trash < tmp.request) and tmp.request or tmp.trash
+                tmp.trash = (config.trash < max_request and tmp.trash < max_request and config.trash > tmp.trash) and config.trash or tmp.trash
+                tmp.trash = tmp.trash < tmp.request and tmp.request or tmp.trash
                 b.config[i] = nil
                 max_slot = max_slot > tmp.slot and max_slot or tmp.slot
                 c_requests = tmp.request > 0 and c_requests + 1 or c_requests
@@ -100,7 +100,7 @@ function presets.export(preset, name)
                 index = item_config.slot - index_offset
                 item_signal = {name = item_config.name, type = "item"}
                 request_items[#request_items+1] = {index = index, count = item_config.request, signal = item_signal}
-                if item_config.trash then
+                if item_config.trash < max_request then
                     trash_items[#trash_items+1] = {index = index, count = item_config.trash, signal = item_signal}
                 end
             end
@@ -156,7 +156,7 @@ function presets.import(preset, icons)
                 for _, item_config in pairs(cc.control_behavior.filters) do
                     index = index_offset + item_config.index
                     if not config[index] then
-                        config[index] = {name = item_config.signal.name, slot = index, trash = false, request = 0}
+                        config[index] = {name = item_config.signal.name, slot = index, trash = max_request, request = 0}
                     end
                     if (cc.position.y - 0.5) == 0 then
                         config[index].request = item_config.count

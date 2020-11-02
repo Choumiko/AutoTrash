@@ -3,6 +3,7 @@ local gui = require("__flib__.gui")
 local global_data = require("scripts.global-data")
 local player_data = require("scripts.player-data")
 local at_gui = require("scripts.gui")
+local constants = require("constants")
 
 local mod_gui = require ("__core__.lualib.mod-gui")
 local remove_invalid_items = require("scripts.util").remove_invalid_items
@@ -115,7 +116,23 @@ local migrations = {
                 pdata.gui.mod_gui.button.tooltip = {"autotrash_main_button_tt", pdata.flags.status_display_open and "On" or "Off"}
             end
         end
-    end
+    end,
+    ["5.2.11"] = function()
+        local set_trash = function(data)
+            for _, config in pairs(data.config) do
+                if not config.trash then
+                    config.trash = constants.max_request
+                end
+            end
+        end
+        for _, pdata in pairs(global._pdata) do
+            set_trash(pdata.config_tmp)
+            set_trash(pdata.config_new)
+            for _, preset in pairs(pdata.presets) do
+                set_trash(preset)
+            end
+        end
+    end,
 }
 
 return migrations

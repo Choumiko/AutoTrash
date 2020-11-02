@@ -193,11 +193,11 @@ at_gui.templates = {
         button = function(i, pdata)
             local style = (i == pdata.selected) and "at_button_slot_selected" or "at_button_slot"
             local config = pdata.config_tmp.config[i]
-            local req = config and config.request or "0"
-            local trash = config and config.trash or "∞"
+            local req = config and format_number(format_request(config), true) or ""
+            local trash = config and format_number(format_trash(config), true) or ""
             return {type = "choose-elem-button", name = i, elem_mods = {elem_value = config and config.name, locked = config and i ~= pdata.selected}, handlers = "slots.item_button", elem_type = "item", style = style, children = {
-                {type = "label", style = "at_request_label_top", ignored_by_interaction = true, caption = config and req or ""},
-                {type = "label", style = "at_request_label_bottom", ignored_by_interaction = true, caption = config and trash or ""}
+                {type = "label", style = "at_request_label_top", ignored_by_interaction = true, caption = req},
+                {type = "label", style = "at_request_label_bottom", ignored_by_interaction = true, caption = trash}
             }}
         end,
         count_change = function()
@@ -531,7 +531,7 @@ at_gui.handlers = {
                     end
                     pdata.selected = index
                     local request_amount = item_prototype(elem_value).default_request_amount
-                    local trash_amount = pdata.settings.trash_equals_requests and request_amount or false
+                    local trash_amount = pdata.settings.trash_equals_requests and request_amount or constants.max_request
                     local config_tmp = pdata.config_tmp
                     config_tmp.config[index] = {
                         name = elem_value, request = request_amount,
@@ -666,7 +666,7 @@ at_gui.handlers = {
                 if not pdata.selected then return end
                 local number
                 if e.element.slider_value == 42 then
-                    number = false
+                    number = constants.max_request
                 else
                     number = tonumber_max(convert_from_slider(e.element.slider_value)) or false
                 end
@@ -694,7 +694,7 @@ at_gui.handlers = {
                 config_tmp.c_requests = 0
             elseif index == 3 then
                 for _, config in pairs(config_tmp.config) do
-                    config.trash = false
+                    config.trash = constants.max_request
                 end
             elseif index == 4 then
                 config_tmp.config = {}
@@ -710,7 +710,7 @@ at_gui.handlers = {
             elseif index == 6 then
                 local c = 0
                 for _, config in pairs(config_tmp.config) do
-                    if config.trash then
+                    if config.trash < constants.max_request then
                         config.request = config.trash
                         c = config.request > 0 and c + 1 or c
                     end
@@ -802,7 +802,7 @@ at_gui.update_request_config = function(number, pdata)
     end
     item_config.request = number
     --prevent trash being set to a lower value than request to prevent infinite robo loop
-    if item_config.trash and number > item_config.trash then
+    if item_config.trash < constants.max_request and number > item_config.trash then
         item_config.trash = number
     end
     at_gui.mark_dirty(pdata)
@@ -816,7 +816,7 @@ at_gui.update_trash_config = function(number, pdata)
     local item_config = config_tmp.config[selected]
     if number == item_config.trash then return end
 
-    if number and item_config.request > number then
+    if number < constants.max_request and item_config.request > number then
         if item_config.request > 0 and number == 0 then
             config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
         end
@@ -1006,7 +1006,7 @@ at_gui.update_sliders = function(pdata)
             sliders.request.slider_value = convert_to_slider(item_config.request)
             sliders.request_text.text = format_request(item_config) or 0
 
-            sliders.trash.slider_value = item_config.trash and convert_to_slider(item_config.trash) or 42
+            sliders.trash.slider_value = item_config.trash < constants.max_request and convert_to_slider(item_config.trash) or 42
             sliders.trash_text.text = format_trash(item_config)
         end
     end

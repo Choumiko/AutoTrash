@@ -1,5 +1,5 @@
 local floor = math.floor
-local trash_blacklist = require("constants").trash_blacklist
+local constants = require("constants")
 
 local M = {}
 
@@ -19,14 +19,14 @@ M.get_requests = function(player)
     end
     local requests = {}
     local count = 0
-    local get_request_slot = character.get_request_slot
-    local max_slot
-    for c = player.character_logistic_slot_count, 1, -1 do
+    local get_request_slot = player.get_personal_logistic_slot
+    local max_slot = 0
+    for c = 1, player.character_logistic_slot_count do
         local t = get_request_slot(c)
-        if t then
-            max_slot = not max_slot and c or max_slot
-            requests[t.name] = {name = t.name, request = t.count, slot = c}
-            count = t.count > 0 and count + 1 or count
+        if t.name then
+            max_slot = c > max_slot and c or max_slot
+            requests[c] = {name = t.name, request = t.min, trash = t.max, slot = c}
+            count = t.min > 0 and count + 1 or count
         end
     end
     return requests, max_slot, count
@@ -51,43 +51,39 @@ M.set_requests = function(player, pdata)
         slot_count = config_new.max_slot
     end
 
-    local min, max
+    local max_request = constants.max_request
+    local min, max = 0, max_request
     for c = 1, slot_count do
+        --TODO: move in else block for 1.1
         clear_request_slot(c)
         local req = storage[c]
         if req then
             local name = req.name
             local request = req.request
-            if not requests_paused and request >= 0 then
+            if not requests_paused then
                 min = request
             end
             if not trash_paused then
-                local trash = req.trash
-                if trash then
-                    max = trash
-                    if trash_above_requested then
-                        max = request
-                        max = (max > trash) and max or trash
-                    end
-                end
+                max = (trash_above_requested and request > 0) and request or req.trash
                 if contents and contents[name] then
                     contents[name] = nil
                 end
             end
             set_request_slot(c, {name = name, min = min, max = max})
-            min, max = nil, nil
+            min, max = 0, max_request
         end
     end
 
     --trash unrequested items
     if contents and not trash_paused then
+        local c_contents = table_size(contents)
+        if c_contents == 0 then return end
         for name, _ in pairs(contents) do
-            if trash_blacklist[M.item_prototype(name).type] then
+            if constants.trash_blacklist[M.item_prototype(name).type] then
                 contents[name] = nil
             end
         end
 
-        local c_contents = table_size(contents)
         if slot_count < config_new.max_slot + c_contents then
             player.character_logistic_slot_count = slot_count + c_contents
         end
@@ -165,44 +161,8 @@ end
 
 M.combine_from_vanilla = function(player)
     if not player.character then return end
-    local tmp = {config = {}, max_slot = 0, c_requests = 0}
     local requests, max_slot, c_requests = M.get_requests(player)
-    local trash = player.auto_trash_filters
-
-    for name, config in pairs(requests) do
-        config.trash = false
-        tmp.config[config.slot] = config
-        if trash[name] then
-            config.trash = trash[name] > config.request and trash[name] or config.request
-            config.trash = config.trash < 4294967295 and config.trash or false
-            trash[name] = nil
-        end
-    end
-    local no_slot = {}
-    for name, count in pairs(trash) do
-        no_slot[#no_slot+1] = {
-            name = name,
-            request = 0,
-            trash = count,
-            slot = false
-        }
-    end
-    local start = 1
-    max_slot = max_slot or 0
-    for _, s in pairs(no_slot) do
-        for i = start, max_slot + #no_slot do
-            if not tmp.config[i] then
-                s.slot = i
-                tmp.config[i] = s
-                start = i + 1
-                max_slot = max_slot > i and max_slot or i
-                break
-            end
-        end
-    end
-    tmp.max_slot = max_slot
-    tmp.c_requests = c_requests
-    return tmp
+    return {config = requests, max_slot = max_slot, c_requests = c_requests}
 end
 
 M.saveVar = function(var, name)
@@ -258,7 +218,7 @@ M.format_request = function(item_config)
 end
 
 M.format_trash = function(item_config)
-    return item_config.trash and item_config.trash or "∞"
+    return (item_config.trash < constants.max_request) and item_config.trash or "∞"
 end
 
 M.convert_from_slider = function(n)
