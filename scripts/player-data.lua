@@ -1,3 +1,5 @@
+local at_util = require("scripts.util")
+
 local player_data = {}
 
 function player_data.init(player_index)
@@ -14,6 +16,7 @@ function player_data.init(player_index)
             trash_network = false,
             pause_trash = false,
             pause_requests = false,
+            has_temporary_requests = false,
         },
         gui = {
             mod_gui = {},
@@ -33,7 +36,7 @@ function player_data.init(player_index)
         selected_presets = {},
         death_presets = {},
 
-
+        next_check = 0,
     }
     player_data.update_settings(game.get_player(player_index), global._pdata[player_index])
     return global._pdata[player_index]
@@ -58,6 +61,114 @@ end
 function player_data.refresh(player, pdata)
     pdata.flags.can_open_gui = player.character and player.force.character_logistic_requests
     player_data.update_settings(player, pdata)
+end
+
+--mostly taken from https://github.com/raiguard/Factorio-QuickItemSearch/blob/master/src/scripts/player-data.lua
+function player_data.find_request(player, item)
+    local character = player.character
+    local get_slot = character.get_personal_logistic_slot
+    local result
+    local max = character.character_logistic_slot_count
+    for i=1, max do
+        local slot = get_slot(i)
+        if tostring(slot.name) == item then
+            slot.index = i
+            result = slot
+            break
+        end
+    end
+    --extend slots if no empty one was found
+    if item == "nil" and not result then
+        player.character_logistic_slot_count = player.character_logistic_slot_count + 10
+        max = max + 1
+        result = get_slot(max)
+        result.index = max
+    end
+    return result
+end
+
+function player_data.set_request(player, pdata, request, temporary)
+    local existing_request
+    if request.index then
+        existing_request = player.character.get_personal_logistic_slot(request.index)
+        if tostring(existing_request.name) ~= request.name then
+            existing_request = player_data.find_request(player, request.name)
+            if existing_request then
+                request.index = existing_request.index
+            else
+                existing_request = player_data.find_request(player, "nil")
+                if existing_request then
+                    request.index = existing_request.index
+                else
+                    player.print("No empty slot found")
+                    return false
+                end
+            end
+        else
+            existing_request.index = request.index
+        end
+    else
+        existing_request = player_data.find_request(player, "nil")
+        if existing_request then
+            request.index = existing_request.index
+        else
+            player.print("No empty slot found")
+            return false
+        end
+    end
+
+    player.character.clear_personal_logistic_slot(request.index)
+    player.character.set_personal_logistic_slot(request.index, request)
+    if temporary then
+        pdata.temporary_trash[request.name] = {temporary = request, previous = existing_request}
+        pdata.flags.has_temporary_requests = true
+    end
+    return true
+end
+
+player_data.check_temporary_requests = function(player, pdata)
+    local contents = player.get_main_inventory().get_contents()
+    local cursor_stack = player.cursor_stack
+    if cursor_stack and cursor_stack.valid_for_read then
+        contents[cursor_stack.name] = cursor_stack.count + (contents[cursor_stack.name] or 0)
+    end
+
+    local changed
+    local temporary_trash = pdata.temporary_trash
+    local character = player.character
+    local set_request = character.set_personal_logistic_slot
+    local get_request = character.get_personal_logistic_slot
+    local clear_request = character.clear_personal_logistic_slot
+    for name, next_request in pairs(temporary_trash) do
+        local temporary_request = next_request.temporary
+        local item_count = contents[name] or 0
+
+
+        local remove_request = false
+        local current_request = get_request(temporary_request.index)
+        if tostring(current_request.name) == temporary_request.name then
+            if current_request.min ~= temporary_request.min or current_request.max ~= temporary_request.max then
+                remove_request = true
+            else
+                if item_count >= temporary_request.min and item_count <= temporary_request.max then
+                    clear_request(temporary_request.index)
+                    set_request(temporary_request.index, next_request.previous)
+                    remove_request = true
+                    player.print({"", "Removed ", at_util.item_prototype(name).localised_name, " from temporary trash"})
+                end
+            end
+        else
+            remove_request = true
+        end
+        if remove_request then
+            changed = true
+            temporary_trash[name] = nil
+        end
+    end
+    if not next(temporary_trash) then
+        pdata.flags.has_temporary_requests = false
+    end
+    return changed
 end
 
 return player_data

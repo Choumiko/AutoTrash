@@ -13,27 +13,10 @@ local at_util = require("scripts.util")
 local presets = require("scripts.presets")
 
 local set_requests = at_util.set_requests
-local get_requests = at_util.get_requests
 local pause_trash = at_util.pause_trash
 local unpause_trash = at_util.unpause_trash
 local get_network_entity = at_util.get_network_entity
 local in_network = at_util.in_network
-
---TODO: rewrite with player.get_personal_logistic_slot
-local function requested_items(player)
-    if not player.character then
-        return {}
-    end
-    local requests = {}
-    local get_request_slot = player.character.get_request_slot
-    for c = player.character_logistic_slot_count, 1, -1 do
-        local t = get_request_slot(c)
-        if t then
-            requests[t.name] = t.count
-        end
-    end
-    return requests
-end
 
 local function on_nth_tick()
     for i, p in pairs(game.players) do
@@ -49,47 +32,7 @@ local function on_nth_tick()
     end
 end
 
-local function check_temporary_trash()
-    for _, pdata in pairs(global._pdata) do
-        if next(pdata.temporary_trash) then
-            return true
-        end
-    end
-end
-
-local function on_player_trash_inventory_changed(e)
-    local player = game.get_player(e.player_index)
-    if not (player.character and player.get_inventory(defines.inventory.character_trash).is_empty()) then return end
-    local main_inventory_count = player.get_main_inventory().get_item_count
-    local trash_filters = player.auto_trash_filters
-    local requests = requested_items(player)
-    local changed
-    local temporary_trash = global._pdata[e.player_index].temporary_trash
-    for name, saved_count in pairs(temporary_trash) do
-        if trash_filters[name] then
-            local desired = requests[name] and requests[name] or 0
-            if main_inventory_count(name) <= desired then
-                player.print({"", "Removed ", at_util.item_prototype(name).localised_name, " from temporary trash"})
-                trash_filters[name] = saved_count >= 0 and saved_count or nil
-                temporary_trash[name] = nil
-                changed = true
-            end
-        end
-    end
-    if changed then
-        player.auto_trash_filters = trash_filters
-        if not check_temporary_trash() then
-            event.on_player_trash_inventory_changed(nil)
-        end
-    end
-end
-
 local function register_conditional_events()
-    if check_temporary_trash() then
-        event.on_player_trash_inventory_changed(on_player_trash_inventory_changed)
-    else
-        event.on_player_trash_inventory_changed(nil)
-    end
     event.on_nth_tick(nil)
     event.on_nth_tick(settings.global["autotrash_update_rate"].value + 1, on_nth_tick)
 end
@@ -163,30 +106,30 @@ local function on_player_main_inventory_changed(e)
     local player = game.get_player(e.player_index)
     if not (player.character) then return end
     local pdata = global._pdata[e.player_index]
+    if pdata.next_check > e.tick then return end
+    pdata.next_check = e.tick + 30
     local flags = pdata.flags
-    if flags.pause_trash or not flags.trash_unrequested then return end
-    set_requests(player, pdata)
+    if not flags.pause_trash and flags.trash_unrequested then
+        set_requests(player, pdata)
+    end
+    if flags.has_temporary_requests then
+        player_data.check_temporary_requests(player, pdata)
+    end
 end
 
-
---TODO: is this working as intended? Only sets trash if the item isn't set in the slots
--- It should set trash to 0 if the item isn't set and set it to request if it is
+-- Set trash to 0 if the item isn't set and set it to request if it is
 local function add_to_trash(player, item)
-    if not player.character then return end
     if trash_blacklist[item] then
         at_util.display_message(player, {"", at_util.item_prototype(item).localised_name, " is on the blacklist for trashing"}, true)
         return
     end
-    local trash_filters = player.auto_trash_filters
-    global._pdata[player.index].temporary_trash[item] = trash_filters[item] or -1 -- -1: wasn't set, remove when cleaning temporary_trash
-    if not trash_filters[item] then
-        local requests = requested_items(player)
-        trash_filters[item] = requests[item] or 0
-        player.auto_trash_filters = trash_filters
+    local request = player_data.find_request(player, item)
+    if request then
+        request.max = request.min
+    else
+        request = {name = item, min = 0, max = 0}
     end
-    if check_temporary_trash() then
-        event.on_player_trash_inventory_changed(on_player_trash_inventory_changed)
-    end
+    player_data.set_request(player, global._pdata[player.index], request, true)
     player.print({"", "Added ", at_util.item_prototype(item).localised_name, " to temporary trash"})
 end
 
@@ -446,7 +389,11 @@ local function autotrash_trash_cursor(e)
     if player.force.character_trash_slot_count > 0 then
         local cursorStack = player.cursor_stack
         if cursorStack.valid_for_read then
-            add_to_trash(player, cursorStack.name)
+            if player.character then
+                add_to_trash(player, cursorStack.name)
+            else
+                player.print("Character needed")
+            end
         else
             toggle_autotrash_pause(player)
         end

@@ -144,7 +144,11 @@ local migrations = {
             for _, preset in pairs(pdata.presets) do
                 set_trash(preset)
             end
+            pdata.temporary_trash = {}
+            pdata.flags.has_temporary_requests = false
+            pdata.next_check = 0
         end
+        script.on_event(defines.events.on_player_trash_inventory_changed, nil)
     end,
 }
 
