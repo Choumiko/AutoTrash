@@ -45,6 +45,8 @@ M.set_requests = function(player, pdata)
     local trash_above_requested = flags.trash_above_requested
     local requests_paused = flags.pause_requests
     local contents = flags.trash_unrequested and player.get_main_inventory().get_contents()
+    local temporary_requests = pdata.temporary_requests
+    local handled_temporary = {}
 
     if config_new.max_slot > slot_count then
         player.character_logistic_slot_count = config_new.max_slot
@@ -59,6 +61,10 @@ M.set_requests = function(player, pdata)
         local req = storage[c]
         if req then
             local name = req.name
+            if temporary_requests[name] then
+                req =temporary_requests[name].temporary
+                handled_temporary[name] = true
+            end
             local request = req.min
             if not requests_paused then
                 min = request
@@ -71,6 +77,17 @@ M.set_requests = function(player, pdata)
             end
             set_request_slot(c, {name = name, min = min, max = max})
             min, max = 0, max_request
+        end
+    end
+
+    --handle remaining temporary requests
+    for name, request_data in pairs(temporary_requests) do
+        local temp_request = request_data.temporary
+        if not handled_temporary[name] then
+            set_request_slot(temp_request.index, temp_request)
+            if contents and contents[name] then
+                contents[name] = nil
+            end
         end
     end
 

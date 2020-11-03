@@ -5,6 +5,7 @@ local mod_gui = require ("__core__.lualib.mod-gui")
 
 local constants = require("constants")
 local presets = require("scripts.presets")
+local player_data = require("scripts.player-data")
 
 local at_util = require("scripts.util")
 local format_number = at_util.format_number
@@ -309,10 +310,50 @@ gui.add_templates(at_gui.templates)
 at_gui.handlers = {
     mod_gui_button = {
         on_gui_click = function(e)
-            if e.control and e.button == defines.mouse_button_type.right then
-                at_gui.toggle_status_display(e.player, e.pdata)
+
+            if e.button == defines.mouse_button_type.right then
+                if e.control then
+                    at_gui.toggle_status_display(e.player, e.pdata)
+                end
             elseif e.button == defines.mouse_button_type.left then
-                at_gui.toggle(e.player, e.pdata)
+                local player = e.player
+                local cursor_stack = player.cursor_stack
+                if cursor_stack and cursor_stack.valid_for_read then
+                    local bp
+                    local pdata = e.pdata
+                    if cursor_stack.is_blueprint_book then
+                        bp = cursor_stack.get_inventory(defines.inventory.item_main)[cursor_stack.active_index]
+                    elseif cursor_stack.is_blueprint and cursor_stack.is_blueprint_setup() then
+                        bp = cursor_stack
+                    end
+                    local cost = bp.cost_to_build
+                    local success = true
+                    for item, count in pairs(cost) do
+                        local request = player_data.find_request(player, item)
+                        if request then
+                            if request.min < count then
+                                request.min = count
+                            end
+                            if request.max < count then
+                                request.max = request.min
+                            end
+                        else
+                            request = {name = item, min = count, max = constants.max_request}
+                        end
+                        local added = player_data.set_request(player, pdata, request, true)
+                        success = success and added
+                        if added then
+                            pdata.flags.has_temporary_requests = true
+                        end
+                    end
+                    if success then
+                        player.print("Added blueprint items to temporary requests")
+                    else
+                        player.print("Not all blueprint items could be added")
+                    end
+                else
+                    at_gui.toggle(e.player, e.pdata)
+                end
             end
         end,
     },
