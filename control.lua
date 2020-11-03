@@ -128,7 +128,7 @@ end
 local function on_player_toggled_map_editor(e)
     local player = game.get_player(e.player_index)
     if not player.character then
-        player.print{"autotrash_no_character"}
+        player.print{"at-message.no-character"}
         at_gui.close(player, global._pdata[e.player_index], true)
     end
 end

@@ -1,8 +1,7 @@
-local prefix = "autotrash_"
 data:extend({
     {
         type = "int-setting",
-        name = prefix .. "update_rate",
+        name = "autotrash_update_rate",
         setting_type = "runtime-global",
         default_value = 120,
         minimum_value = 1,
@@ -14,45 +13,43 @@ data:extend({
 data:extend({
     {
         type = "bool-setting",
-        name = prefix .. "trash_equals_requests",
+        name = "autotrash_trash_equals_requests",
         setting_type = "runtime-per-user",
         default_value = false,
         order = "a"
     },
     {
         type = "bool-setting",
-        name = prefix .. "overwrite",
+        name = "autotrash_overwrite",
         setting_type = "runtime-per-user",
         default_value = true,
         order = "b"
     },
     {
         type = "bool-setting",
-        name = prefix .. "reset_on_close",
+        name = "autotrash_reset_on_close",
         setting_type = "runtime-per-user",
         default_value = false,
         order = "c"
     },
     {
         type = "bool-setting",
-        name = prefix .. "close_on_apply",
+        name = "autotrash_close_on_apply",
         setting_type = "runtime-per-user",
         default_value = true,
         order = "d"
     },
     {
         type = "bool-setting",
-        name = prefix .. "open_library",
+        name = "autotrash_open_library",
         setting_type = "runtime-per-user",
         default_value = false,
-        hidden = true,
+        hidden = false,
         order = "e",
-        localised_name = {"autotrash_open_library_name", {"gui-blueprint-library.title"}},
-        localised_description = {"autotrash_open_library", {"gui-blueprint-library.title"}}
     },
     {
         type = "int-setting",
-        name = prefix .. "gui_displayed_columns",
+        name = "autotrash_gui_displayed_columns",
         setting_type = "runtime-per-user",
         default_value = 10,
         minimum_value = 5,
@@ -62,7 +59,7 @@ data:extend({
     },
     {
         type = "int-setting",
-        name = prefix .. "gui_rows_before_scroll",
+        name = "autotrash_gui_rows_before_scroll",
         setting_type = "runtime-per-user",
         default_value = 6,
         minimum_value = 1,
@@ -70,7 +67,7 @@ data:extend({
     },
     {
         type = "int-setting",
-        name = prefix .. "status_count",
+        name = "autotrash_status_count",
         setting_type = "runtime-per-user",
         default_value = 10,
         minimum_value = 1,
@@ -78,7 +75,7 @@ data:extend({
     },
     {
         type = "int-setting",
-        name = prefix .. "status_columns",
+        name = "autotrash_status_columns",
         setting_type = "runtime-per-user",
         default_value = 1,
         minimum_value = 1,
@@ -86,7 +83,7 @@ data:extend({
     },
     {
         type = "bool-setting",
-        name = prefix .. "display_messages",
+        name = "autotrash_display_messages",
         setting_type = "runtime-per-user",
         default_value = true,
         order = "z"

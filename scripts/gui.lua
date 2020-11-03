@@ -81,7 +81,7 @@ function at_gui.dispatch_handlers(event_data)
     local pdata = global._pdata[event_data.player_index]
     if not player.character then
         at_gui.close(player, pdata, true)
-        player.print{"autotrash_no_character"}
+        player.print{"at-message.no-character"}
     end
     event_data.player = player
     event_data.pdata = pdata
@@ -113,7 +113,7 @@ local function import_presets(player, pdata, add_presets, stack)
                     textfield.focus()
                 end
             else
-                player.print({"", {"error-while-importing-string"}, " ", {"autotrash_import_error"}})
+                player.print({"", {"error-while-importing-string"}, " ", {"at-message.import-error"}})
             end
             return true
         elseif add_presets and stack.is_blueprint_book then
@@ -132,7 +132,7 @@ local function import_presets(player, pdata, add_presets, stack)
             if any_cc then
                 at_gui.update_presets(pdata)
             else
-                player.print({"", {"error-while-importing-string"}, " ", {"autotrash_import_error"}})
+                player.print({"", {"error-while-importing-string"}, " ", {"at-message.import-error"}})
             end
             return true
         end
@@ -245,44 +245,44 @@ at_gui.templates = {
                 {
                     type = "checkbox",
                     name = at_gui.defines.trash_above_requested,
-                    caption = {"auto-trash-above-requested"},
+                    caption = {"at-gui.trash-above-requested"},
                     state = flags.trash_above_requested,
                     handlers = "settings.toggle"
                 },
                 {
                     type = "checkbox",
                     name = at_gui.defines.trash_unrequested,
-                    caption = {"auto-trash-unrequested"},
+                    caption = {"at-gui.trash-unrequested"},
                     state = flags.trash_unrequested,
                     handlers = "settings.toggle"
                 },
                 {
                     type = "checkbox",
                     name = at_gui.defines.trash_network,
-                    caption = {"auto-trash-in-main-network"},
+                    caption = {"at-gui.trash-in-main-network"},
                     state = flags.trash_network,
                     handlers = "settings.toggle"
                 },
                 {
                     type = "checkbox",
                     name = at_gui.defines.pause_trash,
-                    caption = {"auto-trash-config-button-pause"},
-                    tooltip = {"auto-trash-tooltip-pause"},
+                    caption = {"at-gui.pause-trash"},
+                    tooltip = {"at-gui.tooltip-pause-trash"},
                     state = flags.pause_trash,
                     handlers = "settings.toggle"
                 },
                 {
                     type = "checkbox",
                     name = at_gui.defines.pause_requests,
-                    caption = {"auto-trash-config-button-pause-requests"},
-                    tooltip = {"auto-trash-tooltip-pause-requests"},
+                    caption = {"at-gui.pause-requests"},
+                    tooltip = {"at-gui.tooltip-pause-requests"},
                     state = flags.pause_requests,
                     handlers = "settings.toggle"
                 },
                 {
                     type = "button",
                     name = at_gui.defines.network_button,
-                    caption = pdata.main_network and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"},
+                    caption = pdata.main_network and {"at-gui.unset-main-network"} or {"at-gui.set-main-network"},
                     handlers = "settings.change_network"
                 },
                 {template = "pushers.horizontal"}
@@ -296,7 +296,7 @@ at_gui.templates = {
         local rip_style = pdata.death_presets[preset_name] and "at_preset_button_small_selected" or "at_preset_button_small"
         return {type = "flow", direction = "horizontal", name = preset_name, children = {
             {type = "button", style = style, caption = preset_name, name = preset_name, handlers = "presets.load"},
-            {type = "sprite-button", style = rip_style, sprite = "autotrash_rip", handlers = "presets.change_death_preset", tooltip = {"autotrash_tooltip_rip"}},
+            {type = "sprite-button", style = rip_style, sprite = "autotrash_rip", handlers = "presets.change_death_preset", tooltip = {"at-gui.tooltip-rip"}},
             {type = "sprite-button", style = "at_delete_preset", sprite = "utility/trash", handlers = "presets.delete"},
         }}
     end,
@@ -793,7 +793,7 @@ at_gui.handlers = {
                 else
                     pdata.main_network = at_util.get_network_entity(player)
                     if not pdata.main_network then
-                        display_message(player, {"auto-trash-not-in-network"}, true)
+                        display_message(player, {"at-message.not-in-network"}, true)
                     end
                 end
                 at_gui.update_settings(pdata)
@@ -1065,12 +1065,12 @@ end
 at_gui.add_preset = function(player, pdata, name, config)
     config = config or pdata.config_tmp
     if name == "" then
-        display_message(player, {"auto-trash-storage-name-not-set"}, true)
+        display_message(player, {"at-message.name-not-set"}, true)
         return
     end
     if pdata.presets[name] then
         if not pdata.settings.overwrite then
-            display_message(player, {"auto-trash-storage-name-in-use"}, true)
+            display_message(player, {"at-message.name-in-use"}, true)
             return
         end
         pdata.presets[name] = table.deep_copy(config)
@@ -1119,7 +1119,7 @@ function at_gui.create_main_window(player, pdata)
                 {type = "flow", save_as = "main.titlebar.flow", children = {
                     {type = "label", style = "frame_title", caption = "Auto Trash", elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
-                    {template="frame_action_button", tooltip={"autotrash-keep-open"}, sprite="at_pin_white", hovered_sprite="at_pin_black", clicked_sprite="at_pin_black",
+                    {template="frame_action_button", tooltip={"at-gui.keep-open"}, sprite="at_pin_white", hovered_sprite="at_pin_black", clicked_sprite="at_pin_black",
                         handlers="main.pin_button", save_as="main.titlebar.pin_button"},
                     {template = "frame_action_button", sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
                         handlers = "main.close_button", save_as = "main.titlebar.close_button"}
@@ -1132,8 +1132,8 @@ function at_gui.create_main_window(player, pdata)
                             {type = "sprite-button", style = "tool_button_green", handlers = "main.apply_changes", style_mods = {padding = 0},
                                 sprite = "utility/check_mark_white", tooltip = {"module-inserter-config-button-apply"}},
                             {type = "sprite-button", style = "tool_button_red", save_as = "main.reset_button", handlers = "main.reset", sprite = "utility/reset_white"},
-                            {type = "sprite-button", style = "tool_button", handlers = "main.export", sprite = "utility/export_slot", tooltip = {"autotrash_export_tt"}},
-                            {type = "sprite-button", style = "tool_button", handlers = "main.import", sprite = "at_import_string", tooltip = {"autotrash_import_tt"}}
+                            {type = "sprite-button", style = "tool_button", handlers = "main.export", sprite = "utility/export_slot", tooltip = {"at-gui.tooltip-export"}},
+                            {type = "sprite-button", style = "tool_button", handlers = "main.import", sprite = "at_import_string", tooltip = {"at-gui.tooltip-import"}}
                         }},
                         {type = "flow", direction="vertical", style_mods = {padding= 12, top_padding = 8, vertical_spacing = 10}, children = {
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
@@ -1151,7 +1151,7 @@ function at_gui.create_main_window(player, pdata)
                                 {type = "flow", direction = "vertical", children = {
                                     {type = "table", save_as = "main.sliders.table", style_mods = {height = 60}, column_count = 2, children = {
                                         {type = "flow", direction = "horizontal", children = {
-                                            {type = "label", caption = {"auto-trash-request"}}
+                                            {type = "label", caption = {"at-gui.request"}}
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
                                             {type = "slider", save_as = "main.sliders.request", handlers = "sliders.request", minimum_value = 0, maximum_value = 42},
@@ -1159,7 +1159,7 @@ function at_gui.create_main_window(player, pdata)
                                             --{type = "sprite-button", style = "tool_button", style_mods = {top_margin = 2}, sprite = "utility/export_slot"}
                                         }},
                                         {type = "flow", direction = "horizontal", children = {
-                                            {type = "label", caption={"auto-trash-trash"}},
+                                            {type = "label", caption={"at-gui.trash"}},
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
                                             {type = "slider", save_as = "main.sliders.trash", handlers = "sliders.trash", minimum_value = 0, maximum_value = 42},
@@ -1170,7 +1170,7 @@ function at_gui.create_main_window(player, pdata)
                                     {type = "drop-down", style = "at_quick_actions", handlers = "quick_actions",
                                         items = constants.quick_actions,
                                         selected_index = 1,
-                                        tooltip = {"autotrash_quick_actions_tt"}
+                                        tooltip = {"at-gui.tooltip-quick-actions"}
                                     },
                                     {template = "pushers.horizontal"}
                                 }}
@@ -1183,8 +1183,8 @@ function at_gui.create_main_window(player, pdata)
                         {type = "frame", style = "subheader_frame", children={
                             {type = "label", style = "subheader_caption_label", caption = "Presets"},
                             {template = "pushers.horizontal"},
-                            {type = "sprite-button", style = "tool_button", handlers = "main.export_all", sprite = "utility/export_slot", tooltip = {"autotrash_export_tt_all"}},
-                            {type = "sprite-button", style = "tool_button", handlers = "main.import_all", sprite = "at_import_string", tooltip = {"autotrash_import_tt_all"}},
+                            {type = "sprite-button", style = "tool_button", handlers = "main.export_all", sprite = "utility/export_slot", tooltip = {"at-gui.tooltip-export-all"}},
+                            {type = "sprite-button", style = "tool_button", handlers = "main.import_all", sprite = "at_import_string", tooltip = {"at-gui.tooltip-import-all"}},
                         }},
                         {type = "flow", direction="vertical", style_mods = {maximal_width = 274, padding= 12, top_padding = 8, vertical_spacing = 12}, children = {
                             {type = "flow", children = {
@@ -1247,7 +1247,7 @@ function at_gui.init(player, pdata)
         pdata.gui.mod_gui.flow = mod_gui.get_button_flow(player).add{type = "flow", direction = "horizontal", name =  "autotrash_main_flow", style = "at_main_flow"}
     end
     pdata.gui.mod_gui.button = pdata.gui.mod_gui.flow.add{type = "sprite-button", name = "at_config_button", style = "at_sprite_button", sprite = "autotrash_trash",
-        tooltip = {"autotrash_main_button_tt", pdata.flags.status_display_open and "On" or "Off"}}
+        tooltip = {"at-gui.tooltip-main-button", pdata.flags.status_display_open and "On" or "Off"}}
     gui.update_filters("mod_gui_button", player.index, {pdata.gui.mod_gui.button.index}, "add")
     pdata.gui.mod_gui.flow.visible = visible
     at_gui.init_status_display(player, pdata)
@@ -1296,14 +1296,14 @@ at_gui.open_status_display = function(player, pdata)
     if pdata.flags.can_open_gui then
         status_table.parent.visible = true
         pdata.flags.status_display_open = true
-        pdata.gui.mod_gui.button.tooltip = {"autotrash_main_button_tt", "On"}
+        pdata.gui.mod_gui.button.tooltip = {"at-gui.tooltip-main-button", "On"}
         at_gui.update_status_display(player, pdata)
     end
 end
 
 at_gui.close_status_display = function(pdata)
     pdata.flags.status_display_open = false
-    pdata.gui.mod_gui.button.tooltip = {"autotrash_main_button_tt", "Off"}
+    pdata.gui.mod_gui.button.tooltip = {"at-gui.tooltip-main-button", "Off"}
     local status_table = pdata.gui.status_table
     if not (status_table and status_table.valid) then
         return
@@ -1392,7 +1392,7 @@ function at_gui.update_settings(pdata)
     frame[def.trash_network].state = flags.trash_network
     frame[def.pause_trash].state = flags.pause_trash
     frame[def.pause_requests].state = flags.pause_requests
-    frame[def.network_button].caption = pdata.main_network and {"auto-trash-unset-main-network"} or {"auto-trash-set-main-network"}
+    frame[def.network_button].caption = pdata.main_network and {"at-gui.unset-main-network"} or {"at-gui.set-main-network"}
 end
 
 function at_gui.mark_dirty(pdata, keep_presets)
@@ -1423,14 +1423,14 @@ end
 
 function at_gui.open(player, pdata)
     if not player.character then
-        player.print{"autotrash_no_character"}
+        player.print{"at-message.no-character"}
         at_gui.close(player, pdata, true)
         return
     end
     local window_frame = pdata.gui.main.window
     if not (window_frame and window_frame.valid) then
         if window_frame then
-            player.print{"autotrash_invalid_gui"}
+            player.print{"at-message.invalid-gui"}
         end
         at_gui.destroy(player, pdata)
         at_gui.create_main_window(player, pdata)

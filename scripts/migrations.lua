@@ -126,7 +126,7 @@ local migrations = {
             local pdata = global._pdata[player_index]
             pdata.flags.pinned = true
             if pdata.gui and pdata.gui.mod_gui and pdata.gui.mod_gui.button and pdata.gui.mod_gui.button.valid then
-                pdata.gui.mod_gui.button.tooltip = {"autotrash_main_button_tt", pdata.flags.status_display_open and "On" or "Off"}
+                pdata.gui.mod_gui.button.tooltip = {"at-gui.tooltip-main-button", pdata.flags.status_display_open and "On" or "Off"}
             end
         end
     end,
