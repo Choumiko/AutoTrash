@@ -121,7 +121,7 @@ local function add_to_trash(player, item)
         request = {name = item, min = 0, max = 0}
     end
     if player_data.set_request(player, global._pdata[player.index], request, true) then
-        player.print({"", "Added ", at_util.item_prototype(item).localised_name, " to temporary trash"})
+        player.print({"at-message.added-to-temporary-trash", at_util.item_prototype(item).localised_name})
     end
 end
 
@@ -246,7 +246,7 @@ local function on_pre_mined_item(e)
             end
             if not pdata.main_network then
                 local player = game.get_player(pi)
-                player.print("Autotrash main network has been unset")
+                player.print("at-message.network-unset")
             end
         end
         if current and current.valid and entity == current then
@@ -360,7 +360,7 @@ local function autotrash_trash_cursor(e)
             if player.character then
                 add_to_trash(player, cursorStack.name)
             else
-                player.print("Character needed")
+                player.print({"at-message.character-needed"})
             end
         else
             toggle_autotrash_pause(player)

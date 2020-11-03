@@ -130,6 +130,7 @@ local function import_presets(player, pdata, add_presets, stack)
                 end
             end
             if any_cc then
+                player.print({"string-import-successful", {"at-gui.presets"}})
                 at_gui.update_presets(pdata)
             else
                 player.print({"", {"error-while-importing-string"}, " ", {"at-message.import-error"}})
@@ -151,7 +152,7 @@ at_gui.toggle_setting = {
     end,
     trash_network = function(player, pdata)
         if pdata.flags.trash_network and not pdata.main_network then
-            player.print("No main network set")
+            player.print("at-message.no-network-set")
             pdata.flags.trash_network = false
             return false
         end
@@ -436,7 +437,7 @@ at_gui.handlers = {
                 if e.shift then
                     local stack = player.cursor_stack
                     if stack.valid_for_read then
-                        player.print("Click with an empty cursor")
+                        player.print("at-message.empty-cursor-needed")
                         return
                     else
                         if stack.import_stack(text) ~= 0 then
@@ -454,13 +455,14 @@ at_gui.handlers = {
                 local player = e.player
                 local pdata = e.pdata
                 if not next(pdata.presets) then
-                    display_message(player, "", true)
+                    display_message(player, "at-message.no-presets-to-export", true)
+                    return
                 end
                 local text = presets.export_all(pdata)
                 if e.shift then
                     local stack = player.cursor_stack
                     if stack.valid_for_read then
-                        player.print("Click with an empty cursor")
+                        player.print("at-message.empty-cursor-needed")
                         return
                     else
                         if stack.import_stack(text) ~= 0 then
@@ -561,7 +563,7 @@ at_gui.handlers = {
                     if item_config and elem_value == item_config.name then return end
                     for i, v in pairs(pdata.config_tmp.config) do
                         if i ~= index and elem_value == v.name then
-                            display_message(player, {"", {"cant-set-duplicate-request", item_prototype(elem_value).localised_name}}, true)
+                            display_message(player, {"cant-set-duplicate-request", item_prototype(elem_value).localised_name}, true)
                             pdata.selected = i
                             at_gui.update_button(pdata, i, pdata.gui.main.slot_table.children[i])
                             pdata.gui.main.config_rows.scroll_to_element(pdata.gui.main.slot_table.children[i], "top-third")
@@ -787,7 +789,7 @@ at_gui.handlers = {
                 if pdata.main_network then
                     if not pdata.main_network.valid then
                         --ended up with an invalid entity, not much i can do to recover
-                        player.print("AutoTrash lost the main network. You will have to set it again.")
+                        player.print("at-message.network-lost")
                     end
                     pdata.main_network = false
                 else
@@ -1074,7 +1076,7 @@ at_gui.add_preset = function(player, pdata, name, config)
             return
         end
         pdata.presets[name] = table.deep_copy(config)
-        display_message(player, "Preset " .. name .." updated", "success")
+        display_message(player, {"at-message.preset-updated", name})
     else
         pdata.presets[name] = table.deep_copy(config)
         gui.build(pdata.gui.main.presets_flow, {gui.templates.preset(name, pdata)})
@@ -1117,7 +1119,7 @@ function at_gui.create_main_window(player, pdata)
         {type = "frame", style = "outer_frame", handlers = "main.window", style_mods = {maximal_width = max_width, maximal_height = max_height}, save_as = "main.window", children = {
             {type = "frame", style = "inner_frame_in_outer_frame", direction = "vertical", children = {
                 {type = "flow", save_as = "main.titlebar.flow", children = {
-                    {type = "label", style = "frame_title", caption = "Auto Trash", elem_mods = {ignored_by_interaction = true}},
+                    {type = "label", style = "frame_title", caption = {"mod-name.AutoTrash"}, elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
                     {template="frame_action_button", tooltip={"at-gui.keep-open"}, sprite="at_pin_white", hovered_sprite="at_pin_black", clicked_sprite="at_pin_black",
                         handlers="main.pin_button", save_as="main.titlebar.pin_button"},
@@ -1127,7 +1129,7 @@ function at_gui.create_main_window(player, pdata)
                 {type = "flow", direction = "horizontal", style_mods = {horizontal_spacing = 12}, children = {
                     {type = "frame", style = "inside_shallow_frame", direction = "vertical", children = {
                         {type = "frame", style = "subheader_frame", children={
-                            {type = "label", style = "subheader_caption_label", caption = "Logistics configuration"},
+                            {type = "label", style = "subheader_caption_label", caption = {"at-gui.logistics-configuration"}},
                             {template = "pushers.horizontal"},
                             {type = "sprite-button", style = "tool_button_green", handlers = "main.apply_changes", style_mods = {padding = 0},
                                 sprite = "utility/check_mark_white", tooltip = {"module-inserter-config-button-apply"}},
@@ -1181,7 +1183,7 @@ function at_gui.create_main_window(player, pdata)
                     }},
                     {type = "frame", style = "inside_shallow_frame", direction = "vertical", children = {
                         {type = "frame", style = "subheader_frame", children={
-                            {type = "label", style = "subheader_caption_label", caption = "Presets"},
+                            {type = "label", style = "subheader_caption_label", caption = {"at-gui.presets"}},
                             {template = "pushers.horizontal"},
                             {type = "sprite-button", style = "tool_button", handlers = "main.export_all", sprite = "utility/export_slot", tooltip = {"at-gui.tooltip-export-all"}},
                             {type = "sprite-button", style = "tool_button", handlers = "main.import_all", sprite = "at_import_string", tooltip = {"at-gui.tooltip-import-all"}},

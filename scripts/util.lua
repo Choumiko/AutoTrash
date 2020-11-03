@@ -154,7 +154,7 @@ M.in_network = function(player, pdata)
     local currentNetwork = M.get_non_equipment_network(player.character)
     if pdata.main_network and not pdata.main_network.valid then
         --ended up with an invalid entity, not much i can do to recover
-        player.print("AutoTrash lost the main network. You will have to set it again.")
+        player.print({"at-message.network-lost"})
         pdata.main_network = false
         return false, true
     end

@@ -152,7 +152,7 @@ player_data.check_temporary_requests = function(player, pdata)
                     clear_request(temporary_request.index)
                     set_request(temporary_request.index, next_request.previous)
                     remove_request = true
-                    player.print({"", "Removed ", at_util.item_prototype(name).localised_name, " from temporary requests"})
+                    player.print({"at-message.removed-from-temporary-requests", at_util.item_prototype(name).localised_name})
                 end
             end
         else
