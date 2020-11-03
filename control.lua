@@ -270,6 +270,7 @@ event.on_entity_died(on_pre_mined_item, robofilter)
 event.script_raised_destroy(on_pre_mined_item, robofilter)
 
 local function toggle_autotrash_pause(player)
+    if not player.character then return end
     local pdata = global._pdata[player.index]
     if pdata.flags.pause_trash then
         unpause_trash(player, pdata)

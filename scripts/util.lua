@@ -13,6 +13,9 @@ M.item_prototype = function(name)
 end
 
 M.get_requests = function(player)
+    if not player.character then
+        return {}
+    end
     local requests = {}
     local count = 0
     local get_request_slot = player.get_personal_logistic_slot
@@ -30,6 +33,7 @@ end
 
 M.set_requests = function(player, pdata)
     local character = player.character
+    if not character then return end
     local flags = pdata.flags
     local config_new = pdata.config_new
     local storage = config_new.config
@@ -129,6 +133,7 @@ M.unpause_trash = function(player, pdata)
 end
 
 M.get_non_equipment_network = function(character)
+    if not character then return end
     --trash slots researched
     local logi_point = character.get_logistic_point(defines.logistic_member_index.character_provider)
     if not logi_point then

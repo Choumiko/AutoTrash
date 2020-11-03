@@ -79,13 +79,14 @@ end
 function at_gui.dispatch_handlers(event_data)
     local player = game.get_player(event_data.player_index)
     local pdata = global._pdata[event_data.player_index]
-    if not player.character then
+    event_data.player = player
+    event_data.pdata = pdata
+    local result = gui.dispatch_handlers(event_data)
+    if result and not player.character then
         at_gui.close(player, pdata, true)
         player.print{"at-message.no-character"}
     end
-    event_data.player = player
-    event_data.pdata = pdata
-    return gui.dispatch_handlers(event_data)
+    return result
 end
 
 local function import_presets(player, pdata, add_presets, stack)
@@ -775,6 +776,8 @@ at_gui.handlers = {
         toggle = {
             on_gui_checked_state_changed = function(e)
                 local pdata = e.pdata
+                local player = e.player
+                if not player.character then return end
                 local name = e.element.name
                 if at_gui.toggle_setting[name] then
                     pdata.flags[name] = e.element.state
@@ -785,6 +788,7 @@ at_gui.handlers = {
         change_network = {
             on_gui_click = function(e)
                 local player = e.player
+                if not player.character then return end
                 local pdata = e.pdata
                 if pdata.main_network then
                     if not pdata.main_network.valid then
