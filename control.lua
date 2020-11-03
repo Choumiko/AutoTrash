@@ -74,7 +74,6 @@ event.on_load(on_load)
 local function on_configuration_changed(data)
     local removed
     if migration.on_config_changed(data, migrations) then
-        --only run when mod was changed
         gui.check_filter_validity()
         at_util.remove_invalid_items()
         removed = true
@@ -88,13 +87,6 @@ local function on_configuration_changed(data)
         at_util.remove_invalid_items()
     end
     register_conditional_events()
-    for pi, player in pairs(game.players) do
-        local pdata = global._pdata[pi]
-        if pdata.flags.gui_open then
-            at_gui.update_buttons(pdata)
-        end
-        at_gui.update_status_display(player, pdata)
-    end
 end
 event.on_configuration_changed(on_configuration_changed)
 
@@ -292,6 +284,7 @@ event.register("autotrash_pause", function(e)
 end)
 
 local function toggle_autotrash_pause_requests(player)
+    if not player.character then return end
     local pdata = global._pdata[player.index]
     if pdata.flags.pause_requests then
         at_util.unpause_requests(player, pdata)
@@ -396,6 +389,7 @@ local at_commands = {
         local pdata = global._pdata[player_index]
         local player = game.get_player(player_index)
         at_gui.close(player, pdata)
+        if not player.character then return end
         pdata.config_tmp = at_util.combine_from_vanilla(player)
         at_gui.open(player, pdata)
         at_gui.mark_dirty(pdata)

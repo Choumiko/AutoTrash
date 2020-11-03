@@ -77,8 +77,14 @@ function at_gui.register_handlers()
 end
 
 function at_gui.dispatch_handlers(event_data)
-    event_data.player = game.get_player(event_data.player_index)
-    event_data.pdata = global._pdata[event_data.player_index]
+    local player = game.get_player(event_data.player_index)
+    local pdata = global._pdata[event_data.player_index]
+    if not player.character then
+        at_gui.close(player, pdata, true)
+        player.print{"autotrash_no_character"}
+    end
+    event_data.player = player
+    event_data.pdata = pdata
     return gui.dispatch_handlers(event_data)
 end
 
@@ -310,7 +316,6 @@ gui.add_templates(at_gui.templates)
 at_gui.handlers = {
     mod_gui_button = {
         on_gui_click = function(e)
-
             if e.button == defines.mouse_button_type.right then
                 if e.control then
                     at_gui.toggle_status_display(e.player, e.pdata)

@@ -13,10 +13,6 @@ M.item_prototype = function(name)
 end
 
 M.get_requests = function(player)
-    local character = player.character
-    if not character then
-        return {}
-    end
     local requests = {}
     local count = 0
     local get_request_slot = player.get_personal_logistic_slot
@@ -34,7 +30,6 @@ end
 
 M.set_requests = function(player, pdata)
     local character = player.character
-    if not character then return end
     local flags = pdata.flags
     local config_new = pdata.config_new
     local storage = config_new.config
@@ -114,32 +109,26 @@ M.set_requests = function(player, pdata)
 end
 
 M.pause_requests = function(player, pdata)
-    local character = player.character
-    if not character then return end
     pdata.flags.pause_requests = true
     M.set_requests(player, pdata)
 end
 
 M.unpause_requests = function(player, pdata)
-    if not player.character then return end
     pdata.flags.pause_requests = false
     M.set_requests(player, pdata)
 end
 
 M.pause_trash = function(player, pdata)
-    if not player.character then return end
     pdata.flags.pause_trash = true
     M.set_requests(player, pdata)
 end
 
 M.unpause_trash = function(player, pdata)
-    if not player.character then return end
     pdata.flags.pause_trash = false
     M.set_requests(player, pdata)
 end
 
 M.get_non_equipment_network = function(character)
-    if not character then return end
     --trash slots researched
     local logi_point = character.get_logistic_point(defines.logistic_member_index.character_provider)
     if not logi_point then
@@ -177,7 +166,6 @@ M.in_network = function(player, pdata)
 end
 
 M.combine_from_vanilla = function(player)
-    if not player.character then return end
     local requests, max_slot, c_requests = M.get_requests(player)
     return {config = requests, max_slot = max_slot, c_requests = c_requests}
 end
