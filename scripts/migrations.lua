@@ -149,7 +149,8 @@ local migrations = {
             for _, preset in pairs(pdata.presets) do
                 set_trash(preset)
             end
-            pdata.temporary_trash = {}
+            pdata.temporary_trash = nil
+            pdata.temporary_requests = {}
             pdata.flags.has_temporary_requests = false
             pdata.next_check = 0
         end

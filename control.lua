@@ -106,16 +106,15 @@ local function on_player_main_inventory_changed(e)
     local player = game.get_player(e.player_index)
     if not (player.character) then return end
     local pdata = global._pdata[e.player_index]
-    if pdata.next_check > e.tick then return end
-    pdata.next_check = e.tick + 30
     local flags = pdata.flags
-    if not flags.pause_trash and flags.trash_unrequested then
-        set_requests(player, pdata)
-    end
     if flags.has_temporary_requests then
         player_data.check_temporary_requests(player, pdata)
     end
+    if not flags.pause_trash and flags.trash_unrequested then
+        set_requests(player, pdata)
+    end
 end
+event.on_player_main_inventory_changed(on_player_main_inventory_changed)
 
 -- Set trash to 0 if the item isn't set and set it to request if it is
 local function add_to_trash(player, item)
@@ -129,8 +128,9 @@ local function add_to_trash(player, item)
     else
         request = {name = item, min = 0, max = 0}
     end
-    player_data.set_request(player, global._pdata[player.index], request, true)
-    player.print({"", "Added ", at_util.item_prototype(item).localised_name, " to temporary trash"})
+    if player_data.set_request(player, global._pdata[player.index], request, true) then
+        player.print({"", "Added ", at_util.item_prototype(item).localised_name, " to temporary trash"})
+    end
 end
 
 local function on_player_toggled_map_editor(e)
@@ -210,8 +210,6 @@ local function on_player_changed_position(e)
 end
 event.on_player_changed_position(on_player_changed_position)
 
-event.on_player_main_inventory_changed(on_player_main_inventory_changed)
-
 local function on_cutscene_cancelled(e)
     local player = game.get_player(e.player_index)
     local pdata = global._pdata[e.player_index]
@@ -278,29 +276,6 @@ event.on_player_mined_entity(on_pre_mined_item, robofilter)
 event.on_robot_mined_entity(on_pre_mined_item, robofilter)
 event.on_entity_died(on_pre_mined_item, robofilter)
 event.script_raised_destroy(on_pre_mined_item, robofilter)
-
---[[
-Temporary requests:
-- after the request is added: (.request and .trash increased accordingly)
-    - keep track of the item counts in the inventory + cursor (on_put_item event? cursor_stack may be put back into inventory resulting in a false increase otherwise)
-    - if count decreases: reduce request/trash amount by the diff (we assume the item is used to build the ordered blueprint)
-    - if count increases:
-]]--
-
-local function add_order(player)--luacheck: ignore
-    local entities = player.cursor_stack.get_blueprint_entities()
-    local orders = {}
-    for _, ent in pairs(entities) do
-        if not orders[ent.name] then
-            orders[ent.name] = 0
-        end
-        orders[ent.name] = orders[ent.name] + 1
-    end
-end
-
-function add_to_requests(player, item, count)--luacheck: ignore
-
-end
 
 local function toggle_autotrash_pause(player)
     local pdata = global._pdata[player.index]

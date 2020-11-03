@@ -31,7 +31,6 @@ function player_data.init(player_index)
         current_network = nil,
         presets = {},
         temporary_requests = {},
-        temporary_trash = {},
         settings = {},
         selected_presets = {},
         death_presets = {},
@@ -120,7 +119,7 @@ function player_data.set_request(player, pdata, request, temporary)
     player.character.clear_personal_logistic_slot(request.index)
     player.character.set_personal_logistic_slot(request.index, request)
     if temporary then
-        pdata.temporary_trash[request.name] = {temporary = request, previous = existing_request}
+        pdata.temporary_requests[request.name] = {temporary = request, previous = existing_request}
         pdata.flags.has_temporary_requests = true
     end
     return true
@@ -133,13 +132,12 @@ player_data.check_temporary_requests = function(player, pdata)
         contents[cursor_stack.name] = cursor_stack.count + (contents[cursor_stack.name] or 0)
     end
 
-    local changed
-    local temporary_trash = pdata.temporary_trash
+    local temporary_requests = pdata.temporary_requests
     local character = player.character
     local set_request = character.set_personal_logistic_slot
     local get_request = character.get_personal_logistic_slot
     local clear_request = character.clear_personal_logistic_slot
-    for name, next_request in pairs(temporary_trash) do
+    for name, next_request in pairs(temporary_requests) do
         local temporary_request = next_request.temporary
         local item_count = contents[name] or 0
 
@@ -154,21 +152,19 @@ player_data.check_temporary_requests = function(player, pdata)
                     clear_request(temporary_request.index)
                     set_request(temporary_request.index, next_request.previous)
                     remove_request = true
-                    player.print({"", "Removed ", at_util.item_prototype(name).localised_name, " from temporary trash"})
+                    player.print({"", "Removed ", at_util.item_prototype(name).localised_name, " from temporary requests"})
                 end
             end
         else
             remove_request = true
         end
         if remove_request then
-            changed = true
-            temporary_trash[name] = nil
+            temporary_requests[name] = nil
         end
     end
-    if not next(temporary_trash) then
+    if not next(temporary_requests) then
         pdata.flags.has_temporary_requests = false
     end
-    return changed
 end
 
 return player_data
