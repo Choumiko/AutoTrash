@@ -4,6 +4,7 @@ Date: ????
   Bugfixes:
     - Fixed "Trash above requested" not working if no trash amount was set
     - Fixed temporary trash not working if the item was already set
+    - Fixed errors when using the commands: /at_show and /at_hide
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.10
 Date: 2020-11-01

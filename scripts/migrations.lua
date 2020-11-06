@@ -108,8 +108,8 @@ local migrations = {
         gui.build_lookup_tables()
         for pi, player in pairs(game.players) do
             local pdata = global._pdata[pi]
-            at_gui.init(player, pdata)
             player_data.refresh(player, pdata)
+            at_gui.init(player, pdata)
         end
     end,
     ["5.2.4"] = function()
@@ -153,6 +153,7 @@ local migrations = {
             pdata.temporary_requests = {}
             pdata.flags.has_temporary_requests = false
             pdata.next_check = 0
+            at_gui.update_main_button(pdata)
         end
         script.on_event(defines.events.on_player_trash_inventory_changed, nil)
     end,

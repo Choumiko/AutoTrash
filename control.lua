@@ -372,17 +372,35 @@ event.register("autotrash_trash_cursor", autotrash_trash_cursor)
 
 local at_commands = {
     hide = function(args)
-        local button = global._pdata[args.player_index].gui_elements.main_button
+        local player = game.get_player(args.player_index)
+        local pdata = global._pdata[args.player_index]
+        if not pdata then
+            player_data.init(args.player_index)
+        end
+        player_data.refresh(player, pdata)
+        local button = pdata.gui and pdata.gui.mod_gui and pdata.gui.mod_gui.flow
         if button and button.valid then
             button.visible = false
+        else
+            at_gui.init(player, pdata)
         end
+        at_gui.update_main_button(pdata)
     end,
 
     show = function(args)
-        local button = global._pdata[args.player_index].gui_elements.main_button
+        local player = game.get_player(args.player_index)
+        local pdata = global._pdata[args.player_index]
+        if not pdata then
+            player_data.init(args.player_index)
+        end
+        player_data.refresh(player, pdata)
+        local button = pdata.gui and pdata.gui.mod_gui and pdata.gui.mod_gui.flow
         if button and button.valid then
             button.visible = true
+        else
+            at_gui.init(player, pdata)
         end
+        at_gui.update_main_button(pdata)
     end,
 
     import = function(args)

@@ -1422,6 +1422,7 @@ function at_gui.destroy(player, pdata)
 end
 
 function at_gui.open(player, pdata)
+    if not pdata.flags.can_open_gui then return end
     if not player.character then
         player.print{"at-message.no-character"}
         at_gui.close(player, pdata, true)
