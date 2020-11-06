@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.11
-Date: ????
+Date: 2020-11-06
   Bugfixes:
     - Fixed "Trash above requested" not working if no trash amount was set
     - Fixed temporary trash not working if the item was already set
