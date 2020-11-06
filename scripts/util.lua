@@ -12,25 +12,6 @@ M.item_prototype = function(name)
     return item_prototypes[name]
 end
 
-M.get_requests = function(player)
-    if not player.character then
-        return {}
-    end
-    local requests = {}
-    local count = 0
-    local get_request_slot = player.get_personal_logistic_slot
-    local max_slot = 0
-    for c = 1, player.character_logistic_slot_count do
-        local t = get_request_slot(c)
-        if t.name then
-            max_slot = c > max_slot and c or max_slot
-            requests[c] = {name = t.name, min = t.min, max = t.max, slot = c}
-            count = t.min > 0 and count + 1 or count
-        end
-    end
-    return requests, max_slot, count
-end
-
 M.set_requests = function(player, pdata)
     local character = player.character
     if not character then return end
@@ -171,25 +152,22 @@ M.in_network = function(player, pdata)
 end
 
 M.combine_from_vanilla = function(player)
-    local requests, max_slot, c_requests = M.get_requests(player)
-    return {config = requests, max_slot = max_slot, c_requests = c_requests}
-end
-
-M.saveVar = function(var, name)
-    var = var or global
-    local n = name and "autotrash_" .. name or "autotrash"
-    game.write_file(n..".lua", serpent.block(var, {name = "global", comment = false}))
-end
-
-M.display_message = function(player, message, sound)
-    player.print(message)
-    if sound then
-        if sound == "success" then
-            player.play_sound{path = "utility/console_message", position = player.position}
-        else
-            player.play_sound{path = "utility/cannot_build", position = player.position}
+    if not player.character then
+        return {config = {}, c_requests = 0, max_slot = 0}
+    end
+    local requests = {}
+    local count = 0
+    local get_request_slot = player.get_personal_logistic_slot
+    local max_slot = 0
+    for c = 1, player.character_logistic_slot_count do
+        local t = get_request_slot(c)
+        if t.name then
+            max_slot = c > max_slot and c or max_slot
+            requests[c] = {name = t.name, min = t.min, max = t.max, slot = c}
+            count = t.min > 0 and count + 1 or count
         end
     end
+    return {config = requests, max_slot = max_slot, c_requests = count}
 end
 
 M.format_number = function(n, append_suffix)

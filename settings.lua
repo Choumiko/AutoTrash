@@ -44,7 +44,7 @@ data:extend({
         name = "autotrash_open_library",
         setting_type = "runtime-per-user",
         default_value = false,
-        hidden = false,
+        hidden = true,
         order = "e",
     },
     {

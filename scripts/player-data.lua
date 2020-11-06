@@ -141,7 +141,6 @@ player_data.check_temporary_requests = function(player, pdata)
         local temporary_request = next_request.temporary
         local item_count = contents[name] or 0
 
-
         local remove_request = false
         local current_request = get_request(temporary_request.index)
         if tostring(current_request.name) == temporary_request.name then

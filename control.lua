@@ -111,7 +111,7 @@ event.on_player_main_inventory_changed(on_player_main_inventory_changed)
 -- Set trash to 0 if the item isn't set and set it to request if it is
 local function add_to_trash(player, item)
     if trash_blacklist[item] then
-        at_util.display_message(player, {"", at_util.item_prototype(item).localised_name, " is on the blacklist for trashing"}, true)
+        player.print({"", at_util.item_prototype(item).localised_name, " is on the blacklist for trashing"})
         return
     end
     local request = player_data.find_request(player, item)
@@ -189,14 +189,14 @@ local function on_player_changed_position(e)
         pause_trash(player, pdata)
         at_gui.update_main_button(pdata)
         if pdata.settings.display_messages then
-            at_util.display_message(player, "AutoTrash paused")
+            player.print({"at-message.trash-paused"})
         end
         return
     elseif is_in_network and paused then
         unpause_trash(player, pdata)
         at_gui.update_main_button(pdata)
         if pdata.settings.display_messages then
-            at_util.display_message(player, "AutoTrash unpaused")
+            player.print({"at-message.trash-unpaused"})
         end
     end
 end

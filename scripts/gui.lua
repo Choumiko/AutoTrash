@@ -13,13 +13,9 @@ local format_request = at_util.format_request
 local format_trash = at_util.format_trash
 local convert_to_slider = at_util.convert_to_slider
 local convert_from_slider = at_util.convert_from_slider
-local display_message = at_util.display_message
 local item_prototype = at_util.item_prototype
 local in_network = at_util.in_network
 local get_non_equipment_network = at_util.get_non_equipment_network
-local set_requests = at_util.set_requests
-local pause_trash = at_util.pause_trash
-local unpause_trash = at_util.unpause_trash
 
 local function tonumber_max(n)
     n = tonumber(n)
@@ -144,11 +140,11 @@ end
 
 at_gui.toggle_setting = {
     trash_above_requested = function(player, pdata)
-        set_requests(player, pdata)
+        at_util.set_requests(player, pdata)
         return pdata.flags.trash_above_requested
     end,
     trash_unrequested = function(player, pdata)
-        set_requests(player, pdata)
+        at_util.set_requests(player, pdata)
         return pdata.flags.trash_unrequested
     end,
     trash_network = function(player, pdata)
@@ -159,16 +155,16 @@ at_gui.toggle_setting = {
         end
 
         if pdata.flags.trash_network and in_network(player, pdata) then
-            unpause_trash(player, pdata)
+            at_util.unpause_trash(player, pdata)
             at_gui.update_main_button(pdata)
         end
         return pdata.flags.trash_network
     end,
     pause_trash = function(player, pdata)
         if pdata.flags.pause_trash then
-            pause_trash(player, pdata)
+            at_util.pause_trash(player, pdata)
         else
-            unpause_trash(player, pdata)
+            at_util.unpause_trash(player, pdata)
         end
         at_gui.update_main_button(pdata)
         return pdata.flags.pause_trash
@@ -404,7 +400,7 @@ at_gui.handlers = {
                     at_gui.close(player, pdata)
                 end
 
-                set_requests(player, pdata)
+                at_util.set_requests(player, pdata)
                 at_gui.update_status_display(player, pdata)
             end
         },
@@ -456,7 +452,7 @@ at_gui.handlers = {
                 local player = e.player
                 local pdata = e.pdata
                 if not next(pdata.presets) then
-                    display_message(player, "at-message.no-presets-to-export", true)
+                    player.print({"at-message.no-presets-to-export"})
                     return
                 end
                 local text = presets.export_all(pdata)
@@ -564,7 +560,7 @@ at_gui.handlers = {
                     if item_config and elem_value == item_config.name then return end
                     for i, v in pairs(pdata.config_tmp.config) do
                         if i ~= index and elem_value == v.name then
-                            display_message(player, {"cant-set-duplicate-request", item_prototype(elem_value).localised_name}, true)
+                            player.print({"cant-set-duplicate-request", item_prototype(elem_value).localised_name})
                             pdata.selected = i
                             at_gui.update_button(pdata, i, pdata.gui.main.slot_table.children[i])
                             pdata.gui.main.config_rows.scroll_to_element(pdata.gui.main.slot_table.children[i], "top-third")
@@ -799,7 +795,7 @@ at_gui.handlers = {
                 else
                     pdata.main_network = at_util.get_network_entity(player)
                     if not pdata.main_network then
-                        display_message(player, {"at-message.not-in-network"}, true)
+                        player.print({"at-message.not-in-network"})
                     end
                 end
                 at_gui.update_settings(pdata)
@@ -1071,16 +1067,16 @@ end
 at_gui.add_preset = function(player, pdata, name, config)
     config = config or pdata.config_tmp
     if name == "" then
-        display_message(player, {"at-message.name-not-set"}, true)
+        player.print({"at-message.name-not-set"})
         return
     end
     if pdata.presets[name] then
         if not pdata.settings.overwrite then
-            display_message(player, {"at-message.name-in-use"}, true)
+            player.print({"at-message.name-in-use"})
             return
         end
         pdata.presets[name] = table.deep_copy(config)
-        display_message(player, {"at-message.preset-updated", name})
+        player.print({"at-message.preset-updated", name})
     else
         pdata.presets[name] = table.deep_copy(config)
         gui.build(pdata.gui.main.presets_flow, {gui.templates.preset(name, pdata)})
@@ -1162,7 +1158,6 @@ function at_gui.create_main_window(player, pdata)
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
                                             {type = "slider", save_as = "main.sliders.request", handlers = "sliders.request", minimum_value = 0, maximum_value = 42},
                                             {type = "textfield", save_as = "main.sliders.request_text", handlers = "sliders.request", style = "slider_value_textfield"},
-                                            --{type = "sprite-button", style = "tool_button", style_mods = {top_margin = 2}, sprite = "utility/export_slot"}
                                         }},
                                         {type = "flow", direction = "horizontal", children = {
                                             {type = "label", caption={"at-gui.trash"}},
@@ -1170,7 +1165,6 @@ function at_gui.create_main_window(player, pdata)
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
                                             {type = "slider", save_as = "main.sliders.trash", handlers = "sliders.trash", minimum_value = 0, maximum_value = 42},
                                             {type = "textfield", save_as = "main.sliders.trash_text", handlers = "sliders.trash", style = "slider_value_textfield"},
-                                            --{type = "sprite-button", style = "tool_button", style_mods = {top_margin = 2}, sprite = "utility/export_slot"}
                                         }},
                                     }},
                                     {type = "drop-down", style = "at_quick_actions", handlers = "quick_actions",
