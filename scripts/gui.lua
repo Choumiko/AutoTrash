@@ -393,14 +393,25 @@ at_gui.handlers = {
             on_gui_click = function(e)
                 local player = e.player
                 local pdata = e.pdata
+                local adjusted = false
+                for _, config in pairs(pdata.config_tmp.config) do
+                    if config.max < config.min then
+                        adjusted = true
+                        config.max = config.min
+                        player.print{"at-message.adjusted-trash-amount", at_util.item_prototype(config.name).localised_name, config.max}
+                    end
+                end
+
                 pdata.config_new = table.deep_copy(pdata.config_tmp)
                 pdata.dirty = false
                 pdata.gui.main.reset_button.enabled = false
+                at_util.set_requests(player, pdata)
                 if pdata.settings.close_on_apply then
                     at_gui.close(player, pdata)
                 end
-
-                at_util.set_requests(player, pdata)
+                if adjusted then
+                    at_gui.update_buttons(pdata)
+                end
                 at_gui.update_status_display(player, pdata)
             end
         },
@@ -702,8 +713,8 @@ at_gui.handlers = {
             on_gui_text_changed = function(e)
                 local pdata = e.pdata
                 if not pdata.selected then return end
-                at_gui.update_request_config(tonumber_max(e.element.text) or 0, pdata)
-            end
+                at_gui.update_request_config(tonumber_max(e.element.text) or 0, pdata, true)
+            end,
         },
         trash = {
             on_gui_value_changed = function(e)
@@ -713,14 +724,19 @@ at_gui.handlers = {
                 if e.element.slider_value == 42 then
                     number = constants.max_request
                 else
-                    number = tonumber_max(convert_from_slider(e.element.slider_value)) or false
+                    number = tonumber_max(convert_from_slider(e.element.slider_value)) or 0
                 end
-                at_gui.update_trash_config(number, pdata)
+                at_gui.update_trash_config(e.player, pdata, number)
             end,
             on_gui_text_changed = function(e)
                 local pdata = e.pdata
                 if not pdata.selected then return end
-                at_gui.update_trash_config(tonumber_max(e.element.text) or false, pdata)
+                at_gui.update_trash_config(e.player, pdata, tonumber_max(e.element.text) or 0, true)
+            end,
+            on_gui_confirmed = function(e)
+                local pdata = e.pdata
+                if not pdata.selected then return end
+                at_gui.update_trash_config(e.player, pdata, tonumber_max(e.element.text) or 0)
             end
         }
     },
@@ -841,7 +857,6 @@ at_gui.update_request_config = function(number, pdata)
     local selected = pdata.selected
     local config_tmp = pdata.config_tmp
     local item_config = config_tmp.config[selected]
-    if number == item_config.min then return end
     if item_config.min == 0 and number > 0 then
         config_tmp.c_requests = config_tmp.c_requests + 1
     end
@@ -858,17 +873,18 @@ at_gui.update_request_config = function(number, pdata)
     at_gui.update_button(pdata, pdata.selected)
 end
 
-at_gui.update_trash_config = function(number, pdata)
+at_gui.update_trash_config = function(player, pdata, number, from_text)
     local selected = pdata.selected
     local config_tmp = pdata.config_tmp
     local item_config = config_tmp.config[selected]
-    if number == item_config.max then return end
-
-    if number < constants.max_request and item_config.min > number then
-        if item_config.min > 0 and number == 0 then
-            config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
+    if not from_text then
+        if number < constants.max_request and item_config.min > number then
+            if item_config.min > 0 and number == 0 then
+                config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
+            end
+            item_config.min = number
+            player.print{"at-message.adjusted-trash-amount", at_util.item_prototype(item_config.name).localised_name, number}
         end
-        item_config.min = number
     end
     item_config.max = number
     at_gui.mark_dirty(pdata)
@@ -1157,14 +1173,22 @@ function at_gui.create_main_window(player, pdata)
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
                                             {type = "slider", save_as = "main.sliders.request", handlers = "sliders.request", minimum_value = 0, maximum_value = 42},
-                                            {type = "textfield", save_as = "main.sliders.request_text", handlers = "sliders.request", style = "slider_value_textfield"},
+                                            {type = "textfield", save_as = "main.sliders.request_text", handlers = "sliders.request", style = "slider_value_textfield",
+                                                numeric = true,
+                                                allow_negative = false,
+                                                lose_focus_on_confirm = true
+                                            },
                                         }},
                                         {type = "flow", direction = "horizontal", children = {
                                             {type = "label", caption={"at-gui.trash"}},
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
                                             {type = "slider", save_as = "main.sliders.trash", handlers = "sliders.trash", minimum_value = 0, maximum_value = 42},
-                                            {type = "textfield", save_as = "main.sliders.trash_text", handlers = "sliders.trash", style = "slider_value_textfield"},
+                                            {type = "textfield", save_as = "main.sliders.trash_text", handlers = "sliders.trash", style = "slider_value_textfield",
+                                                numeric = true,
+                                                allow_negative = false,
+                                                lose_focus_on_confirm = true
+                                            },
                                         }},
                                     }},
                                     {type = "drop-down", style = "at_quick_actions", handlers = "quick_actions",

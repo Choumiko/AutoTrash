@@ -2,6 +2,9 @@
 Version: 5.2.12
 Date: ????
   Changes:
+    - Applying changes or pressing enter after changing the trash amount will display a message if the the amount got adjusted to the request amount.
+  Bugfixes:
+    - Fixed error when changing the trash amount via keyboard
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.11
 Date: 2020-11-06
