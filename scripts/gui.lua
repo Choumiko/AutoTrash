@@ -527,10 +527,11 @@ at_gui.handlers = {
                             pdata.selected = index
                             player.cursor_ghost = elem_value
                         --drop ghost
-                        elseif cursor_ghost and old_selected and cursor_ghost.name == config_tmp.config[old_selected].name then
-                            if elem_value then--always true, even when shift clicking an empty button with a ghost, since it gets set before on_click
+                        elseif cursor_ghost and old_selected then
+                            local old_config = config_tmp.config[old_selected]
+                            if elem_value and old_config and cursor_ghost.name == old_config.name then
                                 local tmp = table.deep_copy(config_tmp.config[index])
-                                config_tmp.config[index] = table.deep_copy(config_tmp.config[old_selected])
+                                config_tmp.config[index] = table.deep_copy(old_config)
                                 config_tmp.config[index].slot = index
                                 if tmp then
                                     tmp.slot = old_selected
@@ -541,29 +542,44 @@ at_gui.handlers = {
                                 config_tmp.max_slot = index > config_tmp.max_slot and index or config_tmp.max_slot
                                 at_gui.mark_dirty(pdata)
                             end
+                            if not old_config then
+                                pdata.selected = false
+                                old_selected = false
+                                player.cursor_ghost = nil
+                            end
                         end
                         at_gui.update_button(pdata, index, e.element)
                         at_gui.update_button(pdata, old_selected)
                         at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
                         at_gui.update_sliders(pdata)
-                        return
+                    else
+                        if not elem_value or old_selected == index then return end
+                        if player.cursor_ghost then
+                            local old_config = old_selected and pdata.config_tmp.config[old_selected]
+                            -- "interrupted" click-drag, reset value
+                            if elem_value and old_config and old_config.name == elem_value then
+                                e.element.elem_value = nil
+                                return
+                            end
+                        end
+                        pdata.selected = index
+                        if old_selected then
+                            local old = pdata.gui.main.slot_table.children[old_selected]
+                            at_gui.update_button(pdata, old_selected, old)
+                        end
+                        at_gui.update_button(pdata, index, e.element)
+                        at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
+                        at_gui.update_sliders(pdata)
                     end
-                    if not elem_value or old_selected == index then return end
-                    pdata.selected = index
-                    if old_selected then
-                        local old = pdata.gui.main.slot_table.children[old_selected]
-                        at_gui.update_button(pdata, old_selected, old)
-                    end
-                    at_gui.update_button(pdata, index, e.element)
-                    at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
-                    at_gui.update_sliders(pdata)
                 end
             end,
             on_gui_elem_changed = function(e)
                 local player = e.player
                 local pdata = e.pdata
                 local old_selected = pdata.selected
-                if player.cursor_ghost and old_selected then return end--dragging to an empty slot, on_gui_click raised later
+                --dragging to an empty slot, on_gui_click raised later
+                if player.cursor_ghost and old_selected then return end
+
                 local elem_value = e.element.elem_value
                 local index = tonumber(e.element.name)
                 if elem_value then

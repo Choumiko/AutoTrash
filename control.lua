@@ -166,16 +166,15 @@ local function on_player_changed_position(e)
     if not pdata then
         pdata = player_data.init(e.player_index)
     end
-    local current = (pdata.current_network and pdata.current_network.valid) and pdata.current_network.logistic_network
+    local current = (pdata.current_network and pdata.current_network.valid) and pdata.current_network
+    local current_net = current and current.logistic_network
     local maybe_new = get_network_entity(player)
-    if maybe_new then
-        maybe_new = maybe_new.logistic_network
-    end
-    if maybe_new ~= current then
+    local maybe_new_net = maybe_new and maybe_new.logistic_network
+    if maybe_new_net ~= current_net then
         if pdata.flags.gui_open then
             at_gui.update_button_styles(player, pdata)
         end
-        pdata.current_network = get_network_entity(player)
+        pdata.current_network = maybe_new
     end
     if not pdata.flags.trash_network then
         return
