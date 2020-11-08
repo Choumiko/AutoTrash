@@ -805,13 +805,13 @@ at_gui.handlers = {
                 if pdata.main_network then
                     if not pdata.main_network.valid then
                         --ended up with an invalid entity, not much i can do to recover
-                        player.print("at-message.network-lost")
+                        player.print{"at-message.network-lost"}
                     end
                     pdata.main_network = false
                 else
                     pdata.main_network = at_util.get_network_entity(player)
                     if not pdata.main_network then
-                        player.print({"at-message.not-in-network"})
+                        player.print{"at-message.not-in-network"}
                     end
                 end
                 at_gui.update_settings(pdata)
@@ -1267,6 +1267,7 @@ function at_gui.init(player, pdata)
     local main_button_flow = pdata.gui.mod_gui.flow
     if main_button_flow and main_button_flow.valid then
         main_button_flow.clear()
+        gui.update_filters("mod_gui_button", player.index, nil, "remove")
     else
         pdata.gui.mod_gui.flow = mod_gui.get_button_flow(player).add{type = "flow", direction = "horizontal", name =  "autotrash_main_flow", style = "at_main_flow"}
     end

@@ -164,7 +164,7 @@ local function on_player_changed_position(e)
     local pdata = global._pdata[e.player_index]
     --Rocket rush scenario might teleport before AutoTrash gets a chance to init?!
     if not pdata then
-        player_data.init(e.player_index)
+        pdata = player_data.init(e.player_index)
     end
     local current = (pdata.current_network and pdata.current_network.valid) and pdata.current_network.logistic_network
     local maybe_new = get_network_entity(player)
@@ -246,7 +246,7 @@ local function on_pre_mined_item(e)
             end
             if not pdata.main_network then
                 local player = game.get_player(pi)
-                player.print("at-message.network-unset")
+                player.print{"at-message.network-unset"}
             end
         end
         if current and current.valid and entity == current then

@@ -152,10 +152,14 @@ local migrations = {
             pdata.temporary_trash = nil
             pdata.temporary_requests = {}
             pdata.flags.has_temporary_requests = false
-            pdata.next_check = 0
             at_gui.update_main_button(pdata)
         end
         script.on_event(defines.events.on_player_trash_inventory_changed, nil)
+    end,
+    ["5.2.13"] = function()
+        for _, pdata in pairs(global._pdata) do
+            pdata.next_check = nil
+        end
     end,
 }
 

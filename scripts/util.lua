@@ -42,7 +42,7 @@ M.set_requests = function(player, pdata)
         if req then
             local name = req.name
             if temporary_requests[name] then
-                req =temporary_requests[name].temporary
+                req = temporary_requests[name].temporary
                 handled_temporary[name] = true
             end
             local request = req.min
@@ -62,8 +62,8 @@ M.set_requests = function(player, pdata)
 
     --handle remaining temporary requests
     for name, request_data in pairs(temporary_requests) do
-        local temp_request = request_data.temporary
         if not handled_temporary[name] then
+            local temp_request = request_data.temporary
             set_request_slot(temp_request.index, temp_request)
             if contents and contents[name] then
                 contents[name] = nil
@@ -73,14 +73,14 @@ M.set_requests = function(player, pdata)
 
     --trash unrequested items
     if contents and not trash_paused then
-        local c_contents = table_size(contents)
-        if c_contents == 0 then return end
+        if not next(contents) then return end
+
         for name, _ in pairs(contents) do
             if constants.trash_blacklist[M.item_prototype(name).type] then
                 contents[name] = nil
             end
         end
-
+        local c_contents = table_size(contents)
         if slot_count < config_new.max_slot + c_contents then
             player.character_logistic_slot_count = slot_count + c_contents
         end

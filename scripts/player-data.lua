@@ -34,8 +34,6 @@ function player_data.init(player_index)
         settings = {},
         selected_presets = {},
         death_presets = {},
-
-        next_check = 0,
     }
     player_data.update_settings(game.get_player(player_index), global._pdata[player_index])
     return global._pdata[player_index]
