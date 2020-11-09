@@ -27,13 +27,13 @@ function player_data.init(player_index)
         config_tmp = {config = {}, c_requests = 0, max_slot = 0},
         selected = false,
 
-        main_network = false,
         current_network = nil,
         presets = {},
         temporary_requests = {},
         settings = {},
         selected_presets = {},
         death_presets = {},
+        networks = {}
     }
     player_data.update_settings(game.get_player(player_index), global._pdata[player_index])
     return global._pdata[player_index]

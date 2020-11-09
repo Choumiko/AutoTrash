@@ -81,6 +81,9 @@ local function on_configuration_changed(data)
             local player = game.get_player(index)
             player_data.refresh(player, pdata)
             at_gui.recreate(player, pdata)
+            if __DebugAdapter then
+                at_gui.open(player, pdata)
+            end
         end
     end
     if not removed then
@@ -179,10 +182,7 @@ local function on_player_changed_position(e)
     if not pdata.flags.trash_network then
         return
     end
-    local is_in_network, invalid = in_network(player, pdata)
-    if invalid then
-        at_gui.update_settings(pdata)
-    end
+    local is_in_network = in_network(player, pdata)
     local paused = pdata.flags.pause_trash
     if not is_in_network and not paused then
         pause_trash(player, pdata)
@@ -231,19 +231,21 @@ local function on_pre_mined_item(e)
     if not (entity.logistic_network and entity.logistic_network.valid) then return end
     local cells
     for pi, pdata in pairs(global._pdata) do
-        local main = pdata.main_network
+        local main = pdata.networks[entity.unit_number]
         local current = pdata.current_network
-        if main and main.valid and entity == main then
+        if main and main.valid then
             cells = cells or entity.logistic_network.cells
-            pdata.main_network = false
+            local found
             for _, cell in pairs(cells) do
                 local owner = cell.owner
                 if owner.valid and not owner.to_be_deconstructed() and owner ~= entity then
-                    pdata.main_network = cell.owner
+                    pdata.networks[owner.unit_number] = owner
+                    found = true
                     break
                 end
             end
-            if not pdata.main_network then
+            pdata.networks[entity.unit_number] = nil
+            if not found then
                 local player = game.get_player(pi)
                 player.print{"at-message.network-unset"}
             end

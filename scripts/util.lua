@@ -138,15 +138,19 @@ M.in_network = function(player, pdata)
         return true
     end
     local currentNetwork = M.get_non_equipment_network(player.character)
-    if pdata.main_network and not pdata.main_network.valid then
-        --ended up with an invalid entity, not much i can do to recover
-        player.print({"at-message.network-lost"})
-        pdata.main_network = false
-        return false, true
+    if not (currentNetwork and currentNetwork.valid) then
+        return false
     end
-    local entity = (pdata.main_network and pdata.main_network.valid) and pdata.main_network
-    if currentNetwork and entity and currentNetwork.valid and currentNetwork == entity.logistic_network then
-        return true
+    for id, network in pairs(pdata.networks) do
+        if network and network.valid then
+            if currentNetwork == network.logistic_network then
+                return true
+            end
+        elseif network and not network.valid then
+            player.print({"at-message.network-lost"})
+            pdata.networks[id] = nil
+            return false
+        end
     end
     return false
 end

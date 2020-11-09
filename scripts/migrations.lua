@@ -161,6 +161,15 @@ local migrations = {
             pdata.next_check = nil
         end
     end,
+    ["5.2.14"] = function()
+        for _, pdata in pairs(global._pdata) do
+            pdata.networks = {}
+            if pdata.main_network and pdata.main_network.valid then
+                pdata.networks[pdata.main_network.unit_number] = pdata.main_network
+            end
+            pdata.main_network = nil
+        end
+    end,
 }
 
 return migrations

@@ -148,7 +148,7 @@ at_gui.toggle_setting = {
         return pdata.flags.trash_unrequested
     end,
     trash_network = function(player, pdata)
-        if pdata.flags.trash_network and not pdata.main_network then
+        if pdata.flags.trash_network and not next(pdata.networks) then
             player.print("at-message.no-network-set")
             pdata.flags.trash_network = false
             return false
@@ -187,7 +187,7 @@ at_gui.templates = {
             local ret = {type = "table", column_count = pdata.settings.columns, style = "at_filter_group_table", save_as = "main.slot_table",
                 style_mods = {minimal_height = pdata.settings.rows * 40}, children = {}}
             for i=1, btns do
-                ret.children[i] = gui.templates.slot_table.button(i, pdata)
+                ret.children[i] = at_gui.templates.slot_table.button(i, pdata)
             end
             ret.children[btns+1] = {type = "flow", name = "count_change", direction="vertical", style_mods = {vertical_spacing=0}, children={
                 {type = "button", caption="-", handlers="slots.decrease", style = "slot_count_change_button"},
@@ -230,7 +230,7 @@ at_gui.templates = {
                 }},
                 {type = "text-box", text = bp_string, save_as = "window.textbox", elem_mods = {word_wrap = true}, style_mods = {width=400, height = 250}},
                 {type = "flow", direction = "horizontal", children={
-                        {template = "pushers.horizontal"},
+                        at_gui.templates.pushers.horizontal,
                         {type = "label", name = "mode", caption = mode, visible = false},
                         {type = "button", handlers = button_handler, style = "dialog_button", caption = button_caption}
                 }}
@@ -278,14 +278,19 @@ at_gui.templates = {
                     handlers = "settings.toggle"
                 },
                 {
-                    type = "button",
-                    name = at_gui.defines.network_button,
-                    caption = pdata.main_network and {"at-gui.unset-main-network"} or {"at-gui.set-main-network"},
-                    handlers = "settings.change_network"
+                    type = "flow",
+                    style_mods = {vertical_align = "center"},
+                    children = {
+                        {type = "label", caption = "Main networks: "},
+                        {type = "button", caption = "+", style = "tool_button", handlers = "settings.add_network", tooltip = {"at-gui.tooltip-add-network"}},
+                        {type = "button", caption = "-", style = "tool_button", handlers = "settings.remove_network", tooltip = {"at-gui.tooltip-remove-network"}},
+                        {type = "sprite-button", sprite = "utility/rename_icon_normal", style = "tool_button",
+                            save_as = "main.network_edit_button",
+                            handlers = "settings.edit_networks", tooltip = {"at-gui.tooltip-edit-networks"}},
+                    }
                 },
-                {template = "pushers.horizontal"}
+                at_gui.templates.pushers.horizontal
             }},
-            -- {template = "pushers.vertical"},
         }}
     end,
 
@@ -303,7 +308,22 @@ at_gui.templates = {
         local ret = {}
         local i = 1
         for name in pairs(pdata.presets) do
-            ret[i] = gui.templates.preset(name, pdata)
+            ret[i] = at_gui.templates.preset(name, pdata)
+            i = i + 1
+        end
+        return ret
+    end,
+
+    networks = function(pdata)
+        local ret = {}
+        local i = 1
+        for id in pairs(pdata.networks) do
+            ret[i] = {type = "flow", name = id, direction = "horizontal", style_mods = {vertical_align = "center"}, children = {
+                {type = "label", caption = {"", {"gui-logistic.network"}, " #" .. id}},
+                at_gui.templates.pushers.horizontal,
+                {type = "sprite-button", style = "tool_button", sprite = "utility/map", handlers = "networks.view"},
+                {type = "sprite-button", style = "tool_button", sprite = "utility/trash", handlers = "networks.remove"},
+            }}
             i = i + 1
         end
         return ret
@@ -813,26 +833,70 @@ at_gui.handlers = {
                 end
             end
         },
-        change_network = {
+        add_network = {
             on_gui_click = function(e)
                 local player = e.player
                 if not player.character then return end
                 local pdata = e.pdata
-                if pdata.main_network then
-                    if not pdata.main_network.valid then
-                        --ended up with an invalid entity, not much i can do to recover
-                        player.print{"at-message.network-lost"}
+                local new_network = at_util.get_network_entity(player)
+                if new_network then
+                    if pdata.networks[new_network.unit_number] then return end
+                    local new_net = new_network.logistic_network
+                    for id, network in pairs(pdata.networks) do
+                        if network and network.valid then
+                            if network.logistic_network == new_net then
+                                return
+                            end
+                        else
+                            pdata.networks[id] = nil
+                        end
                     end
-                    pdata.main_network = false
+                    pdata.networks[new_network.unit_number] = new_network
                 else
-                    pdata.main_network = at_util.get_network_entity(player)
-                    if not pdata.main_network then
-                        player.print{"at-message.not-in-network"}
-                    end
+                    player.print{"at-message.not-in-network"}
                 end
-                at_gui.update_settings(pdata)
+                at_gui.update_networks(player, pdata)
             end
-        }
+        },
+        remove_network = {
+            on_gui_click = function(e)
+                local player = e.player
+                if not player.character then return end
+                local pdata = e.pdata
+                local current_network = at_util.get_network_entity(player)
+                if current_network then
+                    if pdata.networks[current_network.unit_number] then
+                        pdata.networks[current_network.unit_number] = nil
+                        at_gui.update_networks(player, pdata)
+                        return
+                    end
+                    local new_net = current_network.logistic_network
+                    for id, network in pairs(pdata.networks) do
+                        if network and network.valid then
+                            if network.logistic_network == new_net then
+                                pdata.networks[id] = nil
+                                return
+                            end
+                        else
+                            pdata.networks[id] = nil
+                        end
+                    end
+                else
+                    player.print{"at-message.not-in-network"}
+                end
+                at_gui.update_networks(player, pdata)
+            end
+        },
+        edit_networks = {
+            on_gui_click = function(e)
+                local pdata = e.pdata
+                at_gui.update_networks(e.player, pdata)
+                local visible = not pdata.gui.main.networks.visible
+                e.element.style = visible and "at_selected_tool_button" or "tool_button"
+                pdata.gui.main.networks.visible = visible
+                pdata.gui.main.presets.visible = not visible
+            end
+        },
     },
     import = {
         import_button = {
@@ -863,6 +927,30 @@ at_gui.handlers = {
                 gui.update_filters("import", e.player_index, nil, "remove")
                 pdata.gui.import.window.main.destroy()
                 pdata.gui.import = nil
+            end
+        }
+    },
+    networks = {
+        view = {
+            on_gui_click = function(e)
+                local pdata = e.pdata
+                local id = tonumber(e.element.parent.name)
+                local entity = pdata.networks[id]
+                if entity and entity.valid then
+                    e.player.zoom_to_world(entity.position, 0.3)
+                end
+            end
+        },
+        remove = {
+            on_gui_click = function(e)
+                local pdata = e.pdata
+                local flow = e.element.parent
+                local id = tonumber(flow.name)
+                if id then
+                    pdata.networks[id] = nil
+                end
+                gui.update_filters("networks", e.player_index, {e.element.index, flow.children[2].index}, "remove")
+                flow.destroy()
             end
         }
     }
@@ -954,9 +1042,9 @@ at_gui.adjust_slots = function(player, pdata, slots)
         gui.update_filters("slots.increase", player.index, nil, "remove")
         slot_table.count_change.destroy()
         for i = old_slots+1, slots do
-            gui.build(slot_table, {gui.templates.slot_table.button(i, pdata)})
+            gui.build(slot_table, {at_gui.templates.slot_table.button(i, pdata)})
         end
-        gui.build(slot_table, {gui.templates.slot_table.count_change()})
+        gui.build(slot_table, {at_gui.templates.slot_table.count_change()})
     elseif diff < 0 then
         for i = old_slots, slots+1, -1 do
             local btn = slot_table.children[i]
@@ -1111,7 +1199,7 @@ at_gui.add_preset = function(player, pdata, name, config)
         player.print({"at-message.preset-updated", name})
     else
         pdata.presets[name] = table.deep_copy(config)
-        gui.build(pdata.gui.main.presets_flow, {gui.templates.preset(name, pdata)})
+        gui.build(pdata.gui.main.presets_flow, {at_gui.templates.preset(name, pdata)})
     end
     return true
 end
@@ -1134,6 +1222,14 @@ at_gui.update_presets = function(pdata)
     elseif s > 1 then
         pdata.gui.main.preset_textfield.text = ""
     end
+end
+
+at_gui.update_networks = function(player, pdata)
+    if not pdata.flags.gui_open then return end
+    local networks = pdata.gui.main.networks_flow
+    networks.clear()
+    gui.update_filters("networks", player.index, nil, "remove")
+    gui.build(networks, at_gui.templates.networks(pdata))
 end
 
 function at_gui.create_main_window(player, pdata)
@@ -1162,7 +1258,7 @@ function at_gui.create_main_window(player, pdata)
                     {type = "frame", style = "inside_shallow_frame", direction = "vertical", children = {
                         {type = "frame", style = "subheader_frame", children={
                             {type = "label", style = "subheader_caption_label", caption = {"at-gui.logistics-configuration"}},
-                            {template = "pushers.horizontal"},
+                            at_gui.templates.pushers.horizontal,
                             {type = "sprite-button", style = "tool_button_green", handlers = "main.apply_changes", style_mods = {padding = 0},
                                 sprite = "utility/check_mark_white", tooltip = {"module-inserter-config-button-apply"}},
                             {type = "sprite-button", style = "tool_button_red", save_as = "main.reset_button", handlers = "main.reset", sprite = "utility/reset_white"},
@@ -1177,7 +1273,7 @@ function at_gui.create_main_window(player, pdata)
                                         height = pdata.settings.rows * 40
                                     },
                                     children = {
-                                        gui.templates.slot_table.main(btns, pdata),
+                                        at_gui.templates.slot_table.main(btns, pdata),
                                     }
                                 }
                             }},
@@ -1212,30 +1308,45 @@ function at_gui.create_main_window(player, pdata)
                                         selected_index = 1,
                                         tooltip = {"at-gui.tooltip-quick-actions"}
                                     },
-                                    {template = "pushers.horizontal"}
+                                    at_gui.templates.pushers.horizontal
                                 }}
                             }},
                             at_gui.templates.settings(flags, pdata),
                         }},
 
                     }},
-                    {type = "frame", style = "inside_shallow_frame", direction = "vertical", children = {
+                    {type = "frame", save_as = "main.presets", style = "inside_shallow_frame", direction = "vertical", children = {
                         {type = "frame", style = "subheader_frame", children={
                             {type = "label", style = "subheader_caption_label", caption = {"at-gui.presets"}},
-                            {template = "pushers.horizontal"},
+                            at_gui.templates.pushers.horizontal,
                             {type = "sprite-button", style = "tool_button", handlers = "main.export_all", sprite = "utility/export_slot", tooltip = {"at-gui.tooltip-export-all"}},
                             {type = "sprite-button", style = "tool_button", handlers = "main.import_all", sprite = "at_import_string", tooltip = {"at-gui.tooltip-import-all"}},
                         }},
                         {type = "flow", direction="vertical", style_mods = {maximal_width = 274, padding= 12, top_padding = 8, vertical_spacing = 12}, children = {
                             {type = "flow", children = {
                                 {type = "textfield", style = "at_save_as_textfield", save_as = "main.preset_textfield", handlers = "presets.textfield", text = ""},
-                                {template = "pushers.horizontal"},
+                                at_gui.templates.pushers.horizontal,
                                 {type = "button", caption = {"gui-save-game.save"}, style = "at_save_button", handlers = "presets.save"}
                             }},
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
                                 {type = "scroll-pane", style_mods = {extra_top_padding_when_activated = 0, extra_left_padding_when_activated = 0, extra_right_padding_when_activated = 0}, children = {
                                     {type = "flow", direction = "vertical", save_as = "main.presets_flow", style_mods = {vertically_stretchable = "on", left_padding = 8, top_padding = 8, width = 230}, children =
-                                        gui.templates.presets(pdata),
+                                        at_gui.templates.presets(pdata),
+                                    },
+                                }}
+                            }},
+                        }}
+                    }},
+                    {type = "frame", save_as = "main.networks", visible = false, style = "inside_shallow_frame", direction = "vertical", children = {
+                        {type = "frame", style = "subheader_frame", children={
+                            {type = "label", style = "subheader_caption_label", caption = {"gui-logistic.logistic-networks"}},
+                            at_gui.templates.pushers.horizontal,
+                        }},
+                        {type = "flow", direction="vertical", style_mods = {maximal_width = 274, padding= 12, top_padding = 8, vertical_spacing = 12}, children = {
+                            {type = "frame", style = "deep_frame_in_shallow_frame", children = {
+                                {type = "scroll-pane", style_mods = {extra_top_padding_when_activated = 0, extra_left_padding_when_activated = 0, extra_right_padding_when_activated = 0}, children = {
+                                    {type = "flow", direction = "vertical", save_as = "main.networks_flow", style_mods = {vertically_stretchable = "on", left_padding = 8, right_padding = 8, top_padding = 8, width = 230}, children =
+                                        at_gui.templates.networks(pdata),
                                     },
                                 }}
                             }},
@@ -1263,7 +1374,7 @@ function at_gui.create_import_window(player, pdata, bp_string, mode)
         window.destroy()
         pdata.gui.import = nil
     end
-    pdata.gui.import = gui.build(player.gui.screen, {gui.templates.import_export_window(bp_string, mode)}, pdata.gui)
+    pdata.gui.import = gui.build(player.gui.screen, {at_gui.templates.import_export_window(bp_string, mode)}, pdata.gui)
     local import_window = pdata.gui.import.window
     import_window.titlebar.drag_target = pdata.gui.import.window.main
     import_window.main.force_auto_center()
@@ -1434,7 +1545,6 @@ function at_gui.update_settings(pdata)
     frame[def.trash_network].state = flags.trash_network
     frame[def.pause_trash].state = flags.pause_trash
     frame[def.pause_requests].state = flags.pause_requests
-    frame[def.network_button].caption = pdata.main_network and {"at-gui.unset-main-network"} or {"at-gui.set-main-network"}
 end
 
 function at_gui.mark_dirty(pdata, keep_presets)
@@ -1452,6 +1562,11 @@ function at_gui.destroy(player, pdata)
         pdata.gui.main.window.destroy()
     end
     gui.update_filters("main", player.index, nil, "remove")
+    gui.update_filters("slots", player.index, nil, "remove")
+    gui.update_filters("presets", player.index, nil, "remove")
+    gui.update_filters("settings", player.index, nil, "remove")
+    gui.update_filters("sliders", player.index, nil, "remove")
+    gui.update_filters("quick_actions", player.index, nil, "remove")
     pdata.gui.main = {}
     pdata.flags.gui_open = false
     if pdata.gui.import and pdata.gui.import.window then
@@ -1502,6 +1617,11 @@ function at_gui.close(player, pdata, no_reset)
     pdata.flags.gui_open = false
     if not pdata.flags.pinned then
         player.opened = nil
+    end
+    if pdata.gui.main.networks and pdata.gui.main.presets then
+        pdata.gui.main.networks.visible = false
+        pdata.gui.main.presets.visible = true
+        pdata.gui.main.network_edit_button.style = "tool_button"
     end
     if not no_reset and pdata.settings.reset_on_close then
         pdata.config_tmp = table.deep_copy(pdata.config_new)
