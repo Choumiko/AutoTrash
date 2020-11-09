@@ -149,7 +149,7 @@ at_gui.toggle_setting = {
     end,
     trash_network = function(player, pdata)
         if pdata.flags.trash_network and not next(pdata.networks) then
-            player.print("at-message.no-network-set")
+            player.print{"at-message.no-network-set"}
             pdata.flags.trash_network = false
             return false
         end
@@ -190,8 +190,8 @@ at_gui.templates = {
                 ret.children[i] = at_gui.templates.slot_table.button(i, pdata)
             end
             ret.children[btns+1] = {type = "flow", name = "count_change", direction="vertical", style_mods = {vertical_spacing=0}, children={
-                {type = "button", caption="-", handlers="slots.decrease", style = "slot_count_change_button"},
-                {type = "button", caption="+", handlers = "slots.increase", style = "slot_count_change_button"}
+                {type = "button", caption="-", handlers="main.slots.decrease", style = "slot_count_change_button"},
+                {type = "button", caption="+", handlers = "main.slots.increase", style = "slot_count_change_button"}
             }}
             return ret
         end,
@@ -200,15 +200,15 @@ at_gui.templates = {
             local config = pdata.config_tmp.config[i]
             local req = config and format_number(format_request(config), true) or ""
             local trash = config and format_number(format_trash(config), true) or ""
-            return {type = "choose-elem-button", name = i, elem_mods = {elem_value = config and config.name, locked = config and i ~= pdata.selected}, handlers = "slots.item_button", elem_type = "item", style = style, children = {
+            return {type = "choose-elem-button", name = i, elem_mods = {elem_value = config and config.name, locked = config and i ~= pdata.selected}, handlers = "main.slots.item_button", elem_type = "item", style = style, children = {
                 {type = "label", style = "at_request_label_top", ignored_by_interaction = true, caption = req},
                 {type = "label", style = "at_request_label_bottom", ignored_by_interaction = true, caption = trash}
             }}
         end,
         count_change = function()
             return {type = "flow", name = "count_change", direction="vertical", style_mods = {vertical_spacing=0}, children={
-                {type = "button", caption="-", handlers="slots.decrease", style = "slot_count_change_button"},
-                {type = "button", caption="+", handlers = "slots.increase", style = "slot_count_change_button"}
+                {type = "button", caption="-", handlers="main.slots.decrease", style = "slot_count_change_button"},
+                {type = "button", caption="+", handlers = "main.slots.increase", style = "slot_count_change_button"}
             }}
         end,
     },
@@ -245,21 +245,21 @@ at_gui.templates = {
                     name = at_gui.defines.trash_above_requested,
                     caption = {"at-gui.trash-above-requested"},
                     state = flags.trash_above_requested,
-                    handlers = "settings.toggle"
+                    handlers = "main.settings.toggle"
                 },
                 {
                     type = "checkbox",
                     name = at_gui.defines.trash_unrequested,
                     caption = {"at-gui.trash-unrequested"},
                     state = flags.trash_unrequested,
-                    handlers = "settings.toggle"
+                    handlers = "main.settings.toggle"
                 },
                 {
                     type = "checkbox",
                     name = at_gui.defines.trash_network,
                     caption = {"at-gui.trash-in-main-network"},
                     state = flags.trash_network,
-                    handlers = "settings.toggle"
+                    handlers = "main.settings.toggle"
                 },
                 {
                     type = "checkbox",
@@ -267,7 +267,7 @@ at_gui.templates = {
                     caption = {"at-gui.pause-trash"},
                     tooltip = {"at-gui.tooltip-pause-trash"},
                     state = flags.pause_trash,
-                    handlers = "settings.toggle"
+                    handlers = "main.settings.toggle"
                 },
                 {
                     type = "checkbox",
@@ -275,18 +275,18 @@ at_gui.templates = {
                     caption = {"at-gui.pause-requests"},
                     tooltip = {"at-gui.tooltip-pause-requests"},
                     state = flags.pause_requests,
-                    handlers = "settings.toggle"
+                    handlers = "main.settings.toggle"
                 },
                 {
                     type = "flow",
                     style_mods = {vertical_align = "center"},
                     children = {
                         {type = "label", caption = "Main networks: "},
-                        {type = "button", caption = "+", style = "tool_button", handlers = "settings.add_network", tooltip = {"at-gui.tooltip-add-network"}},
-                        {type = "button", caption = "-", style = "tool_button", handlers = "settings.remove_network", tooltip = {"at-gui.tooltip-remove-network"}},
+                        {type = "button", caption = "+", style = "tool_button", handlers = "main.settings.add_network", tooltip = {"at-gui.tooltip-add-network"}},
+                        {type = "button", caption = "-", style = "tool_button", handlers = "main.settings.remove_network", tooltip = {"at-gui.tooltip-remove-network"}},
                         {type = "sprite-button", sprite = "utility/rename_icon_normal", style = "tool_button",
                             save_as = "main.network_edit_button",
-                            handlers = "settings.edit_networks", tooltip = {"at-gui.tooltip-edit-networks"}},
+                            handlers = "main.settings.edit_networks", tooltip = {"at-gui.tooltip-edit-networks"}},
                     }
                 },
                 at_gui.templates.pushers.horizontal
@@ -298,9 +298,9 @@ at_gui.templates = {
         local style = pdata.selected_presets[preset_name] and "at_preset_button_selected" or "at_preset_button"
         local rip_style = pdata.death_presets[preset_name] and "at_preset_button_small_selected" or "at_preset_button_small"
         return {type = "flow", direction = "horizontal", name = preset_name, children = {
-            {type = "button", style = style, caption = preset_name, name = preset_name, handlers = "presets.load"},
-            {type = "sprite-button", style = rip_style, sprite = "autotrash_rip", handlers = "presets.change_death_preset", tooltip = {"at-gui.tooltip-rip"}},
-            {type = "sprite-button", style = "at_delete_preset", sprite = "utility/trash", handlers = "presets.delete"},
+            {type = "button", style = style, caption = preset_name, name = preset_name, handlers = "main.presets.load"},
+            {type = "sprite-button", style = rip_style, sprite = "autotrash_rip", handlers = "main.presets.change_death_preset", tooltip = {"at-gui.tooltip-rip"}},
+            {type = "sprite-button", style = "at_delete_preset", sprite = "utility/trash", handlers = "main.presets.delete"},
         }}
     end,
 
@@ -321,8 +321,8 @@ at_gui.templates = {
             ret[i] = {type = "flow", name = id, direction = "horizontal", style_mods = {vertical_align = "center"}, children = {
                 {type = "label", caption = {"", {"gui-logistic.network"}, " #" .. id}},
                 at_gui.templates.pushers.horizontal,
-                {type = "sprite-button", style = "tool_button", sprite = "utility/map", handlers = "networks.view"},
-                {type = "sprite-button", style = "tool_button", sprite = "utility/trash", handlers = "networks.remove"},
+                {type = "sprite-button", style = "tool_button", sprite = "utility/map", handlers = "main.networks.view"},
+                {type = "sprite-button", style = "tool_button", sprite = "utility/trash", handlers = "main.networks.remove"},
             }}
             i = i + 1
         end
@@ -461,11 +461,15 @@ at_gui.handlers = {
                 else
                     name = "AutoTrash_configuration"
                 end
+                if table_size(pdata.config_tmp.config) == 0 then
+                    player.print({"at-message.no-config-set"})
+                    return
+                end
                 local text = presets.export(pdata.config_tmp, name)
                 if e.shift then
                     local stack = player.cursor_stack
                     if stack.valid_for_read then
-                        player.print("at-message.empty-cursor-needed")
+                        player.print({"at-message.empty-cursor-needed"})
                         return
                     else
                         if stack.import_stack(text) ~= 0 then
@@ -483,18 +487,18 @@ at_gui.handlers = {
                 local player = e.player
                 local pdata = e.pdata
                 if not next(pdata.presets) then
-                    player.print({"at-message.no-presets-to-export"})
+                    player.print{"at-message.no-presets-to-export"}
                     return
                 end
                 local text = presets.export_all(pdata)
                 if e.shift then
                     local stack = player.cursor_stack
                     if stack.valid_for_read then
-                        player.print("at-message.empty-cursor-needed")
+                        player.print{"at-message.empty-cursor-needed"}
                         return
                     else
                         if stack.import_stack(text) ~= 0 then
-                            player.print({"failed-to-import-string"})
+                            player.print{"failed-to-import-string"}
                             return
                         end
                     end
@@ -520,384 +524,408 @@ at_gui.handlers = {
                     at_gui.create_import_window(player, pdata, nil, "all")
                 end
             end
-        }
-    },
-    slots = {
-        item_button = {
-            on_gui_click = function(e)
-                local player = e.player
-                local pdata = e.pdata
-                local elem_value = e.element.elem_value
-                local old_selected = pdata.selected
-                local index = tonumber(e.element.name)
-                if e.button == defines.mouse_button_type.right then
-                    if not elem_value then
-                        pdata.selected = false
-                        at_gui.update_button(pdata, old_selected, pdata.gui.main.slot_table.children[old_selected])
-                        at_gui.update_sliders(pdata)
-                        return
-                    end
-                    at_gui.clear_button(pdata, index, e.element)
-                elseif e.button == defines.mouse_button_type.left then
-                    if e.shift then
-                        local config_tmp = pdata.config_tmp
-                        local cursor_ghost = player.cursor_ghost
-                        --pickup ghost
-                        if elem_value and not cursor_ghost and not player.cursor_stack.valid_for_read then
-                            pdata.selected = index
-                            player.cursor_ghost = elem_value
-                        --drop ghost
-                        elseif cursor_ghost and old_selected then
-                            local old_config = config_tmp.config[old_selected]
-                            if elem_value and old_config and cursor_ghost.name == old_config.name then
-                                local tmp = table.deep_copy(config_tmp.config[index])
-                                config_tmp.config[index] = table.deep_copy(old_config)
-                                config_tmp.config[index].slot = index
-                                if tmp then
-                                    tmp.slot = old_selected
-                                end
-                                config_tmp.config[old_selected] = tmp
-                                player.cursor_ghost = nil
-                                pdata.selected = index
-                                config_tmp.max_slot = index > config_tmp.max_slot and index or config_tmp.max_slot
-                                at_gui.mark_dirty(pdata)
-                            end
-                            if not old_config then
-                                pdata.selected = false
-                                old_selected = false
-                                player.cursor_ghost = nil
-                            end
+        },
+        slots = {
+            item_button = {
+                on_gui_click = function(e)
+                    local player = e.player
+                    local pdata = e.pdata
+                    local elem_value = e.element.elem_value
+                    local old_selected = pdata.selected
+                    local index = tonumber(e.element.name)
+                    if e.button == defines.mouse_button_type.right then
+                        if not elem_value then
+                            pdata.selected = false
+                            at_gui.update_button(pdata, old_selected, pdata.gui.main.slot_table.children[old_selected])
+                            at_gui.update_sliders(pdata)
+                            return
                         end
-                        at_gui.update_button(pdata, index, e.element)
-                        at_gui.update_button(pdata, old_selected)
-                        at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
-                        at_gui.update_sliders(pdata)
-                    else
-                        if not elem_value or old_selected == index then return end
-                        if player.cursor_ghost then
-                            local old_config = old_selected and pdata.config_tmp.config[old_selected]
-                            -- "interrupted" click-drag, reset value
-                            if elem_value and old_config and old_config.name == elem_value then
-                                e.element.elem_value = nil
+                        at_gui.clear_button(pdata, index, e.element)
+                    elseif e.button == defines.mouse_button_type.left then
+                        if e.shift then
+                            local config_tmp = pdata.config_tmp
+                            local cursor_ghost = player.cursor_ghost
+                            --pickup ghost
+                            if elem_value and not cursor_ghost and not player.cursor_stack.valid_for_read then
+                                pdata.selected = index
+                                player.cursor_ghost = elem_value
+                            --drop ghost
+                            elseif cursor_ghost and old_selected then
+                                local old_config = config_tmp.config[old_selected]
+                                if elem_value and old_config and cursor_ghost.name == old_config.name then
+                                    local tmp = table.deep_copy(config_tmp.config[index])
+                                    config_tmp.config[index] = table.deep_copy(old_config)
+                                    config_tmp.config[index].slot = index
+                                    if tmp then
+                                        tmp.slot = old_selected
+                                    end
+                                    config_tmp.config[old_selected] = tmp
+                                    player.cursor_ghost = nil
+                                    pdata.selected = index
+                                    config_tmp.max_slot = index > config_tmp.max_slot and index or config_tmp.max_slot
+                                    at_gui.mark_dirty(pdata)
+                                end
+                                if not old_config then
+                                    pdata.selected = false
+                                    old_selected = false
+                                    player.cursor_ghost = nil
+                                end
+                            end
+                            at_gui.update_button(pdata, index, e.element)
+                            at_gui.update_button(pdata, old_selected)
+                            at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
+                            at_gui.update_sliders(pdata)
+                        else
+                            if not elem_value or old_selected == index then return end
+                            if player.cursor_ghost then
+                                local old_config = old_selected and pdata.config_tmp.config[old_selected]
+                                -- "interrupted" click-drag, reset value
+                                if elem_value and old_config and old_config.name == elem_value then
+                                    e.element.elem_value = nil
+                                    return
+                                end
+                            end
+                            pdata.selected = index
+                            if old_selected then
+                                local old = pdata.gui.main.slot_table.children[old_selected]
+                                at_gui.update_button(pdata, old_selected, old)
+                            end
+                            at_gui.update_button(pdata, index, e.element)
+                            at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
+                            at_gui.update_sliders(pdata)
+                        end
+                    end
+                end,
+                on_gui_elem_changed = function(e)
+                    local player = e.player
+                    local pdata = e.pdata
+                    local old_selected = pdata.selected
+                    --dragging to an empty slot, on_gui_click raised later
+                    if player.cursor_ghost and old_selected then return end
+
+                    local elem_value = e.element.elem_value
+                    local index = tonumber(e.element.name)
+                    if elem_value then
+                        local item_config = pdata.config_tmp.config[index]
+                        if item_config and elem_value == item_config.name then return end
+                        for i, v in pairs(pdata.config_tmp.config) do
+                            if i ~= index and elem_value == v.name then
+                                player.print({"cant-set-duplicate-request", item_prototype(elem_value).localised_name})
+                                pdata.selected = i
+                                at_gui.update_button(pdata, i, pdata.gui.main.slot_table.children[i])
+                                pdata.gui.main.config_rows.scroll_to_element(pdata.gui.main.slot_table.children[i], "top-third")
+                                if item_config then
+                                    e.element.elem_value = item_config.name
+                                else
+                                    e.element.elem_value = nil
+                                end
+                                at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
+                                at_gui.update_sliders(pdata)
                                 return
                             end
                         end
                         pdata.selected = index
-                        if old_selected then
-                            local old = pdata.gui.main.slot_table.children[old_selected]
-                            at_gui.update_button(pdata, old_selected, old)
+                        local request_amount = item_prototype(elem_value).default_request_amount
+                        local trash_amount = pdata.settings.trash_equals_requests and request_amount or constants.max_request
+                        local config_tmp = pdata.config_tmp
+                        config_tmp.config[index] = {
+                            name = elem_value, min = request_amount,
+                            max = trash_amount, slot = index
+                        }
+                        config_tmp.max_slot = index > config_tmp.max_slot and index or config_tmp.max_slot
+                        if config_tmp.config[index].min > 0 then
+                            config_tmp.c_requests = config_tmp.c_requests + 1
                         end
+                        at_gui.mark_dirty(pdata)
                         at_gui.update_button(pdata, index, e.element)
+                        if old_selected then
+                            at_gui.update_button(pdata, old_selected, pdata.gui.main.slot_table.children[old_selected])
+                        end
                         at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
                         at_gui.update_sliders(pdata)
+                    else
+                        at_gui.clear_button(pdata, index, e.element)
                     end
                 end
-            end,
-            on_gui_elem_changed = function(e)
-                local player = e.player
-                local pdata = e.pdata
-                local old_selected = pdata.selected
-                --dragging to an empty slot, on_gui_click raised later
-                if player.cursor_ghost and old_selected then return end
+            },
+            decrease = {
+                on_gui_click = function (e)
+                    at_gui.decrease_slots(e.player, e.pdata)
+                end,
+            },
+            increase = {
+                on_gui_click = function(e)
+                    at_gui.increase_slots(e.player, e.pdata)
+                end,
+            },
+        },
+        presets = {
+            save = {
+                on_gui_click = function(e)
+                    local player = e.player
+                    local pdata = e.pdata
+                    local textfield = pdata.gui.main.preset_textfield
+                    local name = textfield.text
+                    if at_gui.add_preset(player, pdata, name) then
+                        pdata.selected_presets = {[name] = true}
+                        at_gui.update_presets(pdata)
+                    else
+                        textfield.focus()
+                    end
 
-                local elem_value = e.element.elem_value
-                local index = tonumber(e.element.name)
-                if elem_value then
-                    local item_config = pdata.config_tmp.config[index]
-                    if item_config and elem_value == item_config.name then return end
-                    for i, v in pairs(pdata.config_tmp.config) do
-                        if i ~= index and elem_value == v.name then
-                            player.print({"cant-set-duplicate-request", item_prototype(elem_value).localised_name})
-                            pdata.selected = i
-                            at_gui.update_button(pdata, i, pdata.gui.main.slot_table.children[i])
-                            pdata.gui.main.config_rows.scroll_to_element(pdata.gui.main.slot_table.children[i], "top-third")
-                            if item_config then
-                                e.element.elem_value = item_config.name
+                end
+            },
+            load = {
+                on_gui_click = function(e)
+                    local player = e.player
+                    local pdata = e.pdata
+                    local name = e.element.caption
+                    if not e.shift and not e.control then
+                        pdata.selected_presets = {[name] = true}
+                        pdata.config_tmp = table.deep_copy(pdata.presets[name])
+                        pdata.selected = false
+                        pdata.gui.main.preset_textfield.text = name
+                    else
+                        local selected_presets = pdata.selected_presets
+                        if not selected_presets[name] then
+                            selected_presets[name] = true
+                        else
+                            selected_presets[name] = nil
+                        end
+                        local tmp = {config = {}, max_slot = 0, c_requests = 0}
+                        for key, _ in pairs(selected_presets) do
+                            presets.merge(tmp, pdata.presets[key])
+                        end
+                        pdata.config_tmp = tmp
+                        pdata.selected = false
+                    end
+                    at_gui.adjust_slots(player, pdata, pdata.config_tmp.max_slot)
+                    at_gui.update_buttons(pdata)
+                    at_gui.mark_dirty(pdata, true)
+                    at_gui.update_presets(pdata)
+                    at_gui.update_sliders(pdata)
+                end
+            },
+            delete = {
+                on_gui_click = function(e)
+                    local pdata = e.pdata
+                    local parent = e.element.parent
+                    local name = parent.name
+                    gui.update_filters("main.presets", e.player_index, {e.element.index, parent.children[1].index, parent.children[2].index}, "remove")
+                    parent.destroy()
+                    pdata.selected_presets[name] = nil
+                    pdata.death_presets[name] = nil
+                    pdata.presets[name] = nil
+                    at_gui.update_presets(pdata)
+            end
+            },
+            change_death_preset = {
+                on_gui_click = function(e)
+                    local pdata = e.pdata
+                    local name = e.element.parent.name
+                    if not (e.shift or e.control) then
+                        pdata.death_presets = {[name] = true}
+                    else
+                        local selected_presets = pdata.death_presets
+                        if not selected_presets[name] then
+                            selected_presets[name] = true
+                        else
+                            selected_presets[name] = nil
+                        end
+                    end
+                    at_gui.update_presets(pdata)
+                end,
+            },
+            textfield = {
+                on_gui_click = function(e)
+                    e.element.select_all()
+                end
+            }
+        },
+        sliders = {
+            request = {
+                on_gui_value_changed = function(e)
+                    local pdata = e.pdata
+                    if not pdata.selected then return end
+                    at_gui.update_request_config(tonumber_max(convert_from_slider(e.element.slider_value)) or 0, pdata)
+                end,
+                on_gui_text_changed = function(e)
+                    local pdata = e.pdata
+                    if not pdata.selected then return end
+                    at_gui.update_request_config(tonumber_max(e.element.text) or 0, pdata, true)
+                end,
+            },
+            trash = {
+                on_gui_value_changed = function(e)
+                    local pdata = e.pdata
+                    if not pdata.selected then return end
+                    local number
+                    if e.element.slider_value == 42 then
+                        number = constants.max_request
+                    else
+                        number = tonumber_max(convert_from_slider(e.element.slider_value)) or 0
+                    end
+                    at_gui.update_trash_config(e.player, pdata, number)
+                end,
+                on_gui_text_changed = function(e)
+                    local pdata = e.pdata
+                    if not pdata.selected then return end
+                    at_gui.update_trash_config(e.player, pdata, tonumber_max(e.element.text) or 0, true)
+                end,
+                on_gui_confirmed = function(e)
+                    local pdata = e.pdata
+                    if not pdata.selected then return end
+                    at_gui.update_trash_config(e.player, pdata, tonumber_max(e.element.text) or 0)
+                end
+            }
+        },
+        quick_actions = {
+            on_gui_selection_state_changed = function(e)
+                local pdata = e.pdata
+                local element = e.element
+                local index = element.selected_index
+                if index == 1 then return end
+
+                local config_tmp = pdata.config_tmp
+                if index == 2 then
+                    for _, config in pairs(config_tmp.config) do
+                        config.min = 0
+                    end
+                    config_tmp.c_requests = 0
+                elseif index == 3 then
+                    for _, config in pairs(config_tmp.config) do
+                        config.max = constants.max_request
+                    end
+                elseif index == 4 then
+                    config_tmp.config = {}
+                    config_tmp.max_slot = 0
+                    config_tmp.c_requests = 0
+                    pdata.selected = false
+                elseif index == 5 then
+                    for _, config in pairs(config_tmp.config) do
+                        if config.min > 0 then
+                            config.max = config.min
+                        end
+                    end
+                elseif index == 6 then
+                    local c = 0
+                    for _, config in pairs(config_tmp.config) do
+                        if config.max < constants.max_request then
+                            config.min = config.max
+                            c = config.min > 0 and c + 1 or c
+                        end
+                    end
+                    config_tmp.c_requests = c
+                end
+                element.selected_index = 1
+                at_gui.mark_dirty(pdata)
+                at_gui.update_sliders(pdata)
+                at_gui.update_buttons(pdata)
+            end
+        },
+        settings = {
+            toggle = {
+                on_gui_checked_state_changed = function(e)
+                    local pdata = e.pdata
+                    local player = e.player
+                    if not player.character then return end
+                    local name = e.element.name
+                    if at_gui.toggle_setting[name] then
+                        pdata.flags[name] = e.element.state
+                        e.element.state = at_gui.toggle_setting[name](e.player, pdata)
+                    end
+                end
+            },
+            add_network = {
+                on_gui_click = function(e)
+                    local player = e.player
+                    if not player.character then return end
+                    local pdata = e.pdata
+                    local new_network = at_util.get_network_entity(player)
+                    if new_network then
+                        if pdata.networks[new_network.unit_number] then return end
+                        local new_net = new_network.logistic_network
+                        for id, network in pairs(pdata.networks) do
+                            if network and network.valid then
+                                if network.logistic_network == new_net then
+                                    return
+                                end
                             else
-                                e.element.elem_value = nil
+                                pdata.networks[id] = nil
                             end
-                            at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
-                            at_gui.update_sliders(pdata)
+                        end
+                        pdata.networks[new_network.unit_number] = new_network
+                    else
+                        player.print{"at-message.not-in-network"}
+                    end
+                    at_gui.update_networks(player, pdata)
+                end
+            },
+            remove_network = {
+                on_gui_click = function(e)
+                    local player = e.player
+                    if not player.character then return end
+                    local pdata = e.pdata
+                    local current_network = at_util.get_network_entity(player)
+                    if current_network then
+                        if pdata.networks[current_network.unit_number] then
+                            pdata.networks[current_network.unit_number] = nil
+                            at_gui.update_networks(player, pdata)
                             return
                         end
-                    end
-                    pdata.selected = index
-                    local request_amount = item_prototype(elem_value).default_request_amount
-                    local trash_amount = pdata.settings.trash_equals_requests and request_amount or constants.max_request
-                    local config_tmp = pdata.config_tmp
-                    config_tmp.config[index] = {
-                        name = elem_value, min = request_amount,
-                        max = trash_amount, slot = index
-                    }
-                    config_tmp.max_slot = index > config_tmp.max_slot and index or config_tmp.max_slot
-                    if config_tmp.config[index].min > 0 then
-                        config_tmp.c_requests = config_tmp.c_requests + 1
-                    end
-                    at_gui.mark_dirty(pdata)
-                    at_gui.update_button(pdata, index, e.element)
-                    if old_selected then
-                        at_gui.update_button(pdata, old_selected, pdata.gui.main.slot_table.children[old_selected])
-                    end
-                    at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
-                    at_gui.update_sliders(pdata)
-                else
-                    at_gui.clear_button(pdata, index, e.element)
-                end
-            end
-        },
-        decrease = {
-            on_gui_click = function (e)
-                at_gui.decrease_slots(e.player, e.pdata)
-            end,
-        },
-        increase = {
-            on_gui_click = function(e)
-                at_gui.increase_slots(e.player, e.pdata)
-            end,
-        },
-    },
-    presets = {
-        save = {
-            on_gui_click = function(e)
-                local player = e.player
-                local pdata = e.pdata
-                local textfield = pdata.gui.main.preset_textfield
-                local name = textfield.text
-                if at_gui.add_preset(player, pdata, name) then
-                    pdata.selected_presets = {[name] = true}
-                    at_gui.update_presets(pdata)
-                else
-                    textfield.focus()
-                end
-
-            end
-        },
-        load = {
-            on_gui_click = function(e)
-                local player = e.player
-                local pdata = e.pdata
-                local name = e.element.caption
-                if not e.shift and not e.control then
-                    pdata.selected_presets = {[name] = true}
-                    pdata.config_tmp = table.deep_copy(pdata.presets[name])
-                    pdata.selected = false
-                    pdata.gui.main.preset_textfield.text = name
-                else
-                    local selected_presets = pdata.selected_presets
-                    if not selected_presets[name] then
-                        selected_presets[name] = true
-                    else
-                        selected_presets[name] = nil
-                    end
-                    local tmp = {config = {}, max_slot = 0, c_requests = 0}
-                    for key, _ in pairs(selected_presets) do
-                        presets.merge(tmp, pdata.presets[key])
-                    end
-                    pdata.config_tmp = tmp
-                    pdata.selected = false
-                end
-                at_gui.adjust_slots(player, pdata, pdata.config_tmp.max_slot)
-                at_gui.update_buttons(pdata)
-                at_gui.mark_dirty(pdata, true)
-                at_gui.update_presets(pdata)
-                at_gui.update_sliders(pdata)
-            end
-        },
-        delete = {
-            on_gui_click = function(e)
-                local pdata = e.pdata
-                local parent = e.element.parent
-                local name = parent.name
-                gui.update_filters("presets", e.player_index, {e.element.index, parent.children[1].index, parent.children[2].index}, "remove")
-                parent.destroy()
-                pdata.selected_presets[name] = nil
-                pdata.death_presets[name] = nil
-                pdata.presets[name] = nil
-                at_gui.update_presets(pdata)
-        end
-        },
-        change_death_preset = {
-            on_gui_click = function(e)
-                local pdata = e.pdata
-                local name = e.element.parent.name
-                if not (e.shift or e.control) then
-                    pdata.death_presets = {[name] = true}
-                else
-                    local selected_presets = pdata.death_presets
-                    if not selected_presets[name] then
-                        selected_presets[name] = true
-                    else
-                        selected_presets[name] = nil
-                    end
-                end
-                at_gui.update_presets(pdata)
-            end,
-        },
-        textfield = {
-            on_gui_click = function(e)
-                e.element.select_all()
-            end
-        }
-    },
-    sliders = {
-        request = {
-            on_gui_value_changed = function(e)
-                local pdata = e.pdata
-                if not pdata.selected then return end
-                at_gui.update_request_config(tonumber_max(convert_from_slider(e.element.slider_value)) or 0, pdata)
-            end,
-            on_gui_text_changed = function(e)
-                local pdata = e.pdata
-                if not pdata.selected then return end
-                at_gui.update_request_config(tonumber_max(e.element.text) or 0, pdata, true)
-            end,
-        },
-        trash = {
-            on_gui_value_changed = function(e)
-                local pdata = e.pdata
-                if not pdata.selected then return end
-                local number
-                if e.element.slider_value == 42 then
-                    number = constants.max_request
-                else
-                    number = tonumber_max(convert_from_slider(e.element.slider_value)) or 0
-                end
-                at_gui.update_trash_config(e.player, pdata, number)
-            end,
-            on_gui_text_changed = function(e)
-                local pdata = e.pdata
-                if not pdata.selected then return end
-                at_gui.update_trash_config(e.player, pdata, tonumber_max(e.element.text) or 0, true)
-            end,
-            on_gui_confirmed = function(e)
-                local pdata = e.pdata
-                if not pdata.selected then return end
-                at_gui.update_trash_config(e.player, pdata, tonumber_max(e.element.text) or 0)
-            end
-        }
-    },
-    quick_actions = {
-        on_gui_selection_state_changed = function(e)
-            local pdata = e.pdata
-            local element = e.element
-            local index = element.selected_index
-            if index == 1 then return end
-
-            local config_tmp = pdata.config_tmp
-            if index == 2 then
-                for _, config in pairs(config_tmp.config) do
-                    config.min = 0
-                end
-                config_tmp.c_requests = 0
-            elseif index == 3 then
-                for _, config in pairs(config_tmp.config) do
-                    config.max = constants.max_request
-                end
-            elseif index == 4 then
-                config_tmp.config = {}
-                config_tmp.max_slot = 0
-                config_tmp.c_requests = 0
-                pdata.selected = false
-            elseif index == 5 then
-                for _, config in pairs(config_tmp.config) do
-                    if config.min > 0 then
-                        config.max = config.min
-                    end
-                end
-            elseif index == 6 then
-                local c = 0
-                for _, config in pairs(config_tmp.config) do
-                    if config.max < constants.max_request then
-                        config.min = config.max
-                        c = config.min > 0 and c + 1 or c
-                    end
-                end
-                config_tmp.c_requests = c
-            end
-            element.selected_index = 1
-            at_gui.mark_dirty(pdata)
-            at_gui.update_sliders(pdata)
-            at_gui.update_buttons(pdata)
-        end
-    },
-    settings = {
-        toggle = {
-            on_gui_checked_state_changed = function(e)
-                local pdata = e.pdata
-                local player = e.player
-                if not player.character then return end
-                local name = e.element.name
-                if at_gui.toggle_setting[name] then
-                    pdata.flags[name] = e.element.state
-                    e.element.state = at_gui.toggle_setting[name](e.player, pdata)
-                end
-            end
-        },
-        add_network = {
-            on_gui_click = function(e)
-                local player = e.player
-                if not player.character then return end
-                local pdata = e.pdata
-                local new_network = at_util.get_network_entity(player)
-                if new_network then
-                    if pdata.networks[new_network.unit_number] then return end
-                    local new_net = new_network.logistic_network
-                    for id, network in pairs(pdata.networks) do
-                        if network and network.valid then
-                            if network.logistic_network == new_net then
-                                return
-                            end
-                        else
-                            pdata.networks[id] = nil
-                        end
-                    end
-                    pdata.networks[new_network.unit_number] = new_network
-                else
-                    player.print{"at-message.not-in-network"}
-                end
-                at_gui.update_networks(player, pdata)
-            end
-        },
-        remove_network = {
-            on_gui_click = function(e)
-                local player = e.player
-                if not player.character then return end
-                local pdata = e.pdata
-                local current_network = at_util.get_network_entity(player)
-                if current_network then
-                    if pdata.networks[current_network.unit_number] then
-                        pdata.networks[current_network.unit_number] = nil
-                        at_gui.update_networks(player, pdata)
-                        return
-                    end
-                    local new_net = current_network.logistic_network
-                    for id, network in pairs(pdata.networks) do
-                        if network and network.valid then
-                            if network.logistic_network == new_net then
+                        local new_net = current_network.logistic_network
+                        for id, network in pairs(pdata.networks) do
+                            if network and network.valid then
+                                if network.logistic_network == new_net then
+                                    pdata.networks[id] = nil
+                                    return
+                                end
+                            else
                                 pdata.networks[id] = nil
-                                return
                             end
-                        else
-                            pdata.networks[id] = nil
                         end
+                    else
+                        player.print{"at-message.not-in-network"}
                     end
-                else
-                    player.print{"at-message.not-in-network"}
+                    at_gui.update_networks(player, pdata)
                 end
-                at_gui.update_networks(player, pdata)
-            end
+            },
+            edit_networks = {
+                on_gui_click = function(e)
+                    local pdata = e.pdata
+                    at_gui.update_networks(e.player, pdata)
+                    local visible = not pdata.gui.main.networks.visible
+                    e.element.style = visible and "at_selected_tool_button" or "tool_button"
+                    pdata.gui.main.networks.visible = visible
+                    pdata.gui.main.presets.visible = not visible
+                end
+            },
         },
-        edit_networks = {
-            on_gui_click = function(e)
-                local pdata = e.pdata
-                at_gui.update_networks(e.player, pdata)
-                local visible = not pdata.gui.main.networks.visible
-                e.element.style = visible and "at_selected_tool_button" or "tool_button"
-                pdata.gui.main.networks.visible = visible
-                pdata.gui.main.presets.visible = not visible
-            end
-        },
-    },
+        networks = {
+            view = {
+                on_gui_click = function(e)
+                    local pdata = e.pdata
+                    local id = tonumber(e.element.parent.name)
+                    local entity = pdata.networks[id]
+                    if entity and entity.valid then
+                        e.player.zoom_to_world(entity.position, 0.3)
+                    end
+                end
+            },
+            remove = {
+                on_gui_click = function(e)
+                    local pdata = e.pdata
+                    local flow = e.element.parent
+                    local id = tonumber(flow.name)
+                    if id then
+                        pdata.networks[id] = nil
+                    end
+                    gui.update_filters("main.networks", e.player_index, {e.element.index, flow.children[2].index}, "remove")
+                    flow.destroy()
+                end
+            }
+        }
+},
     import = {
         import_button = {
             on_gui_click = function(e)
@@ -930,30 +958,6 @@ at_gui.handlers = {
             end
         }
     },
-    networks = {
-        view = {
-            on_gui_click = function(e)
-                local pdata = e.pdata
-                local id = tonumber(e.element.parent.name)
-                local entity = pdata.networks[id]
-                if entity and entity.valid then
-                    e.player.zoom_to_world(entity.position, 0.3)
-                end
-            end
-        },
-        remove = {
-            on_gui_click = function(e)
-                local pdata = e.pdata
-                local flow = e.element.parent
-                local id = tonumber(flow.name)
-                if id then
-                    pdata.networks[id] = nil
-                end
-                gui.update_filters("networks", e.player_index, {e.element.index, flow.children[2].index}, "remove")
-                flow.destroy()
-            end
-        }
-    }
 }
 gui.add_handlers(at_gui.handlers)
 
@@ -1038,8 +1042,8 @@ at_gui.adjust_slots = function(player, pdata, slots)
 
     local diff = slots - old_slots
     if diff > 0 then
-        gui.update_filters("slots.decrease", player.index, nil, "remove")
-        gui.update_filters("slots.increase", player.index, nil, "remove")
+        gui.update_filters("main.slots.decrease", player.index, nil, "remove")
+        gui.update_filters("main.slots.increase", player.index, nil, "remove")
         slot_table.count_change.destroy()
         for i = old_slots+1, slots do
             gui.build(slot_table, {at_gui.templates.slot_table.button(i, pdata)})
@@ -1048,7 +1052,7 @@ at_gui.adjust_slots = function(player, pdata, slots)
     elseif diff < 0 then
         for i = old_slots, slots+1, -1 do
             local btn = slot_table.children[i]
-            gui.update_filters("slots.item_button", player.index, {btn.index}, "remove")
+            gui.update_filters("main.slots.item_button", player.index, {btn.index}, "remove")
             btn.destroy()
         end
         if slots < step then
@@ -1228,7 +1232,7 @@ at_gui.update_networks = function(player, pdata)
     if not pdata.flags.gui_open then return end
     local networks = pdata.gui.main.networks_flow
     networks.clear()
-    gui.update_filters("networks", player.index, nil, "remove")
+    gui.update_filters("main.networks", player.index, nil, "remove")
     gui.build(networks, at_gui.templates.networks(pdata))
 end
 
@@ -1284,8 +1288,8 @@ function at_gui.create_main_window(player, pdata)
                                             {type = "label", caption = {"at-gui.request"}}
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
-                                            {type = "slider", save_as = "main.sliders.request", handlers = "sliders.request", minimum_value = 0, maximum_value = 42},
-                                            {type = "textfield", save_as = "main.sliders.request_text", handlers = "sliders.request", style = "slider_value_textfield",
+                                            {type = "slider", save_as = "main.sliders.request", handlers = "main.sliders.request", minimum_value = 0, maximum_value = 42},
+                                            {type = "textfield", save_as = "main.sliders.request_text", handlers = "main.sliders.request", style = "slider_value_textfield",
                                                 numeric = true,
                                                 allow_negative = false,
                                                 lose_focus_on_confirm = true
@@ -1295,15 +1299,15 @@ function at_gui.create_main_window(player, pdata)
                                             {type = "label", caption={"at-gui.trash"}},
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
-                                            {type = "slider", save_as = "main.sliders.trash", handlers = "sliders.trash", minimum_value = 0, maximum_value = 42},
-                                            {type = "textfield", save_as = "main.sliders.trash_text", handlers = "sliders.trash", style = "slider_value_textfield",
+                                            {type = "slider", save_as = "main.sliders.trash", handlers = "main.sliders.trash", minimum_value = 0, maximum_value = 42},
+                                            {type = "textfield", save_as = "main.sliders.trash_text", handlers = "main.sliders.trash", style = "slider_value_textfield",
                                                 numeric = true,
                                                 allow_negative = false,
                                                 lose_focus_on_confirm = true
                                             },
                                         }},
                                     }},
-                                    {type = "drop-down", style = "at_quick_actions", handlers = "quick_actions",
+                                    {type = "drop-down", style = "at_quick_actions", handlers = "main.quick_actions",
                                         items = constants.quick_actions,
                                         selected_index = 1,
                                         tooltip = {"at-gui.tooltip-quick-actions"}
@@ -1324,9 +1328,9 @@ function at_gui.create_main_window(player, pdata)
                         }},
                         {type = "flow", direction="vertical", style_mods = {maximal_width = 274, padding= 12, top_padding = 8, vertical_spacing = 12}, children = {
                             {type = "flow", children = {
-                                {type = "textfield", style = "at_save_as_textfield", save_as = "main.preset_textfield", handlers = "presets.textfield", text = ""},
+                                {type = "textfield", style = "at_save_as_textfield", save_as = "main.preset_textfield", handlers = "main.presets.textfield", text = ""},
                                 at_gui.templates.pushers.horizontal,
-                                {type = "button", caption = {"gui-save-game.save"}, style = "at_save_button", handlers = "presets.save"}
+                                {type = "button", caption = {"gui-save-game.save"}, style = "at_save_button", handlers = "main.presets.save"}
                             }},
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
                                 {type = "scroll-pane", style_mods = {extra_top_padding_when_activated = 0, extra_left_padding_when_activated = 0, extra_right_padding_when_activated = 0}, children = {
@@ -1562,11 +1566,6 @@ function at_gui.destroy(player, pdata)
         pdata.gui.main.window.destroy()
     end
     gui.update_filters("main", player.index, nil, "remove")
-    gui.update_filters("slots", player.index, nil, "remove")
-    gui.update_filters("presets", player.index, nil, "remove")
-    gui.update_filters("settings", player.index, nil, "remove")
-    gui.update_filters("sliders", player.index, nil, "remove")
-    gui.update_filters("quick_actions", player.index, nil, "remove")
     pdata.gui.main = {}
     pdata.flags.gui_open = false
     if pdata.gui.import and pdata.gui.import.window then
