@@ -68,7 +68,6 @@ styles["at_main_flow"] = {
     type = "horizontal_flow_style",
     parent = "horizontal_flow",
     padding = 0
-
 }
 
 styles["at_save_button"] = {
@@ -121,11 +120,7 @@ styles["at_delete_preset"] = {
 
 styles["at_preset_button_small"] = {
     type = "button_style",
-    parent = "button",
-    width = 28,
-    height = 28,
-    -- natural_width = 28,
-    -- natural_height = 28,
+    parent = "tool_button",
     padding = 0
 }
 
@@ -185,3 +180,35 @@ styles["at_filter_group_table"] = {
         overall_tiling_vertical_spacing = 8
     }
 }
+
+styles["at_right_container_flow"] = {
+    type = "vertical_flow_style",
+    maximal_width = 274,
+    padding= 12,
+    top_padding = 8,
+    vertical_spacing = 12
+}
+
+styles["at_right_scroll_pane"] = {
+    type = "scroll_pane_style",
+    extra_top_padding_when_activated = 0,
+    extra_left_padding_when_activated = 0,
+    extra_right_padding_when_activated = 0
+}
+
+styles["at_right_flow_in_scroll_pane"] = {
+    type = "vertical_flow_style",
+    vertically_stretchable = "on",
+    left_padding = 8,
+    right_padding = 8,
+    top_padding = 8,
+    width = 230
+}
+
+styles["at_bordered_frame"] = {
+    type = "frame_style",
+    parent = "bordered_frame",
+    right_padding = 8,
+    horizontally_stretchable = "on",
+}
+

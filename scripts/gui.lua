@@ -189,10 +189,7 @@ at_gui.templates = {
             for i=1, btns do
                 ret.children[i] = at_gui.templates.slot_table.button(i, pdata)
             end
-            ret.children[btns+1] = {type = "flow", name = "count_change", direction="vertical", style_mods = {vertical_spacing=0}, children={
-                {type = "button", caption="-", handlers="main.slots.decrease", style = "slot_count_change_button"},
-                {type = "button", caption="+", handlers = "main.slots.increase", style = "slot_count_change_button"}
-            }}
+            ret.children[btns+1] = at_gui.templates.slot_table.count_change()
             return ret
         end,
         button = function(i, pdata)
@@ -200,10 +197,11 @@ at_gui.templates = {
             local config = pdata.config_tmp.config[i]
             local req = config and format_number(format_request(config), true) or ""
             local trash = config and format_number(format_trash(config), true) or ""
-            return {type = "choose-elem-button", name = i, elem_mods = {elem_value = config and config.name, locked = config and i ~= pdata.selected}, handlers = "main.slots.item_button", elem_type = "item", style = style, children = {
-                {type = "label", style = "at_request_label_top", ignored_by_interaction = true, caption = req},
-                {type = "label", style = "at_request_label_bottom", ignored_by_interaction = true, caption = trash}
-            }}
+            return {type = "choose-elem-button", name = i, elem_mods = {elem_value = config and config.name, locked = config and i ~= pdata.selected},
+                        handlers = "main.slots.item_button", elem_type = "item", style = style, children = {
+                        {type = "label", style = "at_request_label_top", ignored_by_interaction = true, caption = req},
+                        {type = "label", style = "at_request_label_bottom", ignored_by_interaction = true, caption = trash}
+                    }}
         end,
         count_change = function()
             return {type = "flow", name = "count_change", direction="vertical", style_mods = {vertical_spacing=0}, children={
@@ -212,7 +210,13 @@ at_gui.templates = {
             }}
         end,
     },
-    frame_action_button = {type = "sprite-button", style = "frame_action_button", mouse_button_filter={"left"}},
+    frame_action_button = function(params)
+        local ret = {type = "sprite-button", style = "frame_action_button", mouse_button_filter={"left"}}
+        for k, v in pairs(params) do
+            ret[k] = v
+        end
+        return ret
+    end,
     pushers = {
         horizontal = {type = "empty-widget", style_mods = {horizontally_stretchable = true}},
         vertical = {type = "empty-widget", style_mods = {vertically_stretchable = true}}
@@ -225,10 +229,11 @@ at_gui.templates = {
                 {type = "flow", save_as = "window.titlebar", children = {
                     {type = "label", style = "frame_title", caption = caption, elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
-                    {template = "frame_action_button", sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
-                        handlers = "import.close_button", save_as = "close_button"}
+                    at_gui.templates.frame_action_button{handlers = "import.close_button", save_as = "close_button",
+                        sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black"
+                    }
                 }},
-                {type = "text-box", text = bp_string, save_as = "window.textbox", elem_mods = {word_wrap = true}, style_mods = {width=400, height = 250}},
+                {type = "text-box", text = bp_string, save_as = "window.textbox", elem_mods = {word_wrap = true}, style_mods = {width = 400, height = 250}},
                 {type = "flow", direction = "horizontal", children={
                         at_gui.templates.pushers.horizontal,
                         {type = "label", name = "mode", caption = mode, visible = false},
@@ -237,8 +242,8 @@ at_gui.templates = {
             }}
     end,
 
-    settings = function(flags, pdata)
-        return {type = "frame", style = "bordered_frame", style_mods = {right_padding = 8, horizontally_stretchable = "on"}, children = {
+    settings = function(flags)
+        return {type = "frame", style = "at_bordered_frame", children = {
             {type = "flow", direction = "vertical", save_as = "main.trash_options", children = {
                 {
                     type = "checkbox",
@@ -278,9 +283,7 @@ at_gui.templates = {
                     handlers = "main.settings.toggle"
                 },
                 {
-                    type = "flow",
-                    style_mods = {vertical_align = "center"},
-                    children = {
+                    type = "flow", style_mods = {vertical_align = "center"}, children = {
                         {type = "label", caption = "Main networks: "},
                         {type = "button", caption = "+", style = "tool_button", handlers = "main.settings.add_network", tooltip = {"at-gui.tooltip-add-network"}},
                         {type = "button", caption = "-", style = "tool_button", handlers = "main.settings.remove_network", tooltip = {"at-gui.tooltip-remove-network"}},
@@ -329,7 +332,6 @@ at_gui.templates = {
         return ret
     end,
 }
-gui.add_templates(at_gui.templates)
 
 at_gui.handlers = {
     mod_gui_button = {
@@ -1269,17 +1271,18 @@ function at_gui.create_main_window(player, pdata)
     local max_height = (player.display_resolution.height / player.display_scale) * 0.97
     local max_width = (player.display_resolution.width / player.display_scale)
     local gui_data = gui.build(player.gui.screen,{
-        {type = "frame", style = "outer_frame", handlers = "main.window", style_mods = {maximal_width = max_width, maximal_height = max_height}, save_as = "main.window", children = {
+        {type = "frame", style = "outer_frame", style_mods = {maximal_width = max_width, maximal_height = max_height},
+            handlers = "main.window", save_as = "main.window", children = {
             {type = "frame", style = "inner_frame_in_outer_frame", direction = "vertical", children = {
                 {type = "flow", save_as = "main.titlebar.flow", children = {
                     {type = "label", style = "frame_title", caption = {"mod-name.AutoTrash"}, elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
-                    {template="frame_action_button", tooltip={"at-gui.keep-open"}, sprite="at_pin_white", hovered_sprite="at_pin_black", clicked_sprite="at_pin_black",
-                        handlers="main.pin_button", save_as="main.titlebar.pin_button"},
-                    {template = "frame_action_button", sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
+                    at_gui.templates.frame_action_button{sprite="at_pin_white", hovered_sprite="at_pin_black", clicked_sprite="at_pin_black",
+                        handlers="main.pin_button", save_as="main.titlebar.pin_button", tooltip={"at-gui.keep-open"}},
+                    at_gui.templates.frame_action_button{sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
                         handlers = "main.close_button", save_as = "main.titlebar.close_button"}
                 }},
-                {type = "flow", direction = "horizontal", style_mods = {horizontal_spacing = 12}, children = {
+                {type = "flow", direction = "horizontal", style = "inset_frame_container_horizontal_flow", children = {
                     {type = "frame", style = "inside_shallow_frame", direction = "vertical", children = {
                         {type = "frame", style = "subheader_frame", children={
                             {type = "label", style = "subheader_caption_label", caption = {"at-gui.logistics-configuration"}},
@@ -1302,7 +1305,7 @@ function at_gui.create_main_window(player, pdata)
                                     }
                                 }
                             }},
-                            {type = "frame", style = "bordered_frame", style_mods = {right_padding = 8, horizontally_stretchable = "on"}, children = {
+                            {type = "frame", style = "at_bordered_frame", children = {
                                 {type = "flow", direction = "vertical", children = {
                                     {type = "table", save_as = "main.sliders.table", style_mods = {height = 60}, column_count = 2, children = {
                                         {type = "flow", direction = "horizontal", children = {
@@ -1310,10 +1313,8 @@ function at_gui.create_main_window(player, pdata)
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
                                             {type = "slider", save_as = "main.sliders.request", handlers = "main.sliders.request", minimum_value = 0, maximum_value = 42},
-                                            {type = "textfield", save_as = "main.sliders.request_text", handlers = "main.sliders.request", style = "slider_value_textfield",
-                                                numeric = true,
-                                                allow_negative = false,
-                                                lose_focus_on_confirm = true
+                                            {type = "textfield", style = "slider_value_textfield", numeric = true, allow_negative = false, lose_focus_on_confirm = true,
+                                                save_as = "main.sliders.request_text", handlers = "main.sliders.request"
                                             },
                                         }},
                                         {type = "flow", direction = "horizontal", children = {
@@ -1321,10 +1322,8 @@ function at_gui.create_main_window(player, pdata)
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
                                             {type = "slider", save_as = "main.sliders.trash", handlers = "main.sliders.trash", minimum_value = 0, maximum_value = 42},
-                                            {type = "textfield", save_as = "main.sliders.trash_text", handlers = "main.sliders.trash", style = "slider_value_textfield",
-                                                numeric = true,
-                                                allow_negative = false,
-                                                lose_focus_on_confirm = true
+                                            {type = "textfield", style = "slider_value_textfield", numeric = true, allow_negative = false, lose_focus_on_confirm = true,
+                                                save_as = "main.sliders.trash_text", handlers = "main.sliders.trash"
                                             },
                                         }},
                                     }},
@@ -1336,7 +1335,7 @@ function at_gui.create_main_window(player, pdata)
                                     at_gui.templates.pushers.horizontal
                                 }}
                             }},
-                            at_gui.templates.settings(flags, pdata),
+                            at_gui.templates.settings(flags),
                         }},
 
                     }},
@@ -1344,18 +1343,20 @@ function at_gui.create_main_window(player, pdata)
                         {type = "frame", style = "subheader_frame", children={
                             {type = "label", style = "subheader_caption_label", caption = {"at-gui.presets"}},
                             at_gui.templates.pushers.horizontal,
-                            {type = "sprite-button", style = "tool_button", handlers = "main.export_all", sprite = "utility/export_slot", tooltip = {"at-gui.tooltip-export-all"}},
-                            {type = "sprite-button", style = "tool_button", handlers = "main.import_all", sprite = "at_import_string", tooltip = {"at-gui.tooltip-import-all"}},
+                            {type = "sprite-button", style = "tool_button", handlers = "main.export_all", sprite = "utility/export_slot",
+                                tooltip = {"at-gui.tooltip-export-all"}},
+                            {type = "sprite-button", style = "tool_button", handlers = "main.import_all", sprite = "at_import_string",
+                                tooltip = {"at-gui.tooltip-import-all"}},
                         }},
-                        {type = "flow", direction="vertical", style_mods = {maximal_width = 274, padding= 12, top_padding = 8, vertical_spacing = 12}, children = {
+                        {type = "flow", direction="vertical", style = "at_right_container_flow", children = {
                             {type = "flow", children = {
                                 {type = "textfield", style = "long_number_textfield", save_as = "main.preset_textfield", handlers = "main.presets.textfield", text = ""},
                                 at_gui.templates.pushers.horizontal,
                                 {type = "button", caption = {"gui-save-game.save"}, style = "at_save_button", handlers = "main.presets.save"}
                             }},
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
-                                {type = "scroll-pane", style_mods = {extra_top_padding_when_activated = 0, extra_left_padding_when_activated = 0, extra_right_padding_when_activated = 0}, children = {
-                                    {type = "flow", direction = "vertical", save_as = "main.presets_flow", style_mods = {vertically_stretchable = "on", left_padding = 8, top_padding = 8, width = 230}, children =
+                                {type = "scroll-pane", style = "at_right_scroll_pane", children = {
+                                    {type = "flow", direction = "vertical", save_as = "main.presets_flow", style = "at_right_flow_in_scroll_pane", children =
                                         at_gui.templates.presets(pdata),
                                     },
                                 }}
@@ -1369,10 +1370,10 @@ function at_gui.create_main_window(player, pdata)
                             {type = "sprite-button", style = "tool_button", handlers = "main.settings.selection_tool", style_mods = {padding = 0},
                                 sprite = "autotrash_selection", tooltip = {"at-gui.tooltip-selection-tool"}},
                         }},
-                        {type = "flow", direction="vertical", style_mods = {maximal_width = 274, padding= 12, top_padding = 8, vertical_spacing = 12}, children = {
+                        {type = "flow", direction = "vertical", style = "at_right_container_flow", children = {
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
-                                {type = "scroll-pane", style_mods = {extra_top_padding_when_activated = 0, extra_left_padding_when_activated = 0, extra_right_padding_when_activated = 0}, children = {
-                                    {type = "flow", direction = "vertical", save_as = "main.networks_flow", style_mods = {vertically_stretchable = "on", left_padding = 8, right_padding = 8, top_padding = 8, width = 230}, children =
+                                {type = "scroll-pane", style = "at_right_scroll_pane", children = {
+                                    {type = "flow", direction = "vertical", save_as = "main.networks_flow", style = "at_right_flow_in_scroll_pane", children =
                                         at_gui.templates.networks(pdata),
                                     },
                                 }}

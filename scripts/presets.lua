@@ -2,17 +2,6 @@ local table = require("__flib__.table")
 local max_request = require("constants").max_request
 local presets = {}
 
-local function log_blueprint_entities(ents)--luacheck: ignore
-    for i, ent in pairs(ents) do
-        log(serpent.line({name = ent.name, entity_number = ent.entity_number, position = ent.position}))
-        if ent.control_behavior then
-            for j, item in pairs(ent.control_behavior.filters) do
-                log("\t" .. serpent.line(item))
-            end
-        end
-    end
-end
-
 --merge 2 presets,
 --requests and trash are set to max(current, preset)
 --if one preset has trash set to false it is set to a non false value
