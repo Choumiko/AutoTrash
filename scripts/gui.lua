@@ -1328,7 +1328,7 @@ function at_gui.create_main_window(player, pdata)
                         }},
                         {type = "flow", direction="vertical", style_mods = {maximal_width = 274, padding= 12, top_padding = 8, vertical_spacing = 12}, children = {
                             {type = "flow", children = {
-                                {type = "textfield", style = "at_save_as_textfield", save_as = "main.preset_textfield", handlers = "main.presets.textfield", text = ""},
+                                {type = "textfield", style = "long_number_textfield", save_as = "main.preset_textfield", handlers = "main.presets.textfield", text = ""},
                                 at_gui.templates.pushers.horizontal,
                                 {type = "button", caption = {"gui-save-game.save"}, style = "at_save_button", handlers = "main.presets.save"}
                             }},
@@ -1402,7 +1402,7 @@ function at_gui.init(player, pdata)
     else
         pdata.gui.mod_gui.flow = mod_gui.get_button_flow(player).add{type = "flow", direction = "horizontal", name =  "autotrash_main_flow", style = "at_main_flow"}
     end
-    pdata.gui.mod_gui.button = pdata.gui.mod_gui.flow.add{type = "sprite-button", name = "at_config_button", style = "at_sprite_button", sprite = "autotrash_trash",
+    pdata.gui.mod_gui.button = pdata.gui.mod_gui.flow.add{type = "sprite-button", name = "at_config_button", style = mod_gui.button_style, sprite = "autotrash_trash",
         tooltip = {"at-gui.tooltip-main-button", pdata.flags.status_display_open and "On" or "Off"}}
     gui.update_filters("mod_gui_button", player.index, {pdata.gui.mod_gui.button.index}, "add")
     pdata.gui.mod_gui.flow.visible = visible

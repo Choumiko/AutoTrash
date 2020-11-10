@@ -26,11 +26,6 @@ styles["at_request_label_top"] = {
     vertical_align = "top",
 }
 
-styles["at_button_slot"] = {
-    type = "button_style",
-    parent = "slot_button",
-}
-
 styles["at_main_flow"] = {
     type = "horizontal_flow_style",
     parent = "horizontal_flow",
@@ -44,14 +39,10 @@ styles["at_save_button"] = {
     width = 60
 }
 
-styles["at_sprite_button"] = {
-    type = "button_style",
-    parent = "mod_gui_button",
-}
-
 styles["at_preset_button"] = {
     type = "button_style",
     parent = "button",
+    width = 150,
 }
 
 local button = styles.button
@@ -118,17 +109,6 @@ styles["at_request_status_table"] = {
     type = "table_style",
     horizontal_spacing = 1,
     vertical_spacing = 1
-}
-
-styles["at_preset_button"] = {
-    type = "button_style",
-    width = 150
-}
-
-styles["at_save_as_textfield"] = {
-    type = "textbox_style",
-    horizontally_stretchable = "on",
-    width = 150
 }
 
 styles["at_quick_actions"] = {

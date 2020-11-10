@@ -164,6 +164,9 @@ local migrations = {
     ["5.2.14"] = function()
         for _, pdata in pairs(global._pdata) do
             pdata.networks = {}
+            if pdata.gui.mod_gui.button and pdata.gui.mod_gui.button.valid then
+                pdata.gui.mod_gui.button.style = mod_gui.button_style
+            end
             if pdata.main_network and pdata.main_network.valid then
                 pdata.networks[pdata.main_network.unit_number] = pdata.main_network
             end

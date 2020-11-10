@@ -81,6 +81,7 @@ local function on_configuration_changed(data)
             local player = game.get_player(index)
             player_data.refresh(player, pdata)
             at_gui.recreate(player, pdata)
+            --TODO: remove
             if __DebugAdapter then
                 at_gui.open(player, pdata)
             end
