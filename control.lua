@@ -138,6 +138,54 @@ local function on_player_toggled_map_editor(e)
 end
 event.on_player_toggled_map_editor(on_player_toggled_map_editor)
 
+event.on_player_selected_area(function(e)
+    if e.item ~= "autotrash-network-selection" then return end
+    local player = game.get_player(e.player_index)
+    local pdata = global._pdata[e.player_index]
+    for _, roboport in pairs(e.entities) do
+        local robo_id = roboport.unit_number
+        if not pdata.networks[robo_id] then
+            local network = roboport.logistic_network
+            for id, main_net in pairs(pdata.networks) do
+                if main_net and main_net.valid and main_net.logistic_network == network then
+                    player.print{"at-message.network-exists", {"gui-logistic.network"}, id}
+                    goto continue
+                end
+            end
+            pdata.networks[robo_id] = roboport
+            player.print{"at-message.added-network", {"gui-logistic.network"}, robo_id}
+        else
+            player.print{"at-message.network-exists", {"gui-logistic.network"}, robo_id}
+        end
+        ::continue::
+    end
+    at_gui.update_networks(player, pdata)
+end)
+
+event.on_player_alt_selected_area(function(e)
+    if e.item ~= "autotrash-network-selection" then return end
+    local player = game.get_player(e.player_index)
+    local pdata = global._pdata[e.player_index]
+    for _, roboport in pairs(e.entities) do
+        if pdata.networks[roboport.unit_number] then
+            pdata.networks[roboport.unit_number] = nil
+            player.print{"at-message.removed-network", {"gui-logistic.network"}, roboport.unit_number}
+        else
+            local network = roboport.logistic_network
+            for id, main_net in pairs(pdata.networks) do
+                if main_net and main_net.valid and main_net.logistic_network == network then
+                    pdata.networks[id] = nil
+                    player.print{"at-message.removed-network", {"gui-logistic.network"}, id}
+                    goto continue
+                end
+            end
+        end
+        ::continue::
+    end
+    at_gui.update_networks(player, pdata)
+end)
+
+
 --TODO Display paused icons/checkboxes without clearing the requests?
 -- Vanilla now pauses logistic requests and trash when dying
 

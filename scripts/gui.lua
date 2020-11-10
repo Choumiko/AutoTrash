@@ -843,18 +843,24 @@ at_gui.handlers = {
                     local pdata = e.pdata
                     local new_network = at_util.get_network_entity(player)
                     if new_network then
-                        if pdata.networks[new_network.unit_number] then return end
+                        local id = new_network.unit_number
+                        if pdata.networks[id] then
+                            player.print{"at-message.network-exists", {"gui-logistic.network"}, id}
+                            return
+                        end
                         local new_net = new_network.logistic_network
                         for id, network in pairs(pdata.networks) do
                             if network and network.valid then
                                 if network.logistic_network == new_net then
+                                    player.print{"at-message.network-exists", {"gui-logistic.network"}, id}
                                     return
                                 end
                             else
                                 pdata.networks[id] = nil
                             end
                         end
-                        pdata.networks[new_network.unit_number] = new_network
+                        pdata.networks[id] = new_network
+                        player.print{"at-message.added-network", {"gui-logistic.network"}, id}
                     else
                         player.print{"at-message.not-in-network"}
                     end
@@ -868,8 +874,10 @@ at_gui.handlers = {
                     local pdata = e.pdata
                     local current_network = at_util.get_network_entity(player)
                     if current_network then
-                        if pdata.networks[current_network.unit_number] then
-                            pdata.networks[current_network.unit_number] = nil
+                        local nid = current_network.unit_number
+                        if pdata.networks[nid] then
+                            pdata.networks[nid] = nil
+                            player.print{"at-message.removed-network", {"gui-logistic.network"}, nid}
                             at_gui.update_networks(player, pdata)
                             return
                         end
@@ -878,6 +886,7 @@ at_gui.handlers = {
                             if network and network.valid then
                                 if network.logistic_network == new_net then
                                     pdata.networks[id] = nil
+                                    player.print{"at-message.removed-network", {"gui-logistic.network"}, id}
                                     return
                                 end
                             else
@@ -900,6 +909,18 @@ at_gui.handlers = {
                     pdata.gui.main.presets.visible = not visible
                 end
             },
+            selection_tool = {
+                on_gui_click = function(e)
+                    local player = e.player
+                    local cursor_stack = player.cursor_stack
+                    if cursor_stack and cursor_stack.valid_for_read then
+                        player.clean_cursor()
+                    end
+                    if cursor_stack.set_stack{name = "autotrash-network-selection", count = 1} then
+                        at_gui.close(player, e.pdata, true)
+                    end
+                end,
+            }
         },
         networks = {
             view = {
@@ -923,7 +944,7 @@ at_gui.handlers = {
                     gui.update_filters("main.networks", e.player_index, {e.element.index, flow.children[2].index}, "remove")
                     flow.destroy()
                 end
-            }
+            },
         }
 },
     import = {
@@ -1345,6 +1366,8 @@ function at_gui.create_main_window(player, pdata)
                         {type = "frame", style = "subheader_frame", children={
                             {type = "label", style = "subheader_caption_label", caption = {"gui-logistic.logistic-networks"}},
                             at_gui.templates.pushers.horizontal,
+                            {type = "sprite-button", style = "tool_button", handlers = "main.settings.selection_tool", style_mods = {padding = 0},
+                                sprite = "autotrash_selection", tooltip = {"at-gui.tooltip-selection-tool"}},
                         }},
                         {type = "flow", direction="vertical", style_mods = {maximal_width = 274, padding= 12, top_padding = 8, vertical_spacing = 12}, children = {
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
