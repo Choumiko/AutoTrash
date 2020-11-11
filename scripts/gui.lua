@@ -324,7 +324,7 @@ at_gui.templates = {
             ret[i] = {type = "flow", name = id, direction = "horizontal", style_mods = {vertical_align = "center"}, children = {
                 {type = "label", caption = {"", {"gui-logistic.network"}, " #" .. id}},
                 at_gui.templates.pushers.horizontal,
-                {type = "sprite-button", style = "tool_button", sprite = "utility/map", handlers = "main.networks.view"},
+                {type = "sprite-button", style = "tool_button", sprite = "utility/map", handlers = "main.networks.view", tooltip = {"at-gui.tooltip-show-network"}},
                 {type = "sprite-button", style = "tool_button", sprite = "utility/trash", handlers = "main.networks.remove"},
             }}
             i = i + 1
@@ -847,14 +847,14 @@ at_gui.handlers = {
                     if new_network then
                         local id = new_network.unit_number
                         if pdata.networks[id] then
-                            player.print{"at-message.network-exists", {"gui-logistic.network"}, id}
+                            player.print{"at-message.network-exists", id}
                             return
                         end
                         local new_net = new_network.logistic_network
                         for id, network in pairs(pdata.networks) do
                             if network and network.valid then
                                 if network.logistic_network == new_net then
-                                    player.print{"at-message.network-exists", {"gui-logistic.network"}, id}
+                                    player.print{"at-message.network-exists", id}
                                     return
                                 end
                             else
@@ -862,7 +862,7 @@ at_gui.handlers = {
                             end
                         end
                         pdata.networks[id] = new_network
-                        player.print{"at-message.added-network", {"gui-logistic.network"}, id}
+                        player.print{"at-message.added-network", id}
                     else
                         player.print{"at-message.not-in-network"}
                     end
@@ -879,7 +879,7 @@ at_gui.handlers = {
                         local nid = current_network.unit_number
                         if pdata.networks[nid] then
                             pdata.networks[nid] = nil
-                            player.print{"at-message.removed-network", {"gui-logistic.network"}, nid}
+                            player.print{"at-message.removed-network", nid}
                             at_gui.update_networks(player, pdata)
                             return
                         end
@@ -888,7 +888,7 @@ at_gui.handlers = {
                             if network and network.valid then
                                 if network.logistic_network == new_net then
                                     pdata.networks[id] = nil
-                                    player.print{"at-message.removed-network", {"gui-logistic.network"}, id}
+                                    player.print{"at-message.removed-network", id}
                                     return
                                 end
                             else
@@ -914,12 +914,15 @@ at_gui.handlers = {
             selection_tool = {
                 on_gui_click = function(e)
                     local player = e.player
+                    local pdata = e.pdata
                     local cursor_stack = player.cursor_stack
                     if cursor_stack and cursor_stack.valid_for_read then
                         player.clean_cursor()
                     end
                     if cursor_stack.set_stack{name = "autotrash-network-selection", count = 1} then
-                        at_gui.close(player, e.pdata, true)
+                        local location = pdata.gui.main.window.location
+                        location.x = 50
+                        pdata.gui.main.window.location = location
                     end
                 end,
             }
@@ -932,6 +935,9 @@ at_gui.handlers = {
                     local entity = pdata.networks[id]
                     if entity and entity.valid then
                         e.player.zoom_to_world(entity.position, 0.3)
+                        local location = pdata.gui.main.window.location
+                        location.x = 50
+                        pdata.gui.main.window.location = location
                     end
                 end
             },
@@ -1629,7 +1635,6 @@ function at_gui.open(player, pdata)
     at_gui.update_settings(pdata)
     at_gui.update_sliders(pdata)
     at_gui.update_presets(pdata)
-    --player.opened = pdata.gui.window
 end
 
 function at_gui.close(player, pdata, no_reset)

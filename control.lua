@@ -18,6 +18,9 @@ local unpause_trash = at_util.unpause_trash
 local get_network_entity = at_util.get_network_entity
 local in_network = at_util.in_network
 
+--TODO: "import" items from quickbars (automatically or by button?), add full rows and preserve quickbar layout
+
+
 local function on_nth_tick()
     for i, p in pairs(game.players) do
         if p.character then
@@ -148,14 +151,14 @@ event.on_player_selected_area(function(e)
             local network = roboport.logistic_network
             for id, main_net in pairs(pdata.networks) do
                 if main_net and main_net.valid and main_net.logistic_network == network then
-                    player.print{"at-message.network-exists", {"gui-logistic.network"}, id}
+                    player.print{"at-message.network-exists", id}
                     goto continue
                 end
             end
             pdata.networks[robo_id] = roboport
-            player.print{"at-message.added-network", {"gui-logistic.network"}, robo_id}
+            player.print{"at-message.added-network", robo_id}
         else
-            player.print{"at-message.network-exists", {"gui-logistic.network"}, robo_id}
+            player.print{"at-message.network-exists", robo_id}
         end
         ::continue::
     end
@@ -169,13 +172,13 @@ event.on_player_alt_selected_area(function(e)
     for _, roboport in pairs(e.entities) do
         if pdata.networks[roboport.unit_number] then
             pdata.networks[roboport.unit_number] = nil
-            player.print{"at-message.removed-network", {"gui-logistic.network"}, roboport.unit_number}
+            player.print{"at-message.removed-network", roboport.unit_number}
         else
             local network = roboport.logistic_network
             for id, main_net in pairs(pdata.networks) do
                 if main_net and main_net.valid and main_net.logistic_network == network then
                     pdata.networks[id] = nil
-                    player.print{"at-message.removed-network", {"gui-logistic.network"}, id}
+                    player.print{"at-message.removed-network", id}
                     goto continue
                 end
             end
@@ -280,6 +283,7 @@ local function on_pre_mined_item(e)
     if not (entity.logistic_network and entity.logistic_network.valid) then return end
     local cells
     for pi, pdata in pairs(global._pdata) do
+        local player = game.get_player(pi)
         local main = pdata.networks[entity.unit_number]
         local current = pdata.current_network
         if main and main.valid then
@@ -295,8 +299,7 @@ local function on_pre_mined_item(e)
             end
             pdata.networks[entity.unit_number] = nil
             if not found then
-                local player = game.get_player(pi)
-                player.print{"at-message.network-unset"}
+                player.print{"at-message.network-unset", entity.unit_number}
             end
         end
         if current and current.valid and entity == current then
@@ -310,7 +313,7 @@ local function on_pre_mined_item(e)
                 end
             end
         end
-        at_gui.update_settings(pdata)
+        at_gui.update_networks(player, pdata)
     end
 end
 local robofilter = {{filter = "type", type = "roboport"}}
@@ -318,6 +321,35 @@ event.on_player_mined_entity(on_pre_mined_item, robofilter)
 event.on_robot_mined_entity(on_pre_mined_item, robofilter)
 event.on_entity_died(on_pre_mined_item, robofilter)
 event.script_raised_destroy(on_pre_mined_item, robofilter)
+
+local function on_built_entity(e)
+    local entity = e.entity or e.created_entity
+    local network = entity.logistic_network
+    local exists
+    if not (network and network.valid) then return end
+    for pi, pdata in pairs(global._pdata) do
+        local player = game.get_player(pi)
+        for id, roboport in pairs(pdata.networks) do
+            if roboport and roboport.valid and network == roboport.logistic_network then
+                if not exists then
+                    exists = id
+                end
+                if exists and exists ~= id then
+                    pdata.networks[id] = nil
+                    player.print{"at-message.merged-networks", exists, id}
+                end
+            end
+        end
+        at_gui.update_networks(player, pdata)
+        exists = nil
+    end
+end
+
+event.on_built_entity(on_built_entity, robofilter)
+event.on_robot_built_entity(on_built_entity, robofilter)
+event.script_raised_built(on_built_entity, robofilter)
+event.script_raised_revive(on_built_entity, robofilter)
+
 
 local function toggle_autotrash_pause(player)
     if not player.character then return end
