@@ -68,14 +68,14 @@ function player_data.find_request(player, item)
     local max = character.character_logistic_slot_count
     for i=1, max do
         local slot = get_slot(i)
-        if tostring(slot.name) == item then
+        if slot.name and slot.name == item then
             slot.index = i
             result = slot
             break
         end
     end
     --extend slots if no empty one was found
-    if item == "nil" and not result then
+    if not result and item == "nil" then
         player.character_logistic_slot_count = player.character_logistic_slot_count + 10
         max = max + 1
         result = get_slot(max)
@@ -86,8 +86,9 @@ end
 
 function player_data.set_request(player, pdata, request, temporary)
     local existing_request
+    local character = player.character
     if request.index then
-        existing_request = player.character.get_personal_logistic_slot(request.index)
+        existing_request = character.get_personal_logistic_slot(request.index)
         if tostring(existing_request.name) ~= request.name then
             existing_request = player_data.find_request(player, request.name)
             if existing_request then
@@ -113,9 +114,11 @@ function player_data.set_request(player, pdata, request, temporary)
             return false
         end
     end
-
-    player.character.clear_personal_logistic_slot(request.index)
-    player.character.set_personal_logistic_slot(request.index, request)
+    if request.index > player.character_logistic_slot_count then
+        player.character_logistic_slot_count = request.index
+    end
+    character.clear_personal_logistic_slot(request.index)
+    character.set_personal_logistic_slot(request.index, request)
     if temporary then
         pdata.temporary_requests[request.name] = {temporary = request, previous = existing_request}
         pdata.flags.has_temporary_requests = true

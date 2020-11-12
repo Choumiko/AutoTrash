@@ -147,9 +147,8 @@ M.in_network = function(player, pdata)
                 return true
             end
         elseif network and not network.valid then
-            player.print({"at-message.network-lost"})
+            player.print({"at-message.network-lost", id})
             pdata.networks[id] = nil
-            return false
         end
     end
     return false

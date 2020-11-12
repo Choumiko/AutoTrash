@@ -320,14 +320,16 @@ at_gui.templates = {
     networks = function(pdata)
         local ret = {}
         local i = 1
-        for id in pairs(pdata.networks) do
-            ret[i] = {type = "flow", name = id, direction = "horizontal", style_mods = {vertical_align = "center"}, children = {
-                {type = "label", caption = {"", {"gui-logistic.network"}, " #" .. id}},
-                at_gui.templates.pushers.horizontal,
-                {type = "sprite-button", style = "tool_button", sprite = "utility/map", handlers = "main.networks.view", tooltip = {"at-gui.tooltip-show-network"}},
-                {type = "sprite-button", style = "tool_button", sprite = "utility/trash", handlers = "main.networks.remove"},
-            }}
-            i = i + 1
+        for id, network in pairs(pdata.networks) do
+            if network and network.valid then
+                ret[i] = {type = "flow", name = id, direction = "horizontal", style_mods = {vertical_align = "center"}, children = {
+                    {type = "label", caption = {"", {"gui-logistic.network"}, " #" .. id}},
+                    at_gui.templates.pushers.horizontal,
+                    {type = "sprite-button", style = "tool_button", sprite = "utility/map", handlers = "main.networks.view", tooltip = {"at-gui.tooltip-show-network"}},
+                    {type = "sprite-button", style = "tool_button", sprite = "utility/trash", handlers = "main.networks.remove"},
+                }}
+                i = i + 1
+            end
         end
         return ret
     end,
