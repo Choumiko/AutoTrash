@@ -2,214 +2,215 @@
 Version: 5.2.14
 Date: ????
   Changes:
+    - Sliders change the amount by one stack at a time.
     - Added support for multiple main networks.
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.13
 Date: 2020-11-08
   Bugfixes:
-    - Fixed error when shift-clicking items to move them
+    - Fixed error when shift-clicking items to move them.
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.12
 Date: 2020-11-07
   Changes:
     - Applying changes or pressing enter after changing the trash amount will display a message if the the amount got adjusted to the request amount.
   Bugfixes:
-    - Fixed error when changing the trash amount via keyboard
+    - Fixed error when changing the trash amount via keyboard.
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.11
 Date: 2020-11-06
   Bugfixes:
-    - Fixed "Trash above requested" not working if no trash amount was set
-    - Fixed temporary trash not working if the item was already set
-    - Fixed errors when using the commands: /at_show and /at_hide
+    - Fixed "Trash above requested" not working if no trash amount was set.
+    - Fixed temporary trash not working if the item was already set.
+    - Fixed errors when using the commands: /at_show and /at_hide.
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.10
 Date: 2020-11-01
   Bugfixes:
-    - Fixed requests not being set properly
-    - Fixed button and textfields showing nothing if request is 0 and trash is unlimited
+    - Fixed requests not being set properly.
+    - Fixed button and textfields showing nothing if request is 0 and trash is unlimited.
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.9
 Date: 2020-10-31
   Changes:
     - Added a pin button to the gui, to keep it open when pressing E/Escape. By default the gui will stay open.
-    - Added a tooltip to the top button, showing the control to toggle the status display
-    - Researching the personal logistics opens the status display
+    - Added a tooltip to the top button, showing the control to toggle the status display.
+    - Researching the personal logistics opens the status display.
   Bugfixes:
-    - Fixed UPS drop when deconstructing roboports with construction robots
+    - Fixed UPS drop when deconstructing roboports with construction robots.
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.8
 Date: 2020-10-30
   Bugfixes:
-    - Fixed crash when requesting 0 of an item and infinite trash amount while "Trash above requested" is active
+    - Fixed crash when requesting 0 of an item and infinite trash amount while "Trash above requested" is active.
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.7
 Date: 2020-10-30
   Changes:
-    - Made displayed columns and rows adjustable again. Columns are restricted from 5 to 40 in increments of 5
+    - Made displayed columns and rows adjustable again. Columns are restricted from 5 to 40 in increments of 5.
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.6
 Date: 2020-10-27
   Bugfixes:
-    - Fixed error after players temporary trash slots have been emptied
+    - Fixed error after players temporary trash slots have been emptied.
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.5
 Date: 2020-10-27
   Bugfixes:
-    - Fixed Unknown sprite error when ModuleInserter mod is missing
+    - Fixed Unknown sprite error when ModuleInserter mod is missing.
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.4
 Date: 2020-10-27
   Changes:
-    - Updated the gui to look more like the vanilla gui
-    - Removed mod settings to adjust the number of displayed rows/columns
-    - Added flib as a dependency
+    - Updated the gui to look more like the vanilla gui.
+    - Removed mod settings to adjust the number of displayed rows/columns.
+    - Added flib as a dependency.
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.2
 Date: 2020-09-20
   Changes:
-    - Changed AutoTrash to be enabled as soon as the vanilla logistics tab is available
+    - Changed AutoTrash to be enabled as soon as the vanilla logistics tab is available.
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.1
 Date: 2020-09-20
   Features:
-    - Added buttons to export/import all presets at once
+    - Added buttons to export/import all presets at once.
   Bugfixes:
-    - Fixed importing would mess up the item order in the gui
+    - Fixed importing would mess up the item order in the gui.
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.0
 Date: 28. 07. 2020
   Changes:
-    - Changed the GUI to be draggable
-    - Changed default number of columns to 10, to match the characters logistics GUI
-    - Added setting to set the trash amount to the requested amount for new items
-    - Removed the "Pause requests on death" setting, since that is now a vanilla feature
-    - Reenable logistic requests after respawning when a death preset is selected
+    - Changed the GUI to be draggable.
+    - Changed default number of columns to 10, to match the characters logistics GUI.
+    - Added setting to set the trash amount to the requested amount for new items.
+    - Removed the "Pause requests on death" setting, since that is now a vanilla feature.
+    - Reenable logistic requests after respawning when a death preset is selected.
   Bugfixes:
-    - Fixed crash with the Rocket Rush scenario
-    - Fixed error when exporting an empty configuration
+    - Fixed crash with the Rocket Rush scenario.
+    - Fixed error when exporting an empty configuration.
 ---------------------------------------------------------------------------------------------------
 Version: 5.1.4
 Date: 26. 05. 2020
   Bugfixes:
-    - Fixed startup errors with Factorio 0.18.27
+    - Fixed startup errors with Factorio 0.18.27.
 ---------------------------------------------------------------------------------------------------
 Version: 5.1.3
 Date: 04. 05. 2020
   Bugfixes:
-    - Fixed blueprints, books and planners being autotrashed
+    - Fixed blueprints, books and planners being autotrashed.
 ---------------------------------------------------------------------------------------------------
 Version: 5.1.2
 Date: 15. 04. 2020
   Bugfixes:
-    - Maybe fixed a crash when updating from a save with now invalid items
+    - Maybe fixed a crash when updating from a save with now invalid items.
 ---------------------------------------------------------------------------------------------------
 Version: 5.1.1
 Date: 20. 03. 2020
   Bugfixes:
-    - Fixed trashing unrequested items would set all requests to zero
+    - Fixed trashing unrequested items would set all requests to zero.
 ---------------------------------------------------------------------------------------------------
 Version: 5.1.0
 Date: 19. 03. 2020
   Changes:
-    - Updated to work with the new character GUI added in 0.18.13
-    - Removed obsolete setting to lock infinite slots behind a research
-    - Updated gui to the dark logistic slots
+    - Updated to work with the new character GUI added in 0.18.13.
+    - Removed obsolete setting to lock infinite slots behind a research.
+    - Updated gui to the dark logistic slots.
   Bugfixes:
-    - Fixed out of range error when AutoTrash was added to an existing save
+    - Fixed out of range error when AutoTrash was added to an existing save.
 ---------------------------------------------------------------------------------------------------
 Version: 5.0.2
 Date: 05. 03. 2020
   Bugfixes:
-    - Fixed unknown sprite error
+    - Fixed unknown sprite error.
 ---------------------------------------------------------------------------------------------------
 Version: 5.0.1
 Date: 31. 01. 2020
   Bugfixes:
-    - Fixed error when trying to import an invalid blueprint/string
+    - Fixed error when trying to import an invalid blueprint/string.
 ---------------------------------------------------------------------------------------------------
 Version: 5.0.0
 Date: 26. 01. 2020
   Changes:
-    - Updated for Factorio 0.18
+    - Updated for Factorio 0.18.
 ---------------------------------------------------------------------------------------------------
 Version: 4.2.0
 Date: 26. 01. 2020
   Changes:
-    - Added mod setting to lock unlimited request slots behind the final character logistic slots research
+    - Added mod setting to lock unlimited request slots behind the final character logistic slots research.
 ---------------------------------------------------------------------------------------------------
 Version: 4.1.11
 Date: 06. 10. 2019
   Bugfixes:
-    - Fixed setting a main network wouldn't work at all when the player had ropobort equipment in the armor
+    - Fixed setting a main network wouldn't work at all when the player had ropobort equipment in the armor.
 ---------------------------------------------------------------------------------------------------
 Version: 4.1.10
 Date: 06. 10. 2019
   Bugfixes:
-    - Fixed auto pausing when the main network became invalid
+    - Fixed auto pausing when the main network became invalid.
 ---------------------------------------------------------------------------------------------------
 Version: 4.1.9
 Date: 20. 09. 2019
   Changes:
-    - Item status display now shows the number of missing items to fulfill the request
+    - Item status display now shows the number of missing items to fulfill the request.
   Bugfixes:
-    - Fixed request slot count not resetting properly when clearing requests
+    - Fixed request slot count not resetting properly when clearing requests.
 ---------------------------------------------------------------------------------------------------
 Version: 4.1.8
 Date: 18. 07. 2019
   Bugfixes:
-    - Fixed error when loading a save that requires a migration to be run
+    - Fixed error when loading a save that requires a migration to be run.
 ---------------------------------------------------------------------------------------------------
 Version: 4.1.7
 Date: 08. 07. 2019
   Changes:
-    - Requests with 0 amount are no longer set in the vanilla gui
+    - Requests with 0 amount are no longer set in the vanilla gui.
   Bugfixes:
-    - Fixed crash when importing a blueprint with requests
+    - Fixed crash when importing a blueprint with requests.
 ---------------------------------------------------------------------------------------------------
 Version: 4.1.6
 Date: 03. 07. 2019
   Changes:
-    - Adding AutoTrash to an existing save only opens the gui when requests/trash is set
+    - Adding AutoTrash to an existing save only opens the gui when requests/trash is set.
   Bugfixes:
-    - Fixed items in armor, gun and ammo inventory not being counted for the request status display
-    - Fixed possible crash when loading a scenario in the map editor
+    - Fixed items in armor, gun and ammo inventory not being counted for the request status display.
+    - Fixed possible crash when loading a scenario in the map editor.
 ---------------------------------------------------------------------------------------------------
 Version: 4.1.5
 Date: 23. 06. 2019
   Changes:
-    - Preset textfield only gets cleared when selecting multiple presets
-    - Select all text when clicking the preset textfield
-    - Adding AutoTrash to an existing save will import existing request/trash filters
+    - Preset textfield only gets cleared when selecting multiple presets.
+    - Select all text when clicking the preset textfield.
+    - Adding AutoTrash to an existing save will import existing request/trash filters.
 ---------------------------------------------------------------------------------------------------
 Version: 4.1.4
 Date: 18. 06. 2019
   Bugfixes:
-    - Fixed crash when entering a Factorissimo2 building
-    - Fixed error when creating a new scenario via map editor
+    - Fixed crash when entering a Factorissimo2 building.
+    - Fixed error when creating a new scenario via map editor.
 ---------------------------------------------------------------------------------------------------
 Version: 4.1.3
 Date: 16. 06. 2019
   Changes:
-    - Added command: /at_import : Imports the vanilla request and trash settings into the mod gui
+    - Added command: /at_import : Imports the vanilla request and trash settings into the mod gui.
   Bugfixes:
-    - Fixed error when updating players without a character
+    - Fixed error when updating players without a character.
 ---------------------------------------------------------------------------------------------------
 Version: 4.1.2
 Date: 16. 06. 2019
   Features:
-    - Combined logistic requests and trash configuration into one window
-    - Click and drop: Hold shift when clicking a configured item, then shift click another button to swap the buttons
-    - It is now possible to load multiple presets at once. If more than one preset contains an item, the maximum request/trash amount is chosen
-    - Right click the main button to quickly load and apply a preset
-    - Shift + Right click the main button to display the status of your requests
+    - Combined logistic requests and trash configuration into one window.
+    - Click and drop: Hold shift when clicking a configured item, then shift click another button to swap the buttons.
+    - It is now possible to load multiple presets at once. If more than one preset contains an item, the maximum request/trash amount is chosen.
+    - Right click the main button to quickly load and apply a preset.
+    - Shift + Right click the main button to display the status of your requests.
     - Different colors for indicating the status of an order:
         - grey: All items are delivered
         - red: Not enough items available in the network
         - yellow: Items are on the way
         - blue: Some items are on the way but the order can't be fulfilled
-    - Added buttons to automatically load stored presets when respawning
-    - Added buttons to import/export the configuration. Holding shift when clicking the export button creates a blueprint with constant combinators containing the configuration
+    - Added buttons to automatically load stored presets when respawning.
+    - Added buttons to import/export the configuration. Holding shift when clicking the export button creates a blueprint with constant combinators containing the configuration.
     - Added multiple mod settings:
         - Pause requests after respawning
         - Reset configuration when closing the gui without applying the changes
@@ -220,51 +221,51 @@ Date: 16. 06. 2019
 Version: 4.0.6
 Date: 23. 05. 2019
   Bugfixes:
-    - fixed trashing not working at all
+    - Fixed trashing not working at all.
 ---------------------------------------------------------------------------------------------------
 Version: 4.0.5
 Date: 01. 05. 2019
   Bugfixes:
-    - updated for Factorio 0.17.35
+    - updated for Factorio 0.17.35.
 ---------------------------------------------------------------------------------------------------
 Version: 4.0.4
 Date: 31. 03. 2019
   Bugfixes:
-    - Fixed ruleset buttons not working in some circumstances
+    - Fixed ruleset buttons not working in some circumstances.
 ---------------------------------------------------------------------------------------------------
 Version: 4.0.3
 Date: 30. 03. 2019
   Bugfixes:
-    - Fixed items with equipment grid loosing all equipment when being trashed
+    - Fixed items with equipment grid loosing all equipment when being trashed.
 ---------------------------------------------------------------------------------------------------
 Version: 4.0.2
 Date: 29. 03. 2019
   Bugfixes:
-    - Fixed error when saving a logistic request with amount of 0
+    - Fixed error when saving a logistic request with amount of 0.
 ---------------------------------------------------------------------------------------------------
 Version: 4.0.1
 Date: 10. 03. 2019
   Changes:
-    - Updated for Factorio 0.17
-    - Replaced buttons in the UI with filter-like buttons (like in the vanilla logistics and autotrash windows)
-    - To set a filter use left click, to reset use right click
+    - Updated for Factorio 0.17.
+    - Replaced buttons in the UI with filter-like buttons (like in the vanilla logistics and autotrash windows).
+    - To set a filter use left click, to reset use right click.
 ---------------------------------------------------------------------------------------------------
 Version: 3.0.3
 Date: 21. 04. 2018
   Bugfixes:
-    - Fixed crash when mining a ropobort
+    - Fixed crash when mining a ropobort.
 ---------------------------------------------------------------------------------------------------
 Version: 3.0.2
 Date: 26. 03. 2018
   Bugfixes:
-    - Fixed checkboxes not saving changes
+    - Fixed checkboxes not saving changes.
 ---------------------------------------------------------------------------------------------------
 Version: 3.0.1
 Date: 06. 01. 2018
   Bugfixes:
-    - Fixed gui error
+    - Fixed gui error.
 ---------------------------------------------------------------------------------------------------
 Version: 3.0.0
 Date: 14. 12. 2017
   Changes:
-    - Updated for Factorio 0.16
+    - Updated for Factorio 0.16.

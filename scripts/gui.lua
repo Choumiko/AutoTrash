@@ -9,17 +9,25 @@ local presets = require("scripts.presets")
 
 local at_util = require("scripts.util")
 local format_number = at_util.format_number
-local format_request = at_util.format_request
-local format_trash = at_util.format_trash
-local convert_to_slider = at_util.convert_to_slider
-local convert_from_slider = at_util.convert_from_slider
 local item_prototype = at_util.item_prototype
 local in_network = at_util.in_network
 local get_non_equipment_network = at_util.get_non_equipment_network
 
+local clamp = function(v, min, max)
+    return (v < min) and min or (v > max and max or v)
+end
+
+local format_request = function(item_config)
+    return (item_config.min and item_config.min >= 0) and item_config.min or (item_config.max and 0)
+end
+
+local format_trash = function(item_config)
+    return (item_config.max < constants.max_request) and format_number(item_config.max, true) or "∞"
+end
+
 local function tonumber_max(n)
-    n = tonumber(n)
-    return (n and n > constants.max_request) and constants.max_request or n
+    n = tonumber(n) or 0
+    return (n > constants.max_request) and constants.max_request or n
 end
 
 local function gcd(a, b)
@@ -196,7 +204,7 @@ at_gui.templates = {
             local style = (i == pdata.selected) and "yellow_slot_button" or "slot_button"
             local config = pdata.config_tmp.config[i]
             local req = config and format_number(format_request(config), true) or ""
-            local trash = config and format_number(format_trash(config), true) or ""
+            local trash = config and format_trash(config)
             return {type = "choose-elem-button", name = i, elem_mods = {elem_value = config and config.name, locked = config and i ~= pdata.selected},
                         handlers = "main.slots.item_button", elem_type = "item", style = style, children = {
                         {type = "label", style = "at_request_label_top", ignored_by_interaction = true, caption = req},
@@ -751,35 +759,29 @@ at_gui.handlers = {
                 on_gui_value_changed = function(e)
                     local pdata = e.pdata
                     if not pdata.selected then return end
-                    at_gui.update_request_config(tonumber_max(convert_from_slider(e.element.slider_value)) or 0, pdata)
+                    at_gui.update_request_config(e.element.slider_value, pdata)
                 end,
                 on_gui_text_changed = function(e)
                     local pdata = e.pdata
                     if not pdata.selected then return end
-                    at_gui.update_request_config(tonumber_max(e.element.text) or 0, pdata, true)
+                    at_gui.update_request_config(tonumber_max(e.element.text), pdata, true)
                 end,
             },
             trash = {
                 on_gui_value_changed = function(e)
                     local pdata = e.pdata
                     if not pdata.selected then return end
-                    local number
-                    if e.element.slider_value == 42 then
-                        number = constants.max_request
-                    else
-                        number = tonumber_max(convert_from_slider(e.element.slider_value)) or 0
-                    end
-                    at_gui.update_trash_config(e.player, pdata, number)
+                    at_gui.update_trash_config(e.player, pdata, e.element.slider_value, "slider")
                 end,
                 on_gui_text_changed = function(e)
                     local pdata = e.pdata
                     if not pdata.selected then return end
-                    at_gui.update_trash_config(e.player, pdata, tonumber_max(e.element.text) or 0, true)
+                    at_gui.update_trash_config(e.player, pdata, tonumber_max(e.element.text), "text")
                 end,
                 on_gui_confirmed = function(e)
                     local pdata = e.pdata
                     if not pdata.selected then return end
-                    at_gui.update_trash_config(e.player, pdata, tonumber_max(e.element.text) or 0)
+                    at_gui.update_trash_config(e.player, pdata, tonumber_max(e.element.text), "confirmed")
                 end
             }
         },
@@ -992,10 +994,13 @@ at_gui.handlers = {
 }
 gui.add_handlers(at_gui.handlers)
 
-at_gui.update_request_config = function(number, pdata)
+at_gui.update_request_config = function(number, pdata, from_text)
     local selected = pdata.selected
     local config_tmp = pdata.config_tmp
     local item_config = config_tmp.config[selected]
+    if not from_text then
+        number = number * item_prototype(item_config.name).stack_size
+    end
     if item_config.min == 0 and number > 0 then
         config_tmp.c_requests = config_tmp.c_requests + 1
     end
@@ -1012,32 +1017,34 @@ at_gui.update_request_config = function(number, pdata)
     at_gui.update_button(pdata, pdata.selected)
 end
 
-at_gui.update_trash_config = function(player, pdata, number, from_text)
+at_gui.update_trash_config = function(player, pdata, number, source)
     local selected = pdata.selected
     local config_tmp = pdata.config_tmp
     local item_config = config_tmp.config[selected]
-    if not from_text then
-        if number < constants.max_request and item_config.min > number then
-            if item_config.min > 0 and number == 0 then
-                config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
-            end
-            item_config.min = number
-            player.print{"at-message.adjusted-trash-amount", at_util.item_prototype(item_config.name).localised_name, number}
+    if item_config then
+        if source == "slider" then
+            local stack_size = item_prototype(item_config.name).stack_size
+            number = number < 10 and number * stack_size or constants.max_request
         end
+        if source ~= "text" then
+            if number < constants.max_request and item_config.min > number then
+                if item_config.min > 0 and number == 0 then
+                    config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
+                end
+                item_config.min = number
+                if source == "confirmed" then
+                    player.print{"at-message.adjusted-trash-amount", at_util.item_prototype(item_config.name).localised_name, number}
+                end
+            end
+        end
+        item_config.max = number
+        at_gui.mark_dirty(pdata)
+        at_gui.update_button(pdata, pdata.selected)
+    else
+        at_gui.update_button(pdata, pdata.selected)
+        pdata.selected = false
     end
-    item_config.max = number
-    at_gui.mark_dirty(pdata)
     at_gui.update_sliders(pdata)
-    at_gui.update_button(pdata, pdata.selected)
-end
-
-local clamp = function(v, min, max)
-    if v < min then
-        return min
-    elseif v > max then
-        return max
-    end
-    return v
 end
 
 at_gui.decrease_slots = function(player, pdata)
@@ -1164,7 +1171,7 @@ at_gui.update_button = function(pdata, i, button)
     local req = pdata.config_tmp.config[i]
     if req then
         button.children[1].caption = format_number(format_request(req), true)
-        button.children[2].caption = format_number(format_trash(req), true)
+        button.children[2].caption = format_trash(req)
         button.elem_value = req.name
         button.locked = i ~= pdata.selected
     else
@@ -1206,11 +1213,12 @@ at_gui.update_sliders = function(pdata)
         local sliders = pdata.gui.main.sliders
         local item_config = pdata.config_tmp.config[pdata.selected]
         if item_config then
-            sliders.request.slider_value = convert_to_slider(item_config.min)
+            local stack_size = item_prototype(item_config.name).stack_size
+            sliders.request.slider_value = clamp(item_config.min / stack_size, 0, 10)
             sliders.request_text.text = format_request(item_config) or 0
 
-            sliders.trash.slider_value = item_config.max < constants.max_request and convert_to_slider(item_config.max) or 42
-            sliders.trash_text.text = format_trash(item_config)
+            sliders.trash.slider_value = clamp(item_config.max / stack_size, 0, 10)
+            sliders.trash_text.text = item_config.max < constants.max_request and item_config.max or "inf."
         end
     end
     local visible = pdata.selected and true or false
@@ -1320,7 +1328,10 @@ function at_gui.create_main_window(player, pdata)
                                             {type = "label", caption = {"at-gui.request"}}
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
-                                            {type = "slider", save_as = "main.sliders.request", handlers = "main.sliders.request", minimum_value = 0, maximum_value = 42},
+                                            {type = "slider", save_as = "main.sliders.request", handlers = "main.sliders.request",
+                                                minimum_value = 0, maximum_value = 10,
+                                                style = "notched_slider",
+                                            },
                                             {type = "textfield", style = "slider_value_textfield", numeric = true, allow_negative = false, lose_focus_on_confirm = true,
                                                 save_as = "main.sliders.request_text", handlers = "main.sliders.request"
                                             },
@@ -1329,7 +1340,10 @@ function at_gui.create_main_window(player, pdata)
                                             {type = "label", caption={"at-gui.trash"}},
                                         }},
                                         {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
-                                            {type = "slider", save_as = "main.sliders.trash", handlers = "main.sliders.trash", minimum_value = 0, maximum_value = 42},
+                                            {type = "slider", save_as = "main.sliders.trash", handlers = "main.sliders.trash",
+                                                minimum_value = 0, maximum_value = 10,
+                                                style = "notched_slider",
+                                            },
                                             {type = "textfield", style = "slider_value_textfield", numeric = true, allow_negative = false, lose_focus_on_confirm = true,
                                                 save_as = "main.sliders.trash_text", handlers = "main.sliders.trash"
                                             },

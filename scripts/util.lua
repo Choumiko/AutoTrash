@@ -204,49 +204,6 @@ M.format_number = function(n, append_suffix)
     return formatted..suffix
 end
 
-M.format_request = function(item_config)
-    return (item_config.min and item_config.min >= 0) and item_config.min or (item_config.max and 0)
-end
-
-M.format_trash = function(item_config)
-    return (item_config.max < constants.max_request) and item_config.max or "∞"
-end
-
-M.convert_from_slider = function(n)
-    if not n then
-        return -1
-    end
-    n = floor(n)
-    if n <= 10 then
-        return n
-    elseif n <= 19 then
-        return (n-9)*10
-    elseif n <= 28 then
-        return (n-18)*100
-    elseif n <= 37 then
-        return (n-27)*1000
-    else
-        return (n-36)*10000
-    end
-end
-
-local huge = math.huge
-M.convert_to_slider = function(n)
-    if n <= 10 then
-        return n
-    elseif n <= 100 then
-        return n/10+9
-    elseif n <= 1000 then
-        return n/100+18
-    elseif n <= 10000 then
-        return n/1000+27
-    elseif n < huge then
-        return n/10000+36
-    else
-        return 42
-    end
-end
-
 M.remove_invalid_items = function()
     local function _remove(tbl)
         for i = tbl.max_slot, 1, -1 do
