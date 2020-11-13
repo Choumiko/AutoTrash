@@ -68,7 +68,7 @@ function player_data.find_request(player, item)
     local max = character.character_logistic_slot_count
     for i=1, max do
         local slot = get_slot(i)
-        if slot.name and slot.name == item then
+        if tostring(slot.name) == item then
             slot.index = i
             result = slot
             break

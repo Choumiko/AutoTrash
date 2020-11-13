@@ -293,8 +293,12 @@ at_gui.templates = {
                 {
                     type = "flow", style_mods = {vertical_align = "center"}, children = {
                         {type = "label", caption = "Main networks: "},
-                        {type = "button", caption = "+", style = "tool_button", handlers = "main.settings.add_network", tooltip = {"at-gui.tooltip-add-network"}},
-                        {type = "button", caption = "-", style = "tool_button", handlers = "main.settings.remove_network", tooltip = {"at-gui.tooltip-remove-network"}},
+                        {type = "button", caption = "+", style = "tool_button", handlers = "main.settings.add_network",
+                            tooltip = {"at-gui.tooltip-add-network"}
+                        },
+                        {type = "button", caption = "-", style = "tool_button", handlers = "main.settings.remove_network",
+                            tooltip = {"at-gui.tooltip-remove-network"}
+                        },
                         {type = "sprite-button", sprite = "utility/rename_icon_normal", style = "tool_button",
                             save_as = "main.network_edit_button",
                             handlers = "main.settings.edit_networks", tooltip = {"at-gui.tooltip-edit-networks"}},
@@ -310,7 +314,9 @@ at_gui.templates = {
         local rip_style = pdata.death_presets[preset_name] and "at_preset_button_small_selected" or "at_preset_button_small"
         return {type = "flow", direction = "horizontal", name = preset_name, children = {
             {type = "button", style = style, caption = preset_name, name = preset_name, handlers = "main.presets.load"},
-            {type = "sprite-button", style = rip_style, sprite = "autotrash_rip", handlers = "main.presets.change_death_preset", tooltip = {"at-gui.tooltip-rip"}},
+            {type = "sprite-button", style = rip_style, sprite = "autotrash_rip", handlers = "main.presets.change_death_preset",
+                tooltip = {"at-gui.tooltip-rip"}
+            },
             {type = "sprite-button", style = "at_delete_preset", sprite = "utility/trash", handlers = "main.presets.delete"},
         }}
     end,
@@ -333,7 +339,9 @@ at_gui.templates = {
                 ret[i] = {type = "flow", name = id, direction = "horizontal", style_mods = {vertical_align = "center"}, children = {
                     {type = "label", caption = {"", {"gui-logistic.network"}, " #" .. id}},
                     at_gui.templates.pushers.horizontal,
-                    {type = "sprite-button", style = "tool_button", sprite = "utility/map", handlers = "main.networks.view", tooltip = {"at-gui.tooltip-show-network"}},
+                    {type = "sprite-button", style = "tool_button", sprite = "utility/map", handlers = "main.networks.view",
+                        tooltip = {"at-gui.tooltip-show-network"}
+                    },
                     {type = "sprite-button", style = "tool_button", sprite = "utility/trash", handlers = "main.networks.remove"},
                 }}
                 i = i + 1
@@ -849,9 +857,9 @@ at_gui.handlers = {
                     local pdata = e.pdata
                     local new_network = at_util.get_network_entity(player)
                     if new_network then
-                        local id = new_network.unit_number
-                        if pdata.networks[id] then
-                            player.print{"at-message.network-exists", id}
+                        local new_id = new_network.unit_number
+                        if pdata.networks[new_id] then
+                            player.print{"at-message.network-exists", new_id}
                             return
                         end
                         local new_net = new_network.logistic_network
@@ -865,8 +873,8 @@ at_gui.handlers = {
                                 pdata.networks[id] = nil
                             end
                         end
-                        pdata.networks[id] = new_network
-                        player.print{"at-message.added-network", id}
+                        pdata.networks[new_id] = new_network
+                        player.print{"at-message.added-network", new_id}
                     else
                         player.print{"at-message.not-in-network"}
                     end
@@ -1295,8 +1303,9 @@ function at_gui.create_main_window(player, pdata)
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
                     at_gui.templates.frame_action_button{sprite="at_pin_white", hovered_sprite="at_pin_black", clicked_sprite="at_pin_black",
                         handlers="main.pin_button", save_as="main.titlebar.pin_button", tooltip={"at-gui.keep-open"}},
-                    at_gui.templates.frame_action_button{sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
-                        handlers = "main.close_button", save_as = "main.titlebar.close_button"}
+                    at_gui.templates.frame_action_button{handlers = "main.close_button", save_as = "main.titlebar.close_button",
+                        sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
+                    }
                 }},
                 {type = "flow", direction = "horizontal", style = "inset_frame_container_horizontal_flow", children = {
                     {type = "frame", style = "inside_shallow_frame", direction = "vertical", children = {
@@ -1305,9 +1314,15 @@ function at_gui.create_main_window(player, pdata)
                             at_gui.templates.pushers.horizontal,
                             {type = "sprite-button", style = "tool_button_green", handlers = "main.apply_changes", style_mods = {padding = 0},
                                 sprite = "utility/check_mark_white", tooltip = {"module-inserter-config-button-apply"}},
-                            {type = "sprite-button", style = "tool_button_red", save_as = "main.reset_button", handlers = "main.reset", sprite = "utility/reset_white"},
-                            {type = "sprite-button", style = "tool_button", handlers = "main.export", sprite = "utility/export_slot", tooltip = {"at-gui.tooltip-export"}},
-                            {type = "sprite-button", style = "tool_button", handlers = "main.import", sprite = "at_import_string", tooltip = {"at-gui.tooltip-import"}}
+                            {type = "sprite-button", style = "tool_button_red", save_as = "main.reset_button", handlers = "main.reset",
+                                sprite = "utility/reset_white"
+                            },
+                            {type = "sprite-button", style = "tool_button", handlers = "main.export", sprite = "utility/export_slot",
+                                tooltip = {"at-gui.tooltip-export"}
+                            },
+                            {type = "sprite-button", style = "tool_button", handlers = "main.import", sprite = "at_import_string",
+                                tooltip = {"at-gui.tooltip-import"}
+                            }
                         }},
                         {type = "flow", direction="vertical", style_mods = {padding= 12, top_padding = 8, vertical_spacing = 10}, children = {
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
@@ -1332,7 +1347,8 @@ function at_gui.create_main_window(player, pdata)
                                                 minimum_value = 0, maximum_value = 10,
                                                 style = "notched_slider",
                                             },
-                                            {type = "textfield", style = "slider_value_textfield", numeric = true, allow_negative = false, lose_focus_on_confirm = true,
+                                            {type = "textfield", style = "slider_value_textfield",
+                                                numeric = true, allow_negative = false, lose_focus_on_confirm = true,
                                                 save_as = "main.sliders.request_text", handlers = "main.sliders.request"
                                             },
                                         }},
@@ -1344,7 +1360,8 @@ function at_gui.create_main_window(player, pdata)
                                                 minimum_value = 0, maximum_value = 10,
                                                 style = "notched_slider",
                                             },
-                                            {type = "textfield", style = "slider_value_textfield", numeric = true, allow_negative = false, lose_focus_on_confirm = true,
+                                            {type = "textfield", style = "slider_value_textfield",
+                                                numeric = true, allow_negative = false, lose_focus_on_confirm = true,
                                                 save_as = "main.sliders.trash_text", handlers = "main.sliders.trash"
                                             },
                                         }},
@@ -1372,7 +1389,7 @@ function at_gui.create_main_window(player, pdata)
                         }},
                         {type = "flow", direction="vertical", style = "at_right_container_flow", children = {
                             {type = "flow", children = {
-                                {type = "textfield", style = "long_number_textfield", save_as = "main.preset_textfield", handlers = "main.presets.textfield", text = ""},
+                                {type = "textfield", style = "long_number_textfield", save_as = "main.preset_textfield", handlers = "main.presets.textfield"},
                                 at_gui.templates.pushers.horizontal,
                                 {type = "button", caption = {"gui-save-game.save"}, style = "at_save_button", handlers = "main.presets.save"}
                             }},
@@ -1446,10 +1463,12 @@ function at_gui.init(player, pdata)
         main_button_flow.clear()
         gui.update_filters("mod_gui_button", player.index, nil, "remove")
     else
-        pdata.gui.mod_gui.flow = mod_gui.get_button_flow(player).add{type = "flow", direction = "horizontal", name =  "autotrash_main_flow", style = "at_main_flow"}
+        pdata.gui.mod_gui.flow = mod_gui.get_button_flow(player).add{type = "flow", direction = "horizontal", name = "autotrash_main_flow",
+            style = "at_main_flow"
+        }
     end
-    pdata.gui.mod_gui.button = pdata.gui.mod_gui.flow.add{type = "sprite-button", name = "at_config_button", style = mod_gui.button_style, sprite = "autotrash_trash",
-        tooltip = {"at-gui.tooltip-main-button", pdata.flags.status_display_open and "On" or "Off"}}
+    pdata.gui.mod_gui.button = pdata.gui.mod_gui.flow.add{type = "sprite-button", name = "at_config_button", style = mod_gui.button_style,
+        sprite = "autotrash_trash", tooltip = {"at-gui.tooltip-main-button", pdata.flags.status_display_open and "On" or "Off"}}
     gui.update_filters("mod_gui_button", player.index, {pdata.gui.mod_gui.button.index}, "add")
     pdata.gui.mod_gui.flow.visible = visible
     at_gui.init_status_display(player, pdata)
