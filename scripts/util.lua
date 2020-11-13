@@ -34,8 +34,9 @@ M.set_requests = function(player, pdata)
     end
 
     local max_request = constants.max_request
-    local min, max = 0, max_request
     for c = 1, slot_count do
+        local min
+        local max = max_request
         --TODO: move in else block for 1.1
         clear_request_slot(c)
         local req = storage[c]
@@ -46,9 +47,7 @@ M.set_requests = function(player, pdata)
                 handled_temporary[name] = true
             end
             local request = req.min
-            if not requests_paused then
-                min = request
-            end
+            min = requests_paused and 0 or request
             if not trash_paused then
                 max = (trash_above_requested and request > 0) and request or req.max
                 if contents and contents[name] then
@@ -56,7 +55,6 @@ M.set_requests = function(player, pdata)
                 end
             end
             set_request_slot(c, {name = name, min = min, max = max})
-            min, max = 0, max_request
         end
     end
 
@@ -152,25 +150,6 @@ M.in_network = function(player, pdata)
         end
     end
     return false
-end
-
-M.combine_from_vanilla = function(player)
-    if not player.character then
-        return {config = {}, c_requests = 0, max_slot = 0}
-    end
-    local requests = {}
-    local count = 0
-    local get_request_slot = player.get_personal_logistic_slot
-    local max_slot = 0
-    for c = 1, player.character_logistic_slot_count do
-        local t = get_request_slot(c)
-        if t.name then
-            max_slot = c > max_slot and c or max_slot
-            requests[c] = {name = t.name, min = t.min, max = t.max, slot = c}
-            count = t.min > 0 and count + 1 or count
-        end
-    end
-    return {config = requests, max_slot = max_slot, c_requests = count}
 end
 
 M.format_number = function(n, append_suffix)

@@ -54,7 +54,6 @@ local function on_init()
             local pdata = player_data.init(player_index)
             at_gui.init(player, pdata)
             if player.character and force.character_logistic_requests then
-                pdata.config_tmp = at_util.combine_from_vanilla(player)
                 if next(pdata.config_tmp.config) then
                     pdata.presets["at_imported"] = table.deep_copy(pdata.config_tmp)
                     pdata.selected_presets = {at_imported = true}
@@ -488,10 +487,13 @@ local at_commands = {
     import = function(args)
         local player_index = args.player_index
         local pdata = global._pdata[player_index]
+        if not pdata then
+            pdata = player_data.init(player_index)
+        end
         local player = game.get_player(player_index)
         at_gui.close(player, pdata)
         if not player.character then return end
-        pdata.config_tmp = at_util.combine_from_vanilla(player)
+        pdata.config_tmp = player_data.combine_from_vanilla(player, pdata)
         at_gui.open(player, pdata)
         at_gui.mark_dirty(pdata)
     end,

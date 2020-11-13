@@ -1,4 +1,5 @@
 local at_util = require("scripts.util")
+local table = require("__flib__.table")
 
 local player_data = {}
 
@@ -36,7 +37,34 @@ function player_data.init(player_index)
         networks = {}
     }
     player_data.update_settings(game.get_player(player_index), global._pdata[player_index])
+
+    global._pdata[player_index].config_tmp = player_data.combine_from_vanilla(player)
+    global._pdata[player_index].config_new = table.deep_copy(global._pdata[player_index].config_tmp)
+
     return global._pdata[player_index]
+end
+
+function player_data.combine_from_vanilla(player, pdata, name)
+    if not player.character then
+        return {config = {}, c_requests = 0, max_slot = 0}
+    end
+    local requests = {}
+    local count = 0
+    local get_request_slot = player.get_personal_logistic_slot
+    local max_slot = 0
+    for c = 1, player.character_logistic_slot_count do
+        local t = get_request_slot(c)
+        if t.name then
+            max_slot = c > max_slot and c or max_slot
+            requests[c] = {name = t.name, min = t.min, max = t.max, slot = c}
+            count = t.min > 0 and count + 1 or count
+        end
+    end
+    local result = {config = requests, max_slot = max_slot, c_requests = count}
+    if name and next(result.config) then
+        pdata.presets[name] = table.deep_copy(result)
+    end
+    return result
 end
 
 function player_data.update_settings(player, pdata)

@@ -8,6 +8,7 @@ local presets = require("scripts.presets")
 --local player_data = require("scripts.player-data")
 
 local at_util = require("scripts.util")
+local player_data = require("scripts.player-data")
 local format_number = at_util.format_number
 local item_prototype = at_util.item_prototype
 local in_network = at_util.in_network
@@ -148,10 +149,24 @@ end
 
 at_gui.toggle_setting = {
     trash_above_requested = function(player, pdata)
+        if not next(pdata.config_new.config) then
+            player.print{"at-message.empty-config"}
+            player.print{"at-message.auto-import"}
+            pdata.config_tmp = player_data.combine_from_vanilla(player, "at_imported")
+            pdata.config_new = table.deep_copy(pdata.config_tmp)
+            at_gui.update_buttons(pdata)
+        end
         at_util.set_requests(player, pdata)
         return pdata.flags.trash_above_requested
     end,
     trash_unrequested = function(player, pdata)
+        if not next(pdata.config_new.config) then
+            player.print{"at-message.empty-config"}
+            player.print{"at-message.auto-import"}
+            pdata.config_tmp = player_data.combine_from_vanilla(player, "at_imported")
+            pdata.config_new = table.deep_copy(pdata.config_tmp)
+            at_gui.update_buttons(pdata)
+        end
         at_util.set_requests(player, pdata)
         return pdata.flags.trash_unrequested
     end,
