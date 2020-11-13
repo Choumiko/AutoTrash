@@ -353,6 +353,7 @@ event.script_raised_revive(on_built_entity, robofilter)
 local function toggle_autotrash_pause(player)
     if not player.character then return end
     local pdata = global._pdata[player.index]
+    player_data.import_when_empty(player, pdata)
     if pdata.flags.pause_trash then
         unpause_trash(player, pdata)
     else
@@ -368,6 +369,7 @@ end)
 local function toggle_autotrash_pause_requests(player)
     if not player.character then return end
     local pdata = global._pdata[player.index]
+    player_data.import_when_empty(player, pdata)
     if pdata.flags.pause_requests then
         at_util.unpause_requests(player, pdata)
     else

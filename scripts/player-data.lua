@@ -67,6 +67,16 @@ function player_data.combine_from_vanilla(player, pdata, name)
     return result
 end
 
+function player_data.import_when_empty(player, pdata)
+    if not next(pdata.config_new.config) then
+        player.print{"at-message.empty-config"}
+        player.print{"at-message.auto-import"}
+        pdata.config_tmp = player_data.combine_from_vanilla(player, "at_imported")
+        pdata.config_new = table.deep_copy(pdata.config_tmp)
+        return true
+    end
+end
+
 function player_data.update_settings(player, pdata)
     local player_settings = player.mod_settings
     local settings = {

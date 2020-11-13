@@ -149,24 +149,10 @@ end
 
 at_gui.toggle_setting = {
     trash_above_requested = function(player, pdata)
-        if not next(pdata.config_new.config) then
-            player.print{"at-message.empty-config"}
-            player.print{"at-message.auto-import"}
-            pdata.config_tmp = player_data.combine_from_vanilla(player, "at_imported")
-            pdata.config_new = table.deep_copy(pdata.config_tmp)
-            at_gui.update_buttons(pdata)
-        end
         at_util.set_requests(player, pdata)
         return pdata.flags.trash_above_requested
     end,
     trash_unrequested = function(player, pdata)
-        if not next(pdata.config_new.config) then
-            player.print{"at-message.empty-config"}
-            player.print{"at-message.auto-import"}
-            pdata.config_tmp = player_data.combine_from_vanilla(player, "at_imported")
-            pdata.config_new = table.deep_copy(pdata.config_tmp)
-            at_gui.update_buttons(pdata)
-        end
         at_util.set_requests(player, pdata)
         return pdata.flags.trash_unrequested
     end,
@@ -176,7 +162,6 @@ at_gui.toggle_setting = {
             pdata.flags.trash_network = false
             return false
         end
-
         if pdata.flags.trash_network and in_network(player, pdata) then
             at_util.unpause_trash(player, pdata)
             at_gui.update_main_button(pdata)
@@ -860,6 +845,9 @@ at_gui.handlers = {
                     if not player.character then return end
                     local name = e.element.name
                     if at_gui.toggle_setting[name] then
+                        if player_data.import_when_empty(player, pdata) then
+                            at_gui.update_buttons(pdata)
+                        end
                         pdata.flags[name] = e.element.state
                         e.element.state = at_gui.toggle_setting[name](e.player, pdata)
                     end
