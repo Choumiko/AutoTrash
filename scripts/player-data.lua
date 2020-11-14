@@ -24,8 +24,8 @@ function player_data.init(player_index)
             import = {},
             main = {}
         },
-        config_new = {config = {}, c_requests = 0, max_slot = 0},
-        config_tmp = {config = {}, c_requests = 0, max_slot = 0},
+        config_new = {config = {}, by_name = {}, c_requests = 0, max_slot = 0},
+        config_tmp = {config = {}, by_name = {}, c_requests = 0, max_slot = 0},
         selected = false,
 
         current_network = nil,
@@ -46,8 +46,9 @@ end
 
 function player_data.combine_from_vanilla(player, pdata, name)
     if not player.character then
-        return {config = {}, c_requests = 0, max_slot = 0}
+        return {config = {}, by_name = {}, c_requests = 0, max_slot = 0}
     end
+    local by_name = {}
     local requests = {}
     local count = 0
     local get_request_slot = player.get_personal_logistic_slot
@@ -57,10 +58,11 @@ function player_data.combine_from_vanilla(player, pdata, name)
         if t.name then
             max_slot = c > max_slot and c or max_slot
             requests[c] = {name = t.name, min = t.min, max = t.max, slot = c}
+            by_name[t.name] = requests[c]
             count = t.min > 0 and count + 1 or count
         end
     end
-    local result = {config = requests, max_slot = max_slot, c_requests = count}
+    local result = {config = requests, by_name = by_name, max_slot = max_slot, c_requests = count}
     if name and next(result.config) then
         pdata.presets[name] = table.deep_copy(result)
     end

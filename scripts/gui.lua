@@ -433,15 +433,8 @@ at_gui.handlers = {
             on_gui_click = function(e)
                 local player = e.player
                 local pdata = e.pdata
-                local adjusted = false
-                for _, config in pairs(pdata.config_tmp.config) do
-                    if config.max < config.min then
-                        adjusted = true
-                        config.max = config.min
-                        player.print{"at-message.adjusted-trash-amount", at_util.item_prototype(config.name).localised_name, config.max}
-                    end
-                end
 
+                local adjusted = at_util.check_config(player, pdata)
                 pdata.config_new = table.deep_copy(pdata.config_tmp)
                 pdata.dirty = false
                 pdata.gui.main.reset_button.enabled = false
@@ -464,7 +457,7 @@ at_gui.handlers = {
                     pdata.selected_presets = {}
                     pdata.selected = false
                     pdata.flags.dirty = false
-                    at_gui.adjust_slots(e.player, pdata, pdata.config_tmp.max_slot)
+                    at_gui.adjust_slots(e.player, pdata)
                     at_gui.update_buttons(pdata)
                     at_gui.update_sliders(pdata)
                     at_gui.update_presets(pdata)
@@ -573,16 +566,9 @@ at_gui.handlers = {
                             elseif cursor_ghost and old_selected then
                                 local old_config = config_tmp.config[old_selected]
                                 if elem_value and old_config and cursor_ghost.name == old_config.name then
-                                    local tmp = table.deep_copy(config_tmp.config[index])
-                                    config_tmp.config[index] = table.deep_copy(old_config)
-                                    config_tmp.config[index].slot = index
-                                    if tmp then
-                                        tmp.slot = old_selected
-                                    end
-                                    config_tmp.config[old_selected] = tmp
+                                    at_util.swap_configs(pdata, old_selected, index)
                                     player.cursor_ghost = nil
                                     pdata.selected = index
-                                    config_tmp.max_slot = index > config_tmp.max_slot and index or config_tmp.max_slot
                                     at_gui.mark_dirty(pdata)
                                 end
                                 if not old_config then
@@ -626,36 +612,30 @@ at_gui.handlers = {
                     local elem_value = e.element.elem_value
                     local index = tonumber(e.element.name)
                     if elem_value then
-                        local item_config = pdata.config_tmp.config[index]
+                        local config_tmp = pdata.config_tmp
+                        local item_config = config_tmp.config[index]
                         if item_config and elem_value == item_config.name then return end
-                        for i, v in pairs(pdata.config_tmp.config) do
-                            if i ~= index and elem_value == v.name then
-                                player.print({"cant-set-duplicate-request", item_prototype(elem_value).localised_name})
-                                pdata.selected = i
-                                at_gui.update_button(pdata, i, pdata.gui.main.slot_table.children[i])
-                                pdata.gui.main.config_rows.scroll_to_element(pdata.gui.main.slot_table.children[i], "top-third")
-                                if item_config then
-                                    e.element.elem_value = item_config.name
-                                else
-                                    e.element.elem_value = nil
-                                end
-                                at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
-                                at_gui.update_sliders(pdata)
-                                return
+                        local existing_config = config_tmp.by_name[elem_value]
+                        if existing_config and existing_config.slot ~= index then
+                            local i = existing_config.slot
+                            player.print({"cant-set-duplicate-request", item_prototype(elem_value).localised_name})
+                            pdata.selected = i
+                            at_gui.update_button(pdata, i, pdata.gui.main.slot_table.children[i])
+                            pdata.gui.main.config_rows.scroll_to_element(pdata.gui.main.slot_table.children[i], "top-third")
+                            if item_config then
+                                e.element.elem_value = item_config.name
+                            else
+                                e.element.elem_value = nil
                             end
+                            at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
+                            at_gui.update_sliders(pdata)
+                            return
                         end
                         pdata.selected = index
                         local request_amount = item_prototype(elem_value).default_request_amount
                         local trash_amount = pdata.settings.trash_equals_requests and request_amount or constants.max_request
-                        local config_tmp = pdata.config_tmp
-                        config_tmp.config[index] = {
-                            name = elem_value, min = request_amount,
-                            max = trash_amount, slot = index
-                        }
-                        config_tmp.max_slot = index > config_tmp.max_slot and index or config_tmp.max_slot
-                        if config_tmp.config[index].min > 0 then
-                            config_tmp.c_requests = config_tmp.c_requests + 1
-                        end
+                        at_util.add_config(pdata, elem_value, request_amount, trash_amount, index)
+
                         at_gui.mark_dirty(pdata)
                         at_gui.update_button(pdata, index, e.element)
                         if old_selected then
@@ -712,14 +692,14 @@ at_gui.handlers = {
                         else
                             selected_presets[name] = nil
                         end
-                        local tmp = {config = {}, max_slot = 0, c_requests = 0}
+                        local tmp = {config = {}, by_name = {}, max_slot = 0, c_requests = 0}
                         for key, _ in pairs(selected_presets) do
                             presets.merge(tmp, pdata.presets[key])
                         end
                         pdata.config_tmp = tmp
                         pdata.selected = false
                     end
-                    at_gui.adjust_slots(player, pdata, pdata.config_tmp.max_slot)
+                    at_gui.adjust_slots(player, pdata)
                     at_gui.update_buttons(pdata)
                     at_gui.mark_dirty(pdata, true)
                     at_gui.update_presets(pdata)
@@ -812,6 +792,7 @@ at_gui.handlers = {
                     end
                 elseif index == 4 then
                     config_tmp.config = {}
+                    config_tmp.by_name = {}
                     config_tmp.max_slot = 0
                     config_tmp.c_requests = 0
                     pdata.selected = false
@@ -1076,6 +1057,7 @@ at_gui.increase_slots = function(player, pdata)
 end
 
 at_gui.adjust_slots = function(player, pdata, slots)
+    slots = slots or pdata.config_tmp.max_slot
     local step = (10*pdata.settings.columns) / gcd(10, pdata.settings.columns)
     if slots < pdata.config_tmp.max_slot then
         local old_slots = player.character_logistic_slot_count
@@ -1195,24 +1177,7 @@ at_gui.update_button = function(pdata, i, button)
 end
 
 at_gui.clear_button = function(pdata, index, button)
-    local config_tmp = pdata.config_tmp
-    local config = config_tmp.config[index]
-    if config then
-        if config.min > 0 then
-            config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
-        end
-        if pdata.selected == index then pdata.selected = false end
-        config_tmp.config[index] = nil
-        if index == config_tmp.max_slot then
-            config_tmp.max_slot = 0
-            for i = index-1, 1, -1 do
-                if config_tmp.config[i] then
-                    config_tmp.max_slot = i
-                    break
-                end
-            end
-        end
-    end
+    at_util.clear_config(pdata, index)
     at_gui.mark_dirty(pdata)
     at_gui.update_button(pdata, index, button)
     at_gui.update_sliders(pdata)

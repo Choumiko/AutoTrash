@@ -22,9 +22,9 @@ local in_network = at_util.in_network
 
 
 local function on_nth_tick()
-    for i, p in pairs(game.players) do
+    for _, p in pairs(game.connected_players) do
         if p.character then
-            local pdata = global._pdata[i]
+            local pdata = global._pdata[p.index]
             if pdata.flags.gui_open then
                 at_gui.update_button_styles(p, pdata)
             end
@@ -197,7 +197,7 @@ local function on_player_respawned(e)
     local pdata = global._pdata[e.player_index]
     local selected_presets = pdata.death_presets
     if table_size(selected_presets) > 0 then
-        local tmp = {config = {}, max_slot = 0, c_requests = 0}
+        local tmp = {config = {}, by_name = {}, max_slot = 0, c_requests = 0}
         for key, _ in pairs(selected_presets) do
             presets.merge(tmp, pdata.presets[key])
         end

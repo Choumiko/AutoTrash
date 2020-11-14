@@ -25,6 +25,7 @@ function presets.merge(current, preset)
                 b.config[i] = nil
                 max_slot = max_slot > tmp.slot and max_slot or tmp.slot
                 c_requests = tmp.min > 0 and c_requests + 1 or c_requests
+                current.by_name[tmp.name] = tmp
                 break
             end
         end
@@ -34,6 +35,7 @@ function presets.merge(current, preset)
         assert(i==config.slot)
         if not result[config.slot] then
             result[config.slot] = config
+            current.by_name[config.name] = config
         else
             no_slot[#no_slot + 1] = config
         end
@@ -47,6 +49,7 @@ function presets.merge(current, preset)
             if not result[i] then
                 s.slot = i
                 result[i] = s
+                current.by_name[s.name] = s
                 start = i + 1
                 max_slot = max_slot > i and max_slot or i
                 break
@@ -132,7 +135,8 @@ end
 --Importing a string with invalid item signals removes the combinator containing the invalid signals.
 function presets.import(preset, icons)
     local item_slot_count = game.entity_prototypes["constant-combinator"].item_slot_count
-    local tmp = {config = {}, max_slot = 0, c_requests = 0}
+    local tmp = {config = {}, by_name = {}, max_slot = 0, c_requests = 0}
+    local by_name = tmp.by_name
     local config = tmp.config
     local index_offset, index
     local cc_found = false
@@ -146,6 +150,7 @@ function presets.import(preset, icons)
                     index = index_offset + item_config.index
                     if not config[index] then
                         config[index] = {name = item_config.signal.name, slot = index, max = max_request, min = 0}
+                        by_name[item_config.signal.name] = config[index]
                     end
                     if (cc.position.y - 0.5) == 0 then
                         config[index].min = item_config.count

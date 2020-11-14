@@ -173,6 +173,24 @@ local migrations = {
             pdata.main_network = nil
         end
     end,
+    ["5.2.15"] = function()
+        for _, pdata in pairs(global._pdata) do
+            pdata.config_tmp.by_name = {}
+            for _, item_config in pairs(pdata.config_tmp.config) do
+                pdata.config_tmp.by_name[item_config.name] = item_config
+            end
+            pdata.config_new.by_name = {}
+            for _, item_config in pairs(pdata.config_new.config) do
+                pdata.config_new.by_name[item_config.name] = item_config
+            end
+            for _, preset in pairs(pdata.presets) do
+                preset.by_name = {}
+                for _, item_config in pairs(preset.config) do
+                    preset.by_name[item_config.name] = item_config
+                end
+            end
+        end
+    end
 }
 
 return migrations
