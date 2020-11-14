@@ -14,15 +14,15 @@ local item_prototype = at_util.item_prototype
 local in_network = at_util.in_network
 local get_non_equipment_network = at_util.get_non_equipment_network
 
-local clamp = function(v, min, max)
+local function clamp(v, min, max)
     return (v < min) and min or (v > max and max or v)
 end
 
-local format_request = function(item_config)
+local function format_request(item_config)
     return (item_config.min and item_config.min >= 0) and item_config.min or (item_config.max and 0)
 end
 
-local format_trash = function(item_config)
+local function format_trash(item_config)
     return (item_config.max < constants.max_request) and format_number(item_config.max, true) or "∞"
 end
 
@@ -434,7 +434,7 @@ at_gui.handlers = {
                 local player = e.player
                 local pdata = e.pdata
 
-                local adjusted = at_util.check_config(player, pdata)
+                local adjusted = player_data.check_config(player, pdata)
                 pdata.config_new = table.deep_copy(pdata.config_tmp)
                 pdata.dirty = false
                 pdata.gui.main.reset_button.enabled = false
@@ -566,7 +566,7 @@ at_gui.handlers = {
                             elseif cursor_ghost and old_selected then
                                 local old_config = config_tmp.config[old_selected]
                                 if elem_value and old_config and cursor_ghost.name == old_config.name then
-                                    at_util.swap_configs(pdata, old_selected, index)
+                                    player_data.swap_configs(pdata, old_selected, index)
                                     player.cursor_ghost = nil
                                     pdata.selected = index
                                     at_gui.mark_dirty(pdata)
@@ -634,7 +634,7 @@ at_gui.handlers = {
                         pdata.selected = index
                         local request_amount = item_prototype(elem_value).default_request_amount
                         local trash_amount = pdata.settings.trash_equals_requests and request_amount or constants.max_request
-                        at_util.add_config(pdata, elem_value, request_amount, trash_amount, index)
+                        player_data.add_config(pdata, elem_value, request_amount, trash_amount, index)
 
                         at_gui.mark_dirty(pdata)
                         at_gui.update_button(pdata, index, e.element)
@@ -986,7 +986,7 @@ at_gui.handlers = {
 }
 gui.add_handlers(at_gui.handlers)
 
-at_gui.update_request_config = function(number, pdata, from_text)
+function at_gui.update_request_config(number, pdata, from_text)
     local selected = pdata.selected
     local config_tmp = pdata.config_tmp
     local item_config = config_tmp.config[selected]
@@ -1009,7 +1009,7 @@ at_gui.update_request_config = function(number, pdata, from_text)
     at_gui.update_button(pdata, pdata.selected)
 end
 
-at_gui.update_trash_config = function(player, pdata, number, source)
+function at_gui.update_trash_config(player, pdata, number, source)
     local selected = pdata.selected
     local config_tmp = pdata.config_tmp
     local item_config = config_tmp.config[selected]
@@ -1039,7 +1039,7 @@ at_gui.update_trash_config = function(player, pdata, number, source)
     at_gui.update_sliders(pdata)
 end
 
-at_gui.decrease_slots = function(player, pdata)
+function at_gui.decrease_slots(player, pdata)
     local old_slots = player.character_logistic_slot_count
     local step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
     local correct = (old_slots + 1) % step
@@ -1048,7 +1048,7 @@ at_gui.decrease_slots = function(player, pdata)
     at_gui.adjust_slots(player, pdata, new_slots)
 end
 
-at_gui.increase_slots = function(player, pdata)
+function at_gui.increase_slots(player, pdata)
     local old_slots = player.character_logistic_slot_count
     local step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
     local correct = (old_slots + 1) % step
@@ -1056,7 +1056,7 @@ at_gui.increase_slots = function(player, pdata)
     at_gui.adjust_slots(player, pdata, new_slots)
 end
 
-at_gui.adjust_slots = function(player, pdata, slots)
+function at_gui.adjust_slots(player, pdata, slots)
     slots = slots or pdata.config_tmp.max_slot
     local step = (10*pdata.settings.columns) / gcd(10, pdata.settings.columns)
     if slots < pdata.config_tmp.max_slot then
@@ -1097,7 +1097,7 @@ at_gui.adjust_slots = function(player, pdata, slots)
     pdata.gui.main.config_rows.scroll_to_bottom()
 end
 
-at_gui.update_buttons = function(pdata)
+function at_gui.update_buttons(pdata)
     if not pdata.flags.gui_open then return end
     local children = pdata.gui.main.slot_table.children
     for i=1, #children-1 do
@@ -1105,7 +1105,7 @@ at_gui.update_buttons = function(pdata)
     end
 end
 
-at_gui.get_button_style = function(i, selected, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo, paused)
+function at_gui.get_button_style(i, selected, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo, paused)
     if paused or not (available and on_the_way and item and item.min > 0) then
         return (i == selected) and "yellow_slot_button" or "slot_button"
     end
@@ -1129,7 +1129,7 @@ at_gui.get_button_style = function(i, selected, item, available, on_the_way, ite
     end
 end
 
-at_gui.update_button_styles = function(player, pdata)
+function at_gui.update_button_styles(player, pdata)
     local ruleset_grid = pdata.gui.main.slot_table
     if not (ruleset_grid and ruleset_grid.valid) then return end
     local selected = pdata.selected
@@ -1156,7 +1156,7 @@ at_gui.update_button_styles = function(player, pdata)
     return ret
 end
 
-at_gui.update_button = function(pdata, i, button)
+function at_gui.update_button(pdata, i, button)
     if not (button and button.valid) then
         if not i then return end
         button = pdata.gui.main.slot_table.children[i]
@@ -1176,14 +1176,14 @@ at_gui.update_button = function(pdata, i, button)
     button.style = (i == pdata.selected) and "yellow_slot_button" or "slot_button"
 end
 
-at_gui.clear_button = function(pdata, index, button)
-    at_util.clear_config(pdata, index)
+function at_gui.clear_button(pdata, index, button)
+    player_data.clear_config(pdata, index)
     at_gui.mark_dirty(pdata)
     at_gui.update_button(pdata, index, button)
     at_gui.update_sliders(pdata)
 end
 
-at_gui.update_sliders = function(pdata)
+function at_gui.update_sliders(pdata)
     if not pdata.flags.gui_open then return end
     if pdata.selected then
         local sliders = pdata.gui.main.sliders
@@ -1203,7 +1203,7 @@ at_gui.update_sliders = function(pdata)
     end
 end
 
-at_gui.add_preset = function(player, pdata, name, config)
+function at_gui.add_preset(player, pdata, name, config)
     config = config or pdata.config_tmp
     if name == "" then
         player.print({"at-message.name-not-set"})
@@ -1223,7 +1223,7 @@ at_gui.add_preset = function(player, pdata, name, config)
     return true
 end
 
-at_gui.update_presets = function(pdata)
+function at_gui.update_presets(pdata)
     if not pdata.flags.gui_open then return end
     local children = pdata.gui.main.presets_flow.children
     local selected_presets = pdata.selected_presets
@@ -1243,7 +1243,7 @@ at_gui.update_presets = function(pdata)
     end
 end
 
-at_gui.update_networks = function(player, pdata)
+function at_gui.update_networks(player, pdata)
     if not pdata.flags.gui_open then return end
     local networks = pdata.gui.main.networks_flow
     networks.clear()
@@ -1434,7 +1434,7 @@ function at_gui.init(player, pdata)
     at_gui.init_status_display(player, pdata)
 end
 
-at_gui.init_status_display = function(player, pdata, keep_status)
+function at_gui.init_status_display(player, pdata, keep_status)
     local status_flow = pdata.gui.status_flow
     if not (status_flow and status_flow.valid) then
         status_flow = mod_gui.get_frame_flow(player).autotrash_status_flow
@@ -1469,7 +1469,7 @@ at_gui.init_status_display = function(player, pdata, keep_status)
     at_gui.update_status_display(player, pdata)
 end
 
-at_gui.open_status_display = function(player, pdata)
+function at_gui.open_status_display(player, pdata)
     local status_table = pdata.gui.status_table
     if not (status_table and status_table.valid) then
         at_gui.init_status_display(player, pdata)
@@ -1482,7 +1482,7 @@ at_gui.open_status_display = function(player, pdata)
     end
 end
 
-at_gui.close_status_display = function(pdata)
+function at_gui.close_status_display(pdata)
     pdata.flags.status_display_open = false
     pdata.gui.mod_gui.button.tooltip = {"at-gui.tooltip-main-button", "Off"}
     local status_table = pdata.gui.status_table
@@ -1492,7 +1492,7 @@ at_gui.close_status_display = function(pdata)
     status_table.parent.visible = false
 end
 
-at_gui.toggle_status_display = function(player, pdata)
+function at_gui.toggle_status_display(player, pdata)
     if pdata.flags.status_display_open then
         at_gui.close_status_display(pdata)
     else
@@ -1500,7 +1500,7 @@ at_gui.toggle_status_display = function(player, pdata)
     end
 end
 
-at_gui.update_status_display = function(player, pdata)
+function at_gui.update_status_display(player, pdata)
     if not pdata.flags.status_display_open then return end
     local status_table = pdata.gui.status_table
     if not (status_table and status_table.valid) then

@@ -44,6 +44,93 @@ function player_data.init(player_index)
     return global._pdata[player_index]
 end
 
+function player_data.update_settings(player, pdata)
+    local player_settings = player.mod_settings
+    local settings = {
+        status_count = player_settings["autotrash_status_count"].value,
+        status_columns = player_settings["autotrash_status_columns"].value,
+        display_messages = player_settings["autotrash_display_messages"].value,
+        close_on_apply = player_settings["autotrash_close_on_apply"].value,
+        reset_on_close = player_settings["autotrash_reset_on_close"].value,
+        overwrite = player_settings["autotrash_overwrite"].value,
+        trash_equals_requests = player_settings["autotrash_trash_equals_requests"].value,
+        columns = player_settings["autotrash_gui_displayed_columns"].value,
+        rows = player_settings["autotrash_gui_rows_before_scroll"].value,
+    }
+    pdata.settings = settings
+end
+
+function player_data.refresh(player, pdata)
+    pdata.flags.can_open_gui = player.character and player.force.character_logistic_requests
+    player_data.update_settings(player, pdata)
+end
+
+function player_data.swap_configs(pdata, origin, destination)
+    local config_tmp = pdata.config_tmp
+    local old_config = config_tmp.config[origin]
+    local tmp = table.deep_copy(config_tmp.config[destination])
+    config_tmp.config[destination] = table.deep_copy(old_config)
+    config_tmp.config[destination].slot = destination
+    config_tmp.by_name[old_config.name] = config_tmp.config[destination]
+    if tmp then
+        config_tmp.config[origin] = tmp
+        config_tmp.by_name[tmp.name] = tmp
+        tmp.slot = origin
+    else
+        config_tmp.config[origin] = nil
+    end
+    config_tmp.max_slot = destination > config_tmp.max_slot and destination or config_tmp.max_slot
+end
+
+function player_data.add_config(pdata, name, min, max, index)
+    local config_tmp = pdata.config_tmp
+    config_tmp.config[index] = {
+        name = name, min = min,
+        max = max, slot = index
+    }
+    config_tmp.by_name[name] = config_tmp.config[index]
+
+    config_tmp.max_slot = index > config_tmp.max_slot and index or config_tmp.max_slot
+    if config_tmp.config[index].min > 0 then
+        config_tmp.c_requests = config_tmp.c_requests + 1
+    end
+end
+
+function player_data.clear_config(pdata, index)
+    local config_tmp = pdata.config_tmp
+    local config = config_tmp.config[index]
+    if config then
+        if config.min > 0 then
+            config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
+        end
+        if pdata.selected == index then pdata.selected = false end
+        config_tmp.by_name[config.name] = nil
+        config_tmp.config[index] = nil
+        if index == config_tmp.max_slot then
+            config_tmp.max_slot = 0
+            for i = index-1, 1, -1 do
+                if config_tmp.config[i] then
+                    config_tmp.max_slot = i
+                    break
+                end
+            end
+        end
+    end
+end
+
+function player_data.check_config(player, pdata)
+    local adjusted
+    for _, config in pairs(pdata.config_tmp.config) do
+        if config.max < config.min then
+            adjusted = true
+            config.max = config.min
+            player.print{"at-message.adjusted-trash-amount", M.item_prototype(config.name).localised_name, config.max}
+        end
+    end
+    return adjusted
+end
+
+
 function player_data.combine_from_vanilla(player, pdata, name)
     if not player.character then
         return {config = {}, by_name = {}, c_requests = 0, max_slot = 0}
@@ -77,27 +164,6 @@ function player_data.import_when_empty(player, pdata)
         pdata.config_new = table.deep_copy(pdata.config_tmp)
         return true
     end
-end
-
-function player_data.update_settings(player, pdata)
-    local player_settings = player.mod_settings
-    local settings = {
-        status_count = player_settings["autotrash_status_count"].value,
-        status_columns = player_settings["autotrash_status_columns"].value,
-        display_messages = player_settings["autotrash_display_messages"].value,
-        close_on_apply = player_settings["autotrash_close_on_apply"].value,
-        reset_on_close = player_settings["autotrash_reset_on_close"].value,
-        overwrite = player_settings["autotrash_overwrite"].value,
-        trash_equals_requests = player_settings["autotrash_trash_equals_requests"].value,
-        columns = player_settings["autotrash_gui_displayed_columns"].value,
-        rows = player_settings["autotrash_gui_rows_before_scroll"].value,
-    }
-    pdata.settings = settings
-end
-
-function player_data.refresh(player, pdata)
-    pdata.flags.can_open_gui = player.character and player.force.character_logistic_requests
-    player_data.update_settings(player, pdata)
 end
 
 --mostly taken from https://github.com/raiguard/Factorio-QuickItemSearch/blob/master/src/scripts/player-data.lua
@@ -166,7 +232,7 @@ function player_data.set_request(player, pdata, request, temporary)
     return true
 end
 
-player_data.check_temporary_requests = function(player, pdata)
+function player_data.check_temporary_requests(player, pdata)
     local contents = player.get_main_inventory().get_contents()
     local cursor_stack = player.cursor_stack
     if cursor_stack and cursor_stack.valid_for_read then

@@ -5,77 +5,12 @@ local constants = require("constants")
 local M = {}
 
 local item_prototypes = {}
-M.item_prototype = function(name)
+function M.item_prototype(name)
     if item_prototypes[name] then
         return item_prototypes[name]
     end
     item_prototypes[name] = game.item_prototypes[name]
     return item_prototypes[name]
-end
-
-M.swap_configs = function(pdata, origin, destination)
-    local config_tmp = pdata.config_tmp
-    local old_config = config_tmp.config[origin]
-    local tmp = table.deep_copy(config_tmp.config[destination])
-    config_tmp.config[destination] = table.deep_copy(old_config)
-    config_tmp.config[destination].slot = destination
-    config_tmp.by_name[old_config.name] = config_tmp.config[destination]
-    if tmp then
-        config_tmp.config[origin] = tmp
-        config_tmp.by_name[tmp.name] = tmp
-        tmp.slot = origin
-    else
-        config_tmp.config[origin] = nil
-    end
-    config_tmp.max_slot = destination > config_tmp.max_slot and destination or config_tmp.max_slot
-end
-
-M.add_config = function(pdata, name, min, max, index)
-    local config_tmp = pdata.config_tmp
-    config_tmp.config[index] = {
-        name = name, min = min,
-        max = max, slot = index
-    }
-    config_tmp.by_name[name] = config_tmp.config[index]
-
-    config_tmp.max_slot = index > config_tmp.max_slot and index or config_tmp.max_slot
-    if config_tmp.config[index].min > 0 then
-        config_tmp.c_requests = config_tmp.c_requests + 1
-    end
-end
-
-M.clear_config = function(pdata, index)
-    local config_tmp = pdata.config_tmp
-    local config = config_tmp.config[index]
-    if config then
-        if config.min > 0 then
-            config_tmp.c_requests = config_tmp.c_requests > 0 and config_tmp.c_requests - 1 or 0
-        end
-        if pdata.selected == index then pdata.selected = false end
-        config_tmp.by_name[config.name] = nil
-        config_tmp.config[index] = nil
-        if index == config_tmp.max_slot then
-            config_tmp.max_slot = 0
-            for i = index-1, 1, -1 do
-                if config_tmp.config[i] then
-                    config_tmp.max_slot = i
-                    break
-                end
-            end
-        end
-    end
-end
-
-M.check_config = function(player, pdata)
-    local adjusted
-    for _, config in pairs(pdata.config_tmp.config) do
-        if config.max < config.min then
-            adjusted = true
-            config.max = config.min
-            player.print{"at-message.adjusted-trash-amount", M.item_prototype(config.name).localised_name, config.max}
-        end
-    end
-    return adjusted
 end
 
 -- function M.get_quickbar_items(player, pdata)
@@ -98,7 +33,7 @@ end
 --     return items
 -- end
 
--- M.set_requests2 = function(player, pdata)
+-- function M.set_requests2(player, pdata)
 --     local character = player.character
 --     if not character then return end
 --     local flags = pdata.flags
@@ -191,7 +126,7 @@ end
 --     end
 -- end
 
-M.set_requests = function(player, pdata)
+function M.set_requests(player, pdata)
     local character = player.character
     if not character then return end
     local flags = pdata.flags
@@ -270,27 +205,27 @@ M.set_requests = function(player, pdata)
     end
 end
 
-M.pause_requests = function(player, pdata)
+function M.pause_requests(player, pdata)
     pdata.flags.pause_requests = true
     M.set_requests(player, pdata)
 end
 
-M.unpause_requests = function(player, pdata)
+function M.unpause_requests(player, pdata)
     pdata.flags.pause_requests = false
     M.set_requests(player, pdata)
 end
 
-M.pause_trash = function(player, pdata)
+function M.pause_trash(player, pdata)
     pdata.flags.pause_trash = true
     M.set_requests(player, pdata)
 end
 
-M.unpause_trash = function(player, pdata)
+function M.unpause_trash(player, pdata)
     pdata.flags.pause_trash = false
     M.set_requests(player, pdata)
 end
 
-M.get_non_equipment_network = function(character)
+function M.get_non_equipment_network(character)
     if not character then return end
     --trash slots researched
     local logi_point = character.get_logistic_point(defines.logistic_member_index.character_provider)
@@ -301,7 +236,7 @@ M.get_non_equipment_network = function(character)
     return logi_point and logi_point.logistic_network
 end
 
-M.get_network_entity = function(player)
+function M.get_network_entity(player)
     local network = M.get_non_equipment_network(player.character)
     if network and network.valid then
         local cell = network.find_cell_closest_to(player.position)
@@ -310,7 +245,7 @@ M.get_network_entity = function(player)
     return false
 end
 
-M.in_network = function(player, pdata)
+function M.in_network(player, pdata)
     if not pdata.flags.trash_network then
         return true
     end
@@ -331,7 +266,7 @@ M.in_network = function(player, pdata)
     return false
 end
 
-M.format_number = function(n, append_suffix)
+function M.format_number(n, append_suffix)
     local amount = tonumber(n)
     if not amount then
     return n
@@ -362,7 +297,7 @@ M.format_number = function(n, append_suffix)
     return formatted..suffix
 end
 
-M.remove_invalid_items = function()
+function M.remove_invalid_items()
     local function _remove(tbl)
         for i = tbl.max_slot, 1, -1 do
             local item_config = tbl.config[i]
