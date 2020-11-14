@@ -1341,33 +1341,25 @@ function at_gui.create_main_window(player, pdata)
                             }},
                             {type = "frame", style = "at_bordered_frame", children = {
                                 {type = "flow", direction = "vertical", children = {
-                                    {type = "table", save_as = "main.sliders.table", style_mods = {height = 60}, column_count = 2, children = {
-                                        {type = "flow", direction = "horizontal", children = {
-                                            {type = "label", caption = {"at-gui.request"}}
-                                        }},
-                                        {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
-                                            {type = "slider", save_as = "main.sliders.request", handlers = "main.sliders.request",
-                                                minimum_value = 0, maximum_value = 10,
-                                                style = "notched_slider",
-                                            },
-                                            {type = "textfield", style = "slider_value_textfield",
-                                                numeric = true, allow_negative = false, lose_focus_on_confirm = true,
-                                                save_as = "main.sliders.request_text", handlers = "main.sliders.request"
-                                            },
-                                        }},
-                                        {type = "flow", direction = "horizontal", children = {
-                                            {type = "label", caption={"at-gui.trash"}},
-                                        }},
-                                        {type ="flow", style = "at_slider_flow", direction = "horizontal", children = {
-                                            {type = "slider", save_as = "main.sliders.trash", handlers = "main.sliders.trash",
-                                                minimum_value = 0, maximum_value = 10,
-                                                style = "notched_slider",
-                                            },
-                                            {type = "textfield", style = "slider_value_textfield",
-                                                numeric = true, allow_negative = false, lose_focus_on_confirm = true,
-                                                save_as = "main.sliders.trash_text", handlers = "main.sliders.trash"
-                                            },
-                                        }},
+                                    {type = "table", save_as = "main.sliders.table", style_mods = {height = 60, horizontal_spacing = 8}, column_count = 3, children = {
+                                        {type = "label", caption = {"at-gui.request"}},
+                                        {type = "slider", save_as = "main.sliders.request", handlers = "main.sliders.request",
+                                            minimum_value = 0, maximum_value = 10,
+                                            style = "notched_slider",
+                                        },
+                                        {type = "textfield", style = "slider_value_textfield",
+                                            numeric = true, allow_negative = false, lose_focus_on_confirm = true,
+                                            save_as = "main.sliders.request_text", handlers = "main.sliders.request"
+                                        },
+                                        {type = "label", caption={"at-gui.trash"}},
+                                        {type = "slider", save_as = "main.sliders.trash", handlers = "main.sliders.trash",
+                                            minimum_value = 0, maximum_value = 10,
+                                            style = "notched_slider",
+                                        },
+                                        {type = "textfield", style = "slider_value_textfield",
+                                            numeric = true, allow_negative = false, lose_focus_on_confirm = true,
+                                            save_as = "main.sliders.trash_text", handlers = "main.sliders.trash"
+                                        },
                                     }},
                                     {type = "drop-down", style = "at_quick_actions", handlers = "main.quick_actions",
                                         items = constants.quick_actions,
