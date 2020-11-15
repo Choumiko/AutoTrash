@@ -124,12 +124,11 @@ function player_data.check_config(player, pdata)
         if config.max < config.min then
             adjusted = true
             config.max = config.min
-            player.print{"at-message.adjusted-trash-amount", M.item_prototype(config.name).localised_name, config.max}
+            player.print{"at-message.adjusted-trash-amount", at_util.item_prototype(config.name).localised_name, config.max}
         end
     end
     return adjusted
 end
-
 
 function player_data.combine_from_vanilla(player, pdata, name)
     if not player.character then

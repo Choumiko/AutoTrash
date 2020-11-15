@@ -251,61 +251,59 @@ at_gui.templates = {
     end,
 
     settings = function(flags)
-        return {type = "frame", style = "at_bordered_frame", children = {
-            {type = "flow", direction = "vertical", save_as = "main.trash_options", children = {
-                {
-                    type = "checkbox",
-                    name = at_gui.defines.trash_above_requested,
-                    caption = {"at-gui.trash-above-requested"},
-                    state = flags.trash_above_requested,
-                    handlers = "main.settings.toggle"
-                },
-                {
-                    type = "checkbox",
-                    name = at_gui.defines.trash_unrequested,
-                    caption = {"at-gui.trash-unrequested"},
-                    state = flags.trash_unrequested,
-                    handlers = "main.settings.toggle"
-                },
-                {
-                    type = "checkbox",
-                    name = at_gui.defines.trash_network,
-                    caption = {"at-gui.trash-in-main-network"},
-                    state = flags.trash_network,
-                    handlers = "main.settings.toggle"
-                },
-                {
-                    type = "checkbox",
-                    name = at_gui.defines.pause_trash,
-                    caption = {"at-gui.pause-trash"},
-                    tooltip = {"at-gui.tooltip-pause-trash"},
-                    state = flags.pause_trash,
-                    handlers = "main.settings.toggle"
-                },
-                {
-                    type = "checkbox",
-                    name = at_gui.defines.pause_requests,
-                    caption = {"at-gui.pause-requests"},
-                    tooltip = {"at-gui.tooltip-pause-requests"},
-                    state = flags.pause_requests,
-                    handlers = "main.settings.toggle"
-                },
-                {
-                    type = "flow", style_mods = {vertical_align = "center"}, children = {
-                        {type = "label", caption = "Main networks: "},
-                        {type = "button", caption = "+", style = "tool_button", handlers = "main.settings.add_network",
-                            tooltip = {"at-gui.tooltip-add-network"}
-                        },
-                        {type = "button", caption = "-", style = "tool_button", handlers = "main.settings.remove_network",
-                            tooltip = {"at-gui.tooltip-remove-network"}
-                        },
-                        {type = "sprite-button", sprite = "utility/rename_icon_normal", style = "tool_button",
-                            save_as = "main.network_edit_button",
-                            handlers = "main.settings.edit_networks", tooltip = {"at-gui.tooltip-edit-networks"}},
-                    }
-                },
-                at_gui.templates.pushers.horizontal
-            }},
+        return {type = "frame", style = "at_bordered_frame", direction = "vertical", save_as = "main.trash_options", children = {
+            {
+                type = "checkbox",
+                name = at_gui.defines.trash_above_requested,
+                caption = {"at-gui.trash-above-requested"},
+                state = flags.trash_above_requested,
+                handlers = "main.settings.toggle"
+            },
+            {
+                type = "checkbox",
+                name = at_gui.defines.trash_unrequested,
+                caption = {"at-gui.trash-unrequested"},
+                state = flags.trash_unrequested,
+                handlers = "main.settings.toggle"
+            },
+            {
+                type = "checkbox",
+                name = at_gui.defines.trash_network,
+                caption = {"at-gui.trash-in-main-network"},
+                state = flags.trash_network,
+                handlers = "main.settings.toggle"
+            },
+            {
+                type = "checkbox",
+                name = at_gui.defines.pause_trash,
+                caption = {"at-gui.pause-trash"},
+                tooltip = {"at-gui.tooltip-pause-trash"},
+                state = flags.pause_trash,
+                handlers = "main.settings.toggle"
+            },
+            {
+                type = "checkbox",
+                name = at_gui.defines.pause_requests,
+                caption = {"at-gui.pause-requests"},
+                tooltip = {"at-gui.tooltip-pause-requests"},
+                state = flags.pause_requests,
+                handlers = "main.settings.toggle"
+            },
+            {
+                type = "flow", style_mods = {vertical_align = "center"}, children = {
+                    {type = "label", caption = "Main networks: "},
+                    {type = "button", caption = "+", style = "tool_button", handlers = "main.settings.add_network",
+                        tooltip = {"at-gui.tooltip-add-network"}
+                    },
+                    {type = "button", caption = "-", style = "tool_button", handlers = "main.settings.remove_network",
+                        tooltip = {"at-gui.tooltip-remove-network"}
+                    },
+                    {type = "sprite-button", sprite = "utility/rename_icon_normal", style = "tool_button",
+                        save_as = "main.network_edit_button",
+                        handlers = "main.settings.edit_networks", tooltip = {"at-gui.tooltip-edit-networks"}},
+                }
+            },
+            at_gui.templates.pushers.horizontal
         }}
     end,
 
@@ -1304,35 +1302,33 @@ function at_gui.create_main_window(player, pdata)
                                     }
                                 }
                             }},
-                            {type = "frame", style = "at_bordered_frame", children = {
-                                {type = "flow", direction = "vertical", children = {
-                                    {type = "table", save_as = "main.sliders.table", style_mods = {height = 60, horizontal_spacing = 8}, column_count = 3, children = {
-                                        {type = "label", caption = {"at-gui.request"}},
-                                        {type = "slider", save_as = "main.sliders.request", handlers = "main.sliders.request",
-                                            minimum_value = 0, maximum_value = 10,
-                                            style = "notched_slider",
-                                        },
-                                        {type = "textfield", style = "slider_value_textfield",
-                                            numeric = true, allow_negative = false, lose_focus_on_confirm = true,
-                                            save_as = "main.sliders.request_text", handlers = "main.sliders.request"
-                                        },
-                                        {type = "label", caption={"at-gui.trash"}},
-                                        {type = "slider", save_as = "main.sliders.trash", handlers = "main.sliders.trash",
-                                            minimum_value = 0, maximum_value = 10,
-                                            style = "notched_slider",
-                                        },
-                                        {type = "textfield", style = "slider_value_textfield",
-                                            numeric = true, allow_negative = false, lose_focus_on_confirm = true,
-                                            save_as = "main.sliders.trash_text", handlers = "main.sliders.trash"
-                                        },
-                                    }},
-                                    {type = "drop-down", style = "at_quick_actions", handlers = "main.quick_actions",
-                                        items = constants.quick_actions,
-                                        selected_index = 1,
-                                        tooltip = {"at-gui.tooltip-quick-actions"}
+                            {type = "frame", style = "at_bordered_frame", direction = "vertical", children = {
+                                {type = "table", save_as = "main.sliders.table", style_mods = {height = 60, horizontal_spacing = 8}, column_count = 3, children = {
+                                    {type = "label", caption = {"at-gui.request"}},
+                                    {type = "slider", save_as = "main.sliders.request", handlers = "main.sliders.request",
+                                        minimum_value = 0, maximum_value = 10,
+                                        style = "notched_slider",
                                     },
-                                    at_gui.templates.pushers.horizontal
-                                }}
+                                    {type = "textfield", style = "slider_value_textfield",
+                                        numeric = true, allow_negative = false, lose_focus_on_confirm = true,
+                                        save_as = "main.sliders.request_text", handlers = "main.sliders.request"
+                                    },
+                                    {type = "label", caption={"at-gui.trash"}},
+                                    {type = "slider", save_as = "main.sliders.trash", handlers = "main.sliders.trash",
+                                        minimum_value = 0, maximum_value = 10,
+                                        style = "notched_slider",
+                                    },
+                                    {type = "textfield", style = "slider_value_textfield",
+                                        numeric = true, allow_negative = false, lose_focus_on_confirm = true,
+                                        save_as = "main.sliders.trash_text", handlers = "main.sliders.trash"
+                                    },
+                                }},
+                                {type = "drop-down", style = "at_quick_actions", handlers = "main.quick_actions",
+                                    items = constants.quick_actions,
+                                    selected_index = 1,
+                                    tooltip = {"at-gui.tooltip-quick-actions"}
+                                },
+                                at_gui.templates.pushers.horizontal
                             }},
                             at_gui.templates.settings(flags),
                         }},

@@ -199,6 +199,8 @@ function M.set_requests(player, pdata)
 
         local i = config_new.max_slot + 1
         for name, _ in pairs(contents) do
+            --TODO remove clear for 1.1
+            clear_request_slot(i)
             set_request_slot(i, {name = name, max = 0})
             i = i + 1
         end
