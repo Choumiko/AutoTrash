@@ -1,5 +1,3 @@
-local table = require("__flib__.table")
-local floor = math.floor
 local constants = require("constants")
 
 local M = {}
@@ -281,8 +279,10 @@ function M.format_number(n, append_suffix)
             ["M"] = 1000000,
             ["k"] = 1000
         }
+        local floor = math.floor
+        local abs = math.abs
         for letter, limit in pairs (suffix_list) do
-            if math.abs(amount) >= limit then
+            if abs(amount) >= limit then
                 amount = floor(amount/(limit/10))/10
                 suffix = letter
                 break
@@ -290,8 +290,9 @@ function M.format_number(n, append_suffix)
         end
     end
     local formatted, k = amount
+    local gsub = string.gsub
     while true do
-        formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
+        formatted, k = gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
         if (k == 0) then
             break
         end
