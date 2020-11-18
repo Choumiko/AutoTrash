@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.14
-Date: ????
+Date: 2020-11-18
   Changes:
     - Sliders change the amount by one stack at a time.
     - Added support for multiple main networks.
