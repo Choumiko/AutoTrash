@@ -7,7 +7,7 @@ function player_data.init(player_index)
     local player = game.get_player(player_index)
     global._pdata[player_index] = {
         flags = {
-            can_open_gui = player.character and player.force.character_logistic_requests,
+            can_open_gui = player.force.character_logistic_requests,
             gui_open = false,
             dirty = false,
             pinned = true,
@@ -36,6 +36,7 @@ function player_data.init(player_index)
         death_presets = {},
         networks = {}
     }
+    player.set_shortcut_available("autotrash-toggle-gui", player.force.character_logistic_requests)
     player_data.update_settings(game.get_player(player_index), global._pdata[player_index])
 
     global._pdata[player_index].config_tmp = player_data.combine_from_vanilla(player)
@@ -56,12 +57,14 @@ function player_data.update_settings(player, pdata)
         trash_equals_requests = player_settings["autotrash_trash_equals_requests"].value,
         columns = player_settings["autotrash_gui_displayed_columns"].value,
         rows = player_settings["autotrash_gui_rows_before_scroll"].value,
+        show_button = player_settings["autotrash_show_button"].value,
     }
     pdata.settings = settings
 end
 
 function player_data.refresh(player, pdata)
-    pdata.flags.can_open_gui = player.character and player.force.character_logistic_requests
+    pdata.flags.can_open_gui = player.force.character_logistic_requests
+    player.set_shortcut_available("autotrash-toggle-gui", player.force.character_logistic_requests)
     player_data.update_settings(player, pdata)
 end
 

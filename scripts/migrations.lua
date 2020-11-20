@@ -200,7 +200,13 @@ local migrations = {
                 end
             end
         end
-    end
+    end,
+    ["5.2.16"] = function()
+        for pi, pdata in pairs(global._pdata) do
+            player_data.refresh(game.get_player(pi), pdata)
+            pdata.gui.mod_gui.flow.visible = pdata.flags.can_open_gui and pdata.settings.show_button
+        end
+    end,
 }
 
 return migrations

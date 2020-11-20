@@ -29,20 +29,40 @@ data:extend {
 data:extend{
     {
         type = "custom-input",
-        name = "autotrash_pause",
-        key_sequence = "SHIFT + P",
-        consuming = "none",
-    },
-    {
-        type = "custom-input",
-        name = "autotrash_pause_requests",
-        key_sequence = "SHIFT + O",
-        consuming = "none",
+        name = "autotrash-toggle-gui",
+        key_sequence = "CONTROL + L",
+        order = "a"
     },
     {
         type = "custom-input",
         name = "autotrash_trash_cursor",
         key_sequence = "SHIFT + T",
-        consuming = "none"
+        order = "b"
     },
+    {
+        type = "custom-input",
+        name = "autotrash_pause",
+        key_sequence = "SHIFT + P",
+        order = "c"
+    },
+    {
+        type = "custom-input",
+        name = "autotrash_pause_requests",
+        key_sequence = "SHIFT + O",
+        order = "d"
+    },
+}
+
+data:extend{
+    {
+        type = "shortcut",
+        name = "autotrash-toggle-gui",
+        action = "lua",
+        icon = data_util.build_sprite(nil, {0, 0}, "__AutoTrash__/graphics/shortcut-x32.png", 32, 2),
+        small_icon = data_util.build_sprite(nil, {0, 0}, "__AutoTrash__/graphics/shortcut-x32.png", 32, 2),
+        disabled_icon = data_util.build_sprite(nil, {0, 0}, "__AutoTrash__/graphics/shortcut-x32-white.png", 32, 2),
+        disabled_small_icon = data_util.build_sprite(nil, {0, 0}, "__AutoTrash__/graphics/shortcut-x32-white.png", 32, 2),
+        toggleable = true,
+        associated_control_input = "autotrash-toggle-gui"
+    }
 }

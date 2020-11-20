@@ -383,6 +383,22 @@ event.register("autotrash_pause_requests", function(e)
     toggle_autotrash_pause_requests(game.get_player(e.player_index))
 end)
 
+event.on_lua_shortcut(function(e)
+    if e.prototype_name == "autotrash-toggle-gui" then
+        local pdata = global._pdata[e.player_index]
+        if pdata.flags.can_open_gui then
+            at_gui.toggle(game.get_player(e.player_index), pdata)
+        end
+    end
+end)
+
+event.register("autotrash-toggle-gui", function(e)
+    local pdata = global._pdata[e.player_index]
+    if pdata.flags.can_open_gui then
+        at_gui.toggle(game.get_player(e.player_index), pdata)
+    end
+end)
+
 local function on_runtime_mod_setting_changed(e)
     if e.setting == "autotrash_update_rate" then
         register_conditional_events()
@@ -394,6 +410,7 @@ local function on_runtime_mod_setting_changed(e)
     local pdata = global._pdata[player_index]
     if not (player_index and pdata) then return end
     player_data.update_settings(player, pdata)
+    pdata.gui.mod_gui.flow.visible = pdata.flags.can_open_gui and pdata.settings.show_button
     if e.setting == "autotrash_gui_displayed_columns" or e.setting == "autotrash_gui_rows_before_scroll" then
         at_gui.recreate(player, pdata)
     end
@@ -425,7 +442,8 @@ local function on_research_finished(e)
                 pdata = player_data.init(player.index)
             end
             pdata.flags.can_open_gui = true
-            pdata.gui.mod_gui.flow.visible = true
+            player.set_shortcut_available("autotrash-toggle-gui", true)
+            pdata.gui.mod_gui.flow.visible = pdata.settings.show_button
             if player.character then
                 at_gui.create_main_window(player, pdata)
                 at_gui.open_status_display(player, pdata)
@@ -454,38 +472,6 @@ end
 event.register("autotrash_trash_cursor", autotrash_trash_cursor)
 
 local at_commands = {
-    hide = function(args)
-        local player = game.get_player(args.player_index)
-        local pdata = global._pdata[args.player_index]
-        if not pdata then
-            player_data.init(args.player_index)
-        end
-        player_data.refresh(player, pdata)
-        local button = pdata.gui and pdata.gui.mod_gui and pdata.gui.mod_gui.flow
-        if button and button.valid then
-            button.visible = false
-        else
-            at_gui.init(player, pdata)
-        end
-        at_gui.update_main_button(pdata)
-    end,
-
-    show = function(args)
-        local player = game.get_player(args.player_index)
-        local pdata = global._pdata[args.player_index]
-        if not pdata then
-            player_data.init(args.player_index)
-        end
-        player_data.refresh(player, pdata)
-        local button = pdata.gui and pdata.gui.mod_gui and pdata.gui.mod_gui.flow
-        if button and button.valid then
-            button.visible = true
-        else
-            at_gui.init(player, pdata)
-        end
-        at_gui.update_main_button(pdata)
-    end,
-
     import = function(args)
         local player_index = args.player_index
         local pdata = global._pdata[player_index]
@@ -515,7 +501,5 @@ local command_prefix = "at_"
 if comms.at_hide or comms.at_show then
     command_prefix = "autotrash_"
 end
-commands.add_command(command_prefix .. "hide", "Hide the AutoTrash button", at_commands.hide)
-commands.add_command(command_prefix .. "show", "Show the AutoTrash button", at_commands.show)
 commands.add_command(command_prefix .. "import", "Import from vanilla", at_commands.import)
 commands.add_command(command_prefix .. "reset", "Reset gui", at_commands.reset)

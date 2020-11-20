@@ -1412,7 +1412,7 @@ end
 
 function at_gui.init(player, pdata)
     at_gui.destroy(player, pdata)
-    local visible = pdata.flags.can_open_gui
+    local visible = pdata.flags.can_open_gui and pdata.settings.show_button
 
     local main_button_flow = pdata.gui.mod_gui.flow
     if main_button_flow and main_button_flow.valid then
@@ -1596,6 +1596,7 @@ function at_gui.destroy(player, pdata)
     end
     gui.update_filters("import", player.index, nil, "remove")
     pdata.gui.import = {}
+    player.set_shortcut_toggled("autotrash-toggle-gui", false)
 end
 
 function at_gui.open(player, pdata)
@@ -1619,6 +1620,7 @@ function at_gui.open(player, pdata)
     if not pdata.flags.pinned then
         player.opened = window_frame
     end
+    player.set_shortcut_toggled("autotrash-toggle-gui", true)
 
     at_gui.adjust_slots(player, pdata, player.character_logistic_slot_count)
     at_gui.update_buttons(pdata)
@@ -1647,6 +1649,7 @@ function at_gui.close(player, pdata, no_reset)
         pdata.gui.main.reset_button.enabled = false
         pdata.dirty = false
     end
+    player.set_shortcut_toggled("autotrash-toggle-gui", false)
 end
 
 function at_gui.recreate(player, pdata)
@@ -1655,6 +1658,7 @@ function at_gui.recreate(player, pdata)
     if was_open then
         at_gui.open(player, pdata)
     else
+        player.set_shortcut_toggled("autotrash-toggle-gui", false)
         at_gui.create_main_window(player, pdata)
     end
 end

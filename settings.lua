@@ -13,31 +13,38 @@ data:extend({
 data:extend({
     {
         type = "bool-setting",
+        name = "autotrash_show_button",
+        setting_type = "runtime-per-user",
+        default_value = true,
+        order = "a"
+    },
+    {
+        type = "bool-setting",
         name = "autotrash_trash_equals_requests",
         setting_type = "runtime-per-user",
         default_value = false,
-        order = "a"
+        order = "b"
     },
     {
         type = "bool-setting",
         name = "autotrash_overwrite",
         setting_type = "runtime-per-user",
         default_value = true,
-        order = "b"
+        order = "c"
     },
     {
         type = "bool-setting",
         name = "autotrash_reset_on_close",
         setting_type = "runtime-per-user",
         default_value = false,
-        order = "c"
+        order = "d"
     },
     {
         type = "bool-setting",
         name = "autotrash_close_on_apply",
         setting_type = "runtime-per-user",
         default_value = true,
-        order = "d"
+        order = "e"
     },
     {
         type = "bool-setting",
@@ -45,7 +52,7 @@ data:extend({
         setting_type = "runtime-per-user",
         default_value = false,
         hidden = true,
-        order = "e",
+        order = "f",
     },
     {
         type = "int-setting",
