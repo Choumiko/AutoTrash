@@ -105,7 +105,6 @@ local migrations = {
         end
 
         gui.init()
-        gui.build_lookup_tables()
         for pi, player in pairs(game.players) do
             local pdata = global._pdata[pi]
             player_data.refresh(player, pdata)
@@ -174,6 +173,17 @@ local migrations = {
         end
     end,
     ["5.2.15"] = function()
+        gui.init()
+        for pi, player in pairs(game.players) do
+            local pdata = global._pdata[pi]
+            player_data.refresh(player, pdata)
+            at_gui.init(player, pdata)
+        end
+        for _, force in pairs(game.forces) do
+            if force.character_logistic_requests then
+                global.unlocked_by_force[force.name] = true
+            end
+        end
         for _, pdata in pairs(global._pdata) do
             pdata.config_tmp.by_name = {}
             for _, item_config in pairs(pdata.config_tmp.config) do
