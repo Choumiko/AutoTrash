@@ -70,6 +70,7 @@ local at_gui = {
         pause_trash = "pause_trash",
         pause_requests = "pause_requests",
         network_button = "network_button",
+        status_display = "status_display",
     },
 }
 
@@ -288,6 +289,13 @@ at_gui.templates = {
                 tooltip = {"at-gui.tooltip-pause-requests"},
                 state = flags.pause_requests,
                 handlers = "main.settings.toggle"
+            },
+            {
+                type = "checkbox",
+                name = at_gui.defines.status_display,
+                caption = {"at-gui.status-display"},
+                state = flags.status_display_open,
+                handlers = "main.settings.toggle_status_display"
             },
             {
                 type = "flow", style_mods = {vertical_align = "center"}, children = {
@@ -830,6 +838,11 @@ at_gui.handlers = {
                         pdata.flags[name] = e.element.state
                         e.element.state = at_gui.toggle_setting[name](e.player, pdata)
                     end
+                end
+            },
+            toggle_status_display = {
+                on_gui_checked_state_changed = function(e)
+                    e.element.state = at_gui.toggle_status_display(e.player, e.pdata)
                 end
             },
             add_network = {
@@ -1462,6 +1475,7 @@ function at_gui.init_status_display(player, pdata, keep_status)
             visible = false
         }
     end
+    at_gui.update_settings(pdata)
     at_gui.update_status_display(player, pdata)
 end
 
@@ -1476,10 +1490,12 @@ function at_gui.open_status_display(player, pdata)
         pdata.gui.mod_gui.button.tooltip = {"at-gui.tooltip-main-button", "On"}
         at_gui.update_status_display(player, pdata)
     end
+    at_gui.update_settings(pdata)
 end
 
 function at_gui.close_status_display(pdata)
     pdata.flags.status_display_open = false
+    at_gui.update_settings(pdata)
     pdata.gui.mod_gui.button.tooltip = {"at-gui.tooltip-main-button", "Off"}
     local status_table = pdata.gui.status_table
     if not (status_table and status_table.valid) then
@@ -1491,8 +1507,10 @@ end
 function at_gui.toggle_status_display(player, pdata)
     if pdata.flags.status_display_open then
         at_gui.close_status_display(pdata)
+        return false
     else
         at_gui.open_status_display(player, pdata)
+        return true
     end
 end
 
@@ -1570,6 +1588,7 @@ function at_gui.update_settings(pdata)
     frame[def.trash_network].state = flags.trash_network
     frame[def.pause_trash].state = flags.pause_trash
     frame[def.pause_requests].state = flags.pause_requests
+    frame[def.status_display].state = flags.status_display_open
 end
 
 function at_gui.mark_dirty(pdata, keep_presets)
