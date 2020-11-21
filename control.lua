@@ -133,9 +133,10 @@ end
 
 local function on_player_toggled_map_editor(e)
     local player = game.get_player(e.player_index)
-    if not player.character then
+    local pdata = global._pdata[e.player_index]
+    if pdata.flags.gui_open and not player.character then
         player.print{"at-message.no-character"}
-        at_gui.close(player, global._pdata[e.player_index], true)
+        at_gui.close(player, pdata, true)
     end
 end
 event.on_player_toggled_map_editor(on_player_toggled_map_editor)

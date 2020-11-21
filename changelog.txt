@@ -2,8 +2,8 @@
 Version: 5.2.16
 Date: ????
   Changes:
-    - Added a shortcut to toggle the AutoTrash gui
-    - Added a mod setting to hide the button in the top left
+    - Added shortcut to toggle the AutoTrash gui
+    - Added mod setting to hide the button in the top left
     - Removed commands /at_show and /at_hide
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.15

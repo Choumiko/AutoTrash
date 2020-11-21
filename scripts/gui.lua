@@ -1655,6 +1655,7 @@ function at_gui.close(player, pdata, no_reset)
         window_frame.visible = false
     end
     pdata.flags.gui_open = false
+    pdata.selected = false
     if not pdata.flags.pinned then
         player.opened = nil
     end
