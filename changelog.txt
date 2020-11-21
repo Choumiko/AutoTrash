@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.2.16
-Date: ????
+Date: 2020-11-21
   Changes:
     - Added shortcut to toggle the AutoTrash gui
     - Added mod setting to hide the button in the top left
