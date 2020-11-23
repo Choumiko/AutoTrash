@@ -212,3 +212,11 @@ styles["at_bordered_frame"] = {
     horizontally_stretchable = "on",
 }
 
+styles["slot_count_change_button"] =
+{
+    type = "button_style",
+    parent = "button",
+    size = {40, 20},
+    left_click_sound = {{ filename = "__core__/sound/gui-tool-button.ogg", volume = 1 }},
+}
+

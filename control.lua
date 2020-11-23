@@ -20,7 +20,6 @@ local in_network = at_util.in_network
 
 --TODO: "import" items from quickbars (automatically or by button?), add full rows and preserve quickbar layout
 
-
 local function on_nth_tick()
     for _, p in pairs(game.connected_players) do
         if p.character then
@@ -83,10 +82,6 @@ local function on_configuration_changed(data)
             local player = game.get_player(index)
             player_data.refresh(player, pdata)
             at_gui.recreate(player, pdata)
-            --TODO: remove
-            -- if __DebugAdapter then
-            --     at_gui.open(player, pdata)
-            -- end
         end
     end
     if not removed then
@@ -490,7 +485,6 @@ local at_commands = {
     reset = function(args)
         local pdata = global._pdata[args.player_index]
         local player = game.get_player(args.player_index)
-        player.character_logistic_slot_count = pdata.settings.columns * pdata.settings.rows - 1
         at_gui.destroy(player, pdata)
         at_gui.open(player, pdata)
     end,

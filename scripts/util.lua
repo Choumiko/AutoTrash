@@ -70,8 +70,6 @@ end
 --     for c = offset + 1, slot_count do
 --         local min
 --         local max = max_request
---         --TODO: move in else block for 1.1
---         clear_request_slot(c)
 --         local req = storage[c - offset]
 --         if req and not already_requested[req.name] then
 --             local name = req.name
@@ -88,6 +86,8 @@ end
 --                 end
 --             end
 --             set_request_slot(c, {name = name, min = min, max = max})
+--         else
+--           clear_request_slot(c)
 --         end
 --     end
 
@@ -130,7 +130,7 @@ function M.set_requests(player, pdata)
     local flags = pdata.flags
     local config_new = pdata.config_new
     local storage = config_new.config
-    local slot_count = player.character_logistic_slot_count
+    local slot_count = player.character.request_slot_count
     local set_request_slot = character.set_personal_logistic_slot
     local clear_request_slot = character.clear_personal_logistic_slot
     local trash_paused = flags.pause_trash
@@ -141,7 +141,6 @@ function M.set_requests(player, pdata)
     local handled_temporary = {}
 
     if config_new.max_slot > slot_count then
-        player.character_logistic_slot_count = config_new.max_slot
         slot_count = config_new.max_slot
     end
 
@@ -149,8 +148,6 @@ function M.set_requests(player, pdata)
     for c = 1, slot_count do
         local min
         local max = max_request
-        --TODO: move in else block for 1.1
-        clear_request_slot(c)
         local req = storage[c]
         if req then
             local name = req.name
@@ -167,6 +164,8 @@ function M.set_requests(player, pdata)
                 end
             end
             set_request_slot(c, {name = name, min = min, max = max})
+        else
+            clear_request_slot(c)
         end
     end
 
@@ -190,15 +189,8 @@ function M.set_requests(player, pdata)
                 contents[name] = nil
             end
         end
-        local c_contents = table_size(contents)
-        if slot_count < config_new.max_slot + c_contents then
-            player.character_logistic_slot_count = slot_count + c_contents
-        end
-
         local i = config_new.max_slot + 1
         for name, _ in pairs(contents) do
-            --TODO remove clear for 1.1
-            clear_request_slot(i)
             set_request_slot(i, {name = name, max = 0})
             i = i + 1
         end

@@ -142,7 +142,7 @@ function player_data.combine_from_vanilla(player, pdata, name)
     local count = 0
     local get_request_slot = player.get_personal_logistic_slot
     local max_slot = 0
-    for c = 1, player.character_logistic_slot_count do
+    for c = 1, player.character.reqest_slot_count do
         local t = get_request_slot(c)
         if t.name then
             max_slot = c > max_slot and c or max_slot
@@ -173,7 +173,7 @@ function player_data.find_request(player, item)
     local character = player.character
     local get_slot = character.get_personal_logistic_slot
     local result
-    local max = character.character_logistic_slot_count
+    local max = character.request_slot_count
     for i=1, max do
         local slot = get_slot(i)
         if tostring(slot.name) == item then
@@ -184,7 +184,6 @@ function player_data.find_request(player, item)
     end
     --extend slots if no empty one was found
     if not result and item == "nil" then
-        player.character_logistic_slot_count = player.character_logistic_slot_count + 10
         max = max + 1
         result = get_slot(max)
         result.index = max
@@ -222,10 +221,6 @@ function player_data.set_request(player, pdata, request, temporary)
             return false
         end
     end
-    if request.index > player.character_logistic_slot_count then
-        player.character_logistic_slot_count = request.index
-    end
-    character.clear_personal_logistic_slot(request.index)
     character.set_personal_logistic_slot(request.index, request)
     if temporary then
         pdata.temporary_requests[request.name] = {temporary = request, previous = existing_request}

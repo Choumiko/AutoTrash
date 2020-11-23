@@ -1,12 +1,12 @@
 {
   "name": "AutoTrash",
-  "version": "5.2.17",
-  "factorio_version": "1.0",
+  "version": "5.3.0",
+  "factorio_version": "1.1",
   "title": "Auto Trash",
   "author": "Choumiko",
   "homepage": "https://forums.factorio.com/viewtopic.php?f=97&t=16016",
   "description": "Allows saving of different logistic request setups\nCan enable autotrash only in a certain logistics network\nKeeps your inventory clean of certain items",
-  "dependencies": ["flib >= 0.4.0"],
+  "dependencies": ["flib >= 0.6.0"],
   "package":{
     "scripts": {
         "prepackage": "luacheck . --config '../.luacheckrc'"

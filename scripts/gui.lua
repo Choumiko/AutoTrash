@@ -103,7 +103,7 @@ local function import_presets(player, pdata, add_presets, stack)
                 pdata.config_tmp = preset
                 player.print({"string-import-successful", "AutoTrash configuration"})
                 pdata.selected = false
-                at_gui.adjust_slots(player, pdata, preset.max_slot)
+                at_gui.adjust_slots(player, pdata)
                 at_gui.update_buttons(pdata)
                 at_gui.update_sliders(pdata)
                 at_gui.mark_dirty(pdata)
@@ -116,7 +116,7 @@ local function import_presets(player, pdata, add_presets, stack)
                         at_gui.update_presets(pdata)
                     end
                     textfield.text = preset_name
-                    player.clean_cursor()
+                    player.clear_cursor()
                     textfield.focus()
                 end
             else
@@ -201,12 +201,13 @@ at_gui.templates = {
             ret.children[btns+1] = at_gui.templates.slot_table.count_change()
             return ret
         end,
-        button = function(i, pdata)
+        button = function(i, pdata, index)
             local style = (i == pdata.selected) and "yellow_slot_button" or "slot_button"
             local config = pdata.config_tmp.config[i]
             local req = config and format_number(format_request(config), true) or ""
             local trash = config and format_trash(config)
             return {type = "choose-elem-button", name = i, elem_mods = {elem_value = config and config.name, locked = config and i ~= pdata.selected},
+                        index = i,
                         handlers = "main.slots.item_button", elem_type = "item", style = style, children = {
                         {type = "label", style = "at_request_label_top", ignored_by_interaction = true, caption = req},
                         {type = "label", style = "at_request_label_bottom", ignored_by_interaction = true, caption = trash}
@@ -924,7 +925,7 @@ at_gui.handlers = {
                     local pdata = e.pdata
                     local cursor_stack = player.cursor_stack
                     if cursor_stack and cursor_stack.valid_for_read then
-                        player.clean_cursor()
+                        player.clear_cursor()
                     end
                     if cursor_stack.set_stack{name = "autotrash-network-selection", count = 1} then
                         local location = pdata.gui.main.window.location
@@ -1051,46 +1052,31 @@ function at_gui.update_trash_config(player, pdata, number, source)
 end
 
 function at_gui.decrease_slots(player, pdata)
-    local old_slots = player.character_logistic_slot_count
     local step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
-    local correct = (old_slots + 1) % step
-    local new_slots = old_slots - correct - step
-    if new_slots < pdata.config_tmp.max_slot then return end
-    at_gui.adjust_slots(player, pdata, new_slots)
+    at_gui.adjust_slots(player, pdata, -step)
 end
 
 function at_gui.increase_slots(player, pdata)
-    local old_slots = player.character_logistic_slot_count
     local step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
-    local correct = (old_slots + 1) % step
-    local new_slots = old_slots - correct + step
-    at_gui.adjust_slots(player, pdata, new_slots)
+    at_gui.adjust_slots(player, pdata, step)
 end
 
-function at_gui.adjust_slots(player, pdata, slots)
-    slots = slots or pdata.config_tmp.max_slot
-    local step = (10*pdata.settings.columns) / gcd(10, pdata.settings.columns)
-    if slots < pdata.config_tmp.max_slot then
-        local old_slots = player.character_logistic_slot_count
-        local correct = (old_slots + 1) % step
-        slots = old_slots - correct
-    end
-    slots = clamp(slots, step-1, 65529)
-    player.character_logistic_slot_count = slots
-    slots = player.character_logistic_slot_count
+function at_gui.adjust_slots(player, pdata, step)
+    step = step or 0
     local slot_table = pdata.gui.main.slot_table
     local old_slots = #slot_table.children - 1
+    local slots = old_slots + step
+    if slots < pdata.config_tmp.max_slot then
+        slots = old_slots
+    end
+    slots = clamp(slots, 39, 65529)
     if old_slots == slots then return end
 
     local diff = slots - old_slots
     if diff > 0 then
-        gui.update_filters("main.slots.decrease", player.index, nil, "remove")
-        gui.update_filters("main.slots.increase", player.index, nil, "remove")
-        slot_table.count_change.destroy()
         for i = old_slots+1, slots do
-            gui.build(slot_table, {at_gui.templates.slot_table.button(i, pdata)})
+            gui.build(slot_table, {at_gui.templates.slot_table.button(i, pdata, i)})
         end
-        gui.build(slot_table, {at_gui.templates.slot_table.count_change()})
     elseif diff < 0 then
         for i = old_slots, slots+1, -1 do
             local btn = slot_table.children[i]
@@ -1105,7 +1091,7 @@ function at_gui.adjust_slots(player, pdata, slots)
     local width = pdata.settings.columns * 40
     width = (slots <= (pdata.settings.rows * pdata.settings.columns)) and width or (width + 12)
     pdata.gui.main.config_rows.style.width = width
-    pdata.gui.main.config_rows.scroll_to_bottom()
+    pdata.gui.main.config_rows.scroll_to_element(slot_table.count_change)
 end
 
 function at_gui.update_buttons(pdata)
@@ -1202,10 +1188,10 @@ function at_gui.update_sliders(pdata)
         if item_config then
             local stack_size = item_prototype(item_config.name).stack_size
             sliders.request.slider_value = clamp(item_config.min / stack_size, 0, 10)
-            sliders.request_text.text = format_request(item_config) or 0
+            sliders.request_text.text = tostring(format_request(item_config) or "0")
 
             sliders.trash.slider_value = clamp(item_config.max / stack_size, 0, 10)
-            sliders.trash_text.text = item_config.max < constants.max_request and item_config.max or "inf."
+            sliders.trash_text.text = tostring(item_config.max < constants.max_request and item_config.max or "inf.")
         end
     end
     local visible = pdata.selected and true or false
@@ -1268,7 +1254,7 @@ function at_gui.create_main_window(player, pdata)
     pdata.selected = false
     local cols = pdata.settings.columns
     local rows = pdata.settings.rows
-    local btns = player.character_logistic_slot_count
+    local btns = math.max(40, player.character.request_slot_count, pdata.config_tmp.max_slot)
     local width = cols * 40
     width = (btns <= (rows*cols)) and width or (width + 12)
     local max_height = (player.display_resolution.height / player.display_scale) * 0.97
@@ -1533,7 +1519,7 @@ function at_gui.update_status_display(player, pdata)
 
     local children = status_table.children
     local c = 1
-    for i = 1, player.character_logistic_slot_count do
+    for i = 1, player.character.request_slot_count do
         local item = get_request_slot(i)
         if item and item.count > 0 then
             if c > max_count then return true end
@@ -1641,7 +1627,7 @@ function at_gui.open(player, pdata)
     end
     player.set_shortcut_toggled("autotrash-toggle-gui", true)
 
-    at_gui.adjust_slots(player, pdata, player.character_logistic_slot_count)
+    at_gui.adjust_slots(player, pdata)
     at_gui.update_buttons(pdata)
     at_gui.update_button_styles(player, pdata)
     at_gui.update_settings(pdata)
