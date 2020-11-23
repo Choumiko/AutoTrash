@@ -207,7 +207,7 @@ at_gui.templates = {
             local req = config and format_number(format_request(config), true) or ""
             local trash = config and format_trash(config)
             return {type = "choose-elem-button", name = i, elem_mods = {elem_value = config and config.name, locked = config and i ~= pdata.selected},
-                        index = i,
+                        index = index,
                         handlers = "main.slots.item_button", elem_type = "item", style = style, children = {
                         {type = "label", style = "at_request_label_top", ignored_by_interaction = true, caption = req},
                         {type = "label", style = "at_request_label_bottom", ignored_by_interaction = true, caption = trash}
