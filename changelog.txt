@@ -2,7 +2,7 @@
 Version: 5.3.1
 Date: ????
   Changes:
-    - Removed the (+/1) buttons, a new row will be added if something is put in the last row
+    - Removed the (+/-) buttons, a new row will be added if something is put in the last row
   Bugfixes:
     - Fixed error when adding AutoTrash to an existing save
 ---------------------------------------------------------------------------------------------------
