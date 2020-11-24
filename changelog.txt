@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.1
-Date: ????
+Date: 2020-11-24
   Changes:
     - Removed the (+/-) buttons, a new row will be added if something is put in the last row
   Bugfixes:
