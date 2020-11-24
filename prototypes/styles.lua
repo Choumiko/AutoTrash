@@ -64,12 +64,6 @@ styles["at_request_label_top"] = {
     vertical_align = "top",
 }
 
-styles["at_main_flow"] = {
-    type = "horizontal_flow_style",
-    parent = "horizontal_flow",
-    padding = 0
-}
-
 styles["at_save_button"] = {
     type = "button_style",
     parent = "button",

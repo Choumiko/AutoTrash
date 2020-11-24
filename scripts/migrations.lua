@@ -142,7 +142,7 @@ local migrations = {
             end
         end
 
-        for _, pdata in pairs(global._pdata) do
+        for pi, pdata in pairs(global._pdata) do
             set_trash(pdata.config_tmp)
             set_trash(pdata.config_new)
             for _, preset in pairs(pdata.presets) do
@@ -151,7 +151,6 @@ local migrations = {
             pdata.temporary_trash = nil
             pdata.temporary_requests = {}
             pdata.flags.has_temporary_requests = false
-            at_gui.update_main_button(pdata)
         end
         script.on_event(defines.events.on_player_trash_inventory_changed, nil)
     end,
@@ -203,10 +202,34 @@ local migrations = {
     end,
     ["5.2.16"] = function()
         for pi, pdata in pairs(global._pdata) do
-            player_data.refresh(game.get_player(pi), pdata)
-            pdata.gui.mod_gui.flow.visible = pdata.flags.can_open_gui and pdata.settings.show_button
+            local player = game.get_player(pi)
+            player_data.refresh(player, pdata)
+            if pdata.gui.mod_gui and pdata.gui.mod_gui.flow and pdata.gui.mod_gui.flow.valid then
+                pdata.gui.mod_gui.flow.destroy()
+                gui.update_filters("mod_gui_button", player.index, nil, "remove")
+                pdata.gui.mod_gui = {}
+            end
         end
     end,
+    ["5.3.1"] = function()
+        --remove the mod_gui button
+        for pi, pdata in pairs(global._pdata) do
+            if pdata.gui.mod_gui and pdata.gui.mod_gui.flow and pdata.gui.mod_gui.flow.valid then
+                local player = game.get_player(pi)
+                pdata.main_button_index = pdata.gui.mod_gui.flow.get_index_in_parent()
+                player_data.refresh(player, pdata)
+                gui.update_filters("mod_gui_button", player.index, nil, "remove")
+                local button_flow = pdata.gui.mod_gui.flow.parent
+                pdata.gui.mod_gui.flow.destroy()
+                if #button_flow.children == 0 then
+                    button_flow.parent.destroy()
+                end
+
+                pdata.gui.mod_gui = {}
+                at_gui.update_main_button(player, pdata)
+            end
+        end
+    end
 }
 
 return migrations

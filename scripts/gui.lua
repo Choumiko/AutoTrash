@@ -165,7 +165,7 @@ at_gui.toggle_setting = {
         end
         if pdata.flags.trash_network and in_network(player, pdata) then
             at_util.unpause_trash(player, pdata)
-            at_gui.update_main_button(pdata)
+            at_gui.update_main_button(player, pdata)
         end
         return pdata.flags.trash_network
     end,
@@ -175,7 +175,7 @@ at_gui.toggle_setting = {
         else
             at_util.unpause_trash(player, pdata)
         end
-        at_gui.update_main_button(pdata)
+        at_gui.update_main_button(player, pdata)
         return pdata.flags.pause_trash
     end,
     pause_requests = function(player, pdata)
@@ -184,7 +184,7 @@ at_gui.toggle_setting = {
         else
             at_util.unpause_requests(player, pdata)
         end
-        at_gui.update_main_button(pdata)
+        at_gui.update_main_button(player, pdata)
         at_gui.update_status_display(player, pdata)
         return pdata.flags.pause_requests
     end,
@@ -1392,22 +1392,46 @@ end
 
 function at_gui.init(player, pdata)
     at_gui.destroy(player, pdata)
-    local visible = pdata.flags.can_open_gui and pdata.settings.show_button
-
-    local main_button_flow = pdata.gui.mod_gui.flow
-    if main_button_flow and main_button_flow.valid then
-        main_button_flow.clear()
-        gui.update_filters("mod_gui_button", player.index, nil, "remove")
-    else
-        pdata.gui.mod_gui.flow = mod_gui.get_button_flow(player).add{type = "flow", direction = "horizontal", name = "autotrash_main_flow",
-            style = "at_main_flow"
-        }
-    end
-    pdata.gui.mod_gui.button = pdata.gui.mod_gui.flow.add{type = "sprite-button", name = "at_config_button", style = mod_gui.button_style,
-        sprite = "autotrash_trash", tooltip = {"at-gui.tooltip-main-button", pdata.flags.status_display_open and "On" or "Off"}}
-    gui.update_filters("mod_gui_button", player.index, {pdata.gui.mod_gui.button.index}, "add")
-    pdata.gui.mod_gui.flow.visible = visible
+    at_gui.update_main_button(player, pdata)
     at_gui.init_status_display(player, pdata)
+end
+
+function at_gui.init_main_button(player, pdata, destroy)
+    local visible = pdata.flags.can_open_gui and pdata.settings.show_button
+    local button = pdata.gui.mod_gui.button
+    button = (button and button.valid) and button
+    if destroy and button then
+        gui.update_filters("mod_gui_button", player.index, nil, "remove")
+        button.destroy()
+        button = nil
+        pdata.gui.mod_gui = {}
+    end
+    if visible then
+        if not button then
+            local flow = mod_gui.get_button_flow(player)
+            local children = #flow.children
+            local index = pdata.main_button_index
+            if index and index > children then
+                index = nil
+            end
+            pdata.gui.mod_gui.button = flow.add{type = "sprite-button", name = "at_config_button", style = mod_gui.button_style,
+            index = index,
+            sprite = "autotrash_trash", tooltip = {"at-gui.tooltip-main-button", pdata.flags.status_display_open and "On" or "Off"}}
+            gui.update_filters("mod_gui_button", player.index, {pdata.gui.mod_gui.button.index}, "add")
+        end
+        return pdata.gui.mod_gui.button
+    else
+        if button then
+            pdata.main_button_index = button.get_index_in_parent()
+            gui.update_filters("mod_gui_button", player.index, nil, "remove")
+            local button_flow = button.parent
+            button.destroy()
+            if #button_flow.children == 0 then
+                button_flow.parent.destroy()
+            end
+            pdata.gui.mod_gui = {}
+        end
+    end
 end
 
 function at_gui.init_status_display(player, pdata, keep_status)
@@ -1454,16 +1478,16 @@ function at_gui.open_status_display(player, pdata)
     if pdata.flags.can_open_gui then
         status_table.parent.visible = true
         pdata.flags.status_display_open = true
-        pdata.gui.mod_gui.button.tooltip = {"at-gui.tooltip-main-button", "On"}
+        at_gui.update_main_button(player, pdata)
         at_gui.update_status_display(player, pdata)
     end
     at_gui.update_settings(pdata)
 end
 
-function at_gui.close_status_display(pdata)
+function at_gui.close_status_display(player, pdata)
     pdata.flags.status_display_open = false
     at_gui.update_settings(pdata)
-    pdata.gui.mod_gui.button.tooltip = {"at-gui.tooltip-main-button", "Off"}
+    at_gui.update_main_button(player, pdata)
     local status_table = pdata.gui.status_table
     if not (status_table and status_table.valid) then
         return
@@ -1473,7 +1497,7 @@ end
 
 function at_gui.toggle_status_display(player, pdata)
     if pdata.flags.status_display_open then
-        at_gui.close_status_display(pdata)
+        at_gui.close_status_display(player, pdata)
         return false
     else
         at_gui.open_status_display(player, pdata)
@@ -1524,11 +1548,9 @@ function at_gui.update_status_display(player, pdata)
     return true
 end
 
-function at_gui.update_main_button(pdata)
-    local mainButton = pdata.gui.mod_gui.button
-    if not (mainButton and mainButton.valid) then
-        return
-    end
+function at_gui.update_main_button(player, pdata)
+    local mainButton = at_gui.init_main_button(player, pdata)
+    if not mainButton then return end
     local flags = pdata.flags
     if flags.pause_trash and not flags.pause_requests then
         mainButton.sprite = "autotrash_trash_paused"

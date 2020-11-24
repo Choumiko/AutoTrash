@@ -233,14 +233,14 @@ local function on_player_changed_position(e)
     local paused = pdata.flags.pause_trash
     if not is_in_network and not paused then
         pause_trash(player, pdata)
-        at_gui.update_main_button(pdata)
+        at_gui.update_main_button(player, pdata)
         if pdata.settings.display_messages then
             player.print({"at-message.trash-paused"})
         end
         return
     elseif is_in_network and paused then
         unpause_trash(player, pdata)
-        at_gui.update_main_button(pdata)
+        at_gui.update_main_button(player, pdata)
         if pdata.settings.display_messages then
             player.print({"at-message.trash-unpaused"})
         end
@@ -355,7 +355,7 @@ local function toggle_autotrash_pause(player)
     else
         pause_trash(player, pdata)
     end
-    at_gui.update_main_button(pdata)
+    at_gui.update_main_button(player, pdata)
     at_gui.close(player, pdata)
 end
 event.register("autotrash_pause", function(e)
@@ -372,7 +372,7 @@ local function toggle_autotrash_pause_requests(player)
         at_util.pause_requests(player, pdata)
     end
     at_gui.update_status_display(player, pdata)
-    at_gui.update_main_button(pdata)
+    at_gui.update_main_button(player, pdata)
     at_gui.close(player, pdata)
 end
 event.register("autotrash_pause_requests", function(e)
@@ -406,7 +406,7 @@ local function on_runtime_mod_setting_changed(e)
     local pdata = global._pdata[player_index]
     if not (player_index and pdata) then return end
     player_data.update_settings(player, pdata)
-    pdata.gui.mod_gui.flow.visible = pdata.flags.can_open_gui and pdata.settings.show_button
+    at_gui.update_main_button(player, pdata)
     if e.setting == "autotrash_gui_displayed_columns" or e.setting == "autotrash_gui_rows_before_scroll" then
         at_gui.recreate(player, pdata)
     end
@@ -439,7 +439,7 @@ local function on_research_finished(e)
             end
             pdata.flags.can_open_gui = true
             player.set_shortcut_available("autotrash-toggle-gui", true)
-            pdata.gui.mod_gui.flow.visible = pdata.settings.show_button
+            at_gui.update_main_button(player, pdata)
             if player.character then
                 at_gui.create_main_window(player, pdata)
                 at_gui.open_status_display(player, pdata)
@@ -488,6 +488,18 @@ local at_commands = {
         at_gui.destroy(player, pdata)
         at_gui.open(player, pdata)
     end,
+
+    move_button = function (args)
+        local pdata = global._pdata[args.player_index]
+        local player = game.get_player(args.player_index)
+        local index = tonumber(args.parameter)
+        if index then
+            pdata.main_button_index = index
+            at_gui.init_main_button(player, pdata, true)
+        else
+            player.print{"at-message.invalid-index"}
+        end
+    end
 }
 
 local comms = commands.commands
@@ -498,3 +510,4 @@ if comms.at_hide or comms.at_show then
 end
 commands.add_command(command_prefix .. "import", "Import from vanilla", at_commands.import)
 commands.add_command(command_prefix .. "reset", "Reset gui", at_commands.reset)
+commands.add_command(command_prefix .. "move_button", "Move the top button to another position", at_commands.move_button)
