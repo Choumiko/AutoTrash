@@ -198,16 +198,14 @@ at_gui.templates = {
             for i=1, btns do
                 ret.children[i] = at_gui.templates.slot_table.button(i, pdata)
             end
-            ret.children[btns+1] = at_gui.templates.slot_table.count_change()
             return ret
         end,
-        button = function(i, pdata, index)
+        button = function(i, pdata)
             local style = (i == pdata.selected) and "yellow_slot_button" or "slot_button"
             local config = pdata.config_tmp.config[i]
             local req = config and format_number(format_request(config), true) or ""
             local trash = config and format_trash(config)
             return {type = "choose-elem-button", name = i, elem_mods = {elem_value = config and config.name, locked = config and i ~= pdata.selected},
-                        index = index,
                         handlers = "main.slots.item_button", elem_type = "item", style = style, children = {
                         {type = "label", style = "at_request_label_top", ignored_by_interaction = true, caption = req},
                         {type = "label", style = "at_request_label_bottom", ignored_by_interaction = true, caption = trash}
@@ -561,6 +559,7 @@ at_gui.handlers = {
                             return
                         end
                         at_gui.clear_button(pdata, index, e.element)
+                        at_gui.adjust_slots(player, pdata)
                     elseif e.button == defines.mouse_button_type.left then
                         if e.shift then
                             local config_tmp = pdata.config_tmp
@@ -586,6 +585,7 @@ at_gui.handlers = {
                             end
                             at_gui.update_button(pdata, index, e.element)
                             at_gui.update_button(pdata, old_selected)
+                            at_gui.adjust_slots(player, pdata)
                             at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
                             at_gui.update_sliders(pdata)
                         else
@@ -648,22 +648,14 @@ at_gui.handlers = {
                         if old_selected then
                             at_gui.update_button(pdata, old_selected, pdata.gui.main.slot_table.children[old_selected])
                         end
+                        at_gui.adjust_slots(player, pdata)
                         at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
                         at_gui.update_sliders(pdata)
                     else
                         at_gui.clear_button(pdata, index, e.element)
+                        at_gui.adjust_slots(player, pdata)
                     end
                 end
-            },
-            decrease = {
-                on_gui_click = function (e)
-                    at_gui.decrease_slots(e.player, e.pdata)
-                end,
-            },
-            increase = {
-                on_gui_click = function(e)
-                    at_gui.increase_slots(e.player, e.pdata)
-                end,
             },
         },
         presets = {
@@ -803,6 +795,7 @@ at_gui.handlers = {
                     config_tmp.max_slot = 0
                     config_tmp.c_requests = 0
                     pdata.selected = false
+                    at_gui.adjust_slots(e.player, pdata)
                 elseif index == 5 then
                     for _, config in pairs(config_tmp.config) do
                         if config.min > 0 then
@@ -1051,31 +1044,22 @@ function at_gui.update_trash_config(player, pdata, number, source)
     at_gui.update_sliders(pdata)
 end
 
-function at_gui.decrease_slots(player, pdata)
-    local step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
-    at_gui.adjust_slots(player, pdata, -step)
-end
-
-function at_gui.increase_slots(player, pdata)
-    local step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
-    at_gui.adjust_slots(player, pdata, step)
-end
-
-function at_gui.adjust_slots(player, pdata, step)
-    step = step or 0
+function at_gui.adjust_slots(player, pdata)
     local slot_table = pdata.gui.main.slot_table
-    local old_slots = #slot_table.children - 1
-    local slots = old_slots + step
-    if slots < pdata.config_tmp.max_slot then
-        slots = old_slots
+    local old_slots = #slot_table.children
+    local min_step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
+    local slots = math.ceil(pdata.config_tmp.max_slot / pdata.settings.columns) * min_step
+    --increase if anything is set in the last row
+    if (slots == pdata.config_tmp.max_slot) or (pdata.config_tmp.max_slot % min_step > 1) then
+        slots = slots + min_step
     end
-    slots = clamp(slots, 39, 65529)
+    slots = clamp(slots, 40, 65529)
     if old_slots == slots then return end
 
     local diff = slots - old_slots
     if diff > 0 then
         for i = old_slots+1, slots do
-            gui.build(slot_table, {at_gui.templates.slot_table.button(i, pdata, i)})
+            gui.build(slot_table, {at_gui.templates.slot_table.button(i, pdata)})
         end
     elseif diff < 0 then
         for i = old_slots, slots+1, -1 do
@@ -1083,21 +1067,18 @@ function at_gui.adjust_slots(player, pdata, step)
             gui.update_filters("main.slots.item_button", player.index, {btn.index}, "remove")
             btn.destroy()
         end
-        if slots < step then
-            slot_table.count_change.children[1].enabled = false
-        end
     end
 
     local width = pdata.settings.columns * 40
     width = (slots <= (pdata.settings.rows * pdata.settings.columns)) and width or (width + 12)
     pdata.gui.main.config_rows.style.width = width
-    pdata.gui.main.config_rows.scroll_to_element(slot_table.count_change)
+    pdata.gui.main.config_rows.scroll_to_element(slot_table.children[slots])
 end
 
 function at_gui.update_buttons(pdata)
     if not pdata.flags.gui_open then return end
     local children = pdata.gui.main.slot_table.children
-    for i=1, #children-1 do
+    for i=1, #children do
         at_gui.update_button(pdata, i, children[i])
     end
 end
@@ -1134,7 +1115,7 @@ function at_gui.update_button_styles(player, pdata)
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
     if not (available and on_the_way and config.c_requests > 0 and not pdata.flags.pause_requests) then
         local children = ruleset_grid.children
-        for i=1, #children-1 do
+        for i=1, #children do
             children[i].style = (i == selected) and "yellow_slot_button" or "slot_button"
         end
         return
@@ -1142,7 +1123,7 @@ function at_gui.update_button_styles(player, pdata)
     config = config.config
     local ret = {}
     local buttons = ruleset_grid.children
-    for i=1, #buttons-1 do
+    for i=1, #buttons do
         local item = config[i]
         local style, diff = at_gui.get_button_style(i, selected, config[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
         if item and item.min > 0 then
@@ -1621,6 +1602,8 @@ function at_gui.open(player, pdata)
         window_frame = pdata.gui.main.window
     end
     window_frame.visible = true
+    --TODO: reenable after bug is fixed
+    --window_frame.bring_to_front()
     pdata.flags.gui_open = true
     if not pdata.flags.pinned then
         player.opened = window_frame
