@@ -142,7 +142,7 @@ function player_data.combine_from_vanilla(player, pdata, name)
     local count = 0
     local get_request_slot = player.get_personal_logistic_slot
     local max_slot = 0
-    for c = 1, player.character.reqest_slot_count do
+    for c = 1, player.character.request_slot_count do
         local t = get_request_slot(c)
         if t.name then
             max_slot = c > max_slot and c or max_slot
