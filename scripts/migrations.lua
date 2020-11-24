@@ -142,7 +142,7 @@ local migrations = {
             end
         end
 
-        for pi, pdata in pairs(global._pdata) do
+        for _, pdata in pairs(global._pdata) do
             set_trash(pdata.config_tmp)
             set_trash(pdata.config_new)
             for _, preset in pairs(pdata.presets) do
