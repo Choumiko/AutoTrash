@@ -1414,9 +1414,13 @@ function at_gui.init_main_button(player, pdata, destroy)
             if index and index > children then
                 index = nil
             end
+            if not (flow.at_config_button and flow.at_config_button.valid) then
             pdata.gui.mod_gui.button = flow.add{type = "sprite-button", name = "at_config_button", style = mod_gui.button_style,
             index = index,
             sprite = "autotrash_trash", tooltip = {"at-gui.tooltip-main-button", pdata.flags.status_display_open and "On" or "Off"}}
+            else
+                pdata.gui.mod_gui.button = flow.at_config_button
+            end
             gui.update_filters("mod_gui_button", player.index, {pdata.gui.mod_gui.button.index}, "add")
         end
         return pdata.gui.mod_gui.button
@@ -1624,8 +1628,7 @@ function at_gui.open(player, pdata)
         window_frame = pdata.gui.main.window
     end
     window_frame.visible = true
-    --TODO: reenable after bug is fixed
-    --window_frame.bring_to_front()
+    window_frame.bring_to_front()
     pdata.flags.gui_open = true
     if not pdata.flags.pinned then
         player.opened = window_frame
