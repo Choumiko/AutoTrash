@@ -1,5 +1,5 @@
 local event = require("__flib__.event")
-local gui = require("__flib__.gui")
+local gui = require("__flib__.gui-beta")
 local migration = require("__flib__.migration")
 local table = require("__flib__.table")
 
@@ -40,9 +40,6 @@ local function register_conditional_events()
 end
 
 local function on_init()
-    gui.init()
-    gui.build_lookup_tables()
-
     global_data.init()
 
     for _, force in pairs(game.forces) do
@@ -68,14 +65,12 @@ event.on_init(on_init)
 
 local function on_load()
     register_conditional_events()
-    gui.build_lookup_tables()
 end
 event.on_load(on_load)
 
 local function on_configuration_changed(data)
     local removed
     if migration.on_config_changed(data, migrations) then
-        gui.check_filter_validity()
         at_util.remove_invalid_items()
         removed = true
         for index, pdata in pairs(global._pdata) do
@@ -91,7 +86,20 @@ local function on_configuration_changed(data)
 end
 event.on_configuration_changed(on_configuration_changed)
 
-at_gui.register_handlers()
+gui.hook_events(function(e)
+    local msg = gui.read_action(e)
+    if msg then
+        e.player = game.get_player(e.player_index)
+        e.pdata = global._pdata[e.player_index]
+        local handler = at_gui.handlers[msg.gui][msg.action]
+        if handler then
+            handler(e)
+        else
+            e.player.print("Unhandled gui event: " .. serpent.line(msg))
+        end
+    end
+end
+)
 
 --that's a bad event to handle unrequested, since adding stuff to the trash filters immediately triggers the next on_main_inventory_changed event
 -- on_nth_tick might work better or only registering when some player has trash_unrequested set to true

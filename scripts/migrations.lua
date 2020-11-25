@@ -1,5 +1,3 @@
-local gui = require("__flib__.gui")
-
 local global_data = require("scripts.global-data")
 local player_data = require("scripts.player-data")
 local at_gui = require("scripts.gui")
@@ -41,7 +39,6 @@ local migrations = {
                     pause_requests = psettings.pause_requests or false,
                 }
                 pdata.gui = {
-                    mod_gui = {},
                     import = {},
                     main = {}
                 }
@@ -81,7 +78,7 @@ local migrations = {
             --keep the status flow in gui.left, everything else goes boom (from AutoTrash)
             local mod_gui_flow = mod_gui.get_frame_flow(player)
             if mod_gui_flow and mod_gui_flow.valid then
-                for _, egui in pairs(player.gui.left.mod_gui_frame_flow.children) do
+                for _, egui in pairs(mod_gui_flow.children) do
                     if egui.get_mod() == "AutoTrash" then
                         if egui.name == "autotrash_status_flow" then
                             pdata.gui.status_flow = egui
@@ -94,8 +91,7 @@ local migrations = {
             end
             local button_flow = mod_gui.get_button_flow(player).autotrash_main_flow
             if button_flow and button_flow.valid then
-                pdata.gui.mod_gui.flow = button_flow
-                button_flow.clear()
+                button_flow.destroy()
             end
             for _, egui in pairs(player.gui.screen.children) do
                 if egui.get_mod() == "AutoTrash" then
@@ -104,7 +100,6 @@ local migrations = {
             end
         end
 
-        gui.init()
         for pi, player in pairs(game.players) do
             local pdata = global._pdata[pi]
             player_data.refresh(player, pdata)
@@ -124,9 +119,6 @@ local migrations = {
         for player_index, _ in pairs(game.players) do
             local pdata = global._pdata[player_index]
             pdata.flags.pinned = true
-            if pdata.gui and pdata.gui.mod_gui and pdata.gui.mod_gui.button and pdata.gui.mod_gui.button.valid then
-                pdata.gui.mod_gui.button.tooltip = {"at-gui.tooltip-main-button", pdata.flags.status_display_open and "On" or "Off"}
-            end
         end
     end,
     ["5.2.11"] = function()
@@ -162,9 +154,6 @@ local migrations = {
     ["5.2.14"] = function()
         for _, pdata in pairs(global._pdata) do
             pdata.networks = {}
-            if pdata.gui.mod_gui.button and pdata.gui.mod_gui.button.valid then
-                pdata.gui.mod_gui.button.style = mod_gui.button_style
-            end
             if pdata.main_network and pdata.main_network.valid then
                 pdata.networks[pdata.main_network.unit_number] = pdata.main_network
             end
@@ -172,7 +161,6 @@ local migrations = {
         end
     end,
     ["5.2.15"] = function()
-        gui.init()
         for pi, player in pairs(game.players) do
             local pdata = global._pdata[pi]
             player_data.refresh(player, pdata)
@@ -206,7 +194,6 @@ local migrations = {
             player_data.refresh(player, pdata)
             if pdata.gui.mod_gui and pdata.gui.mod_gui.flow and pdata.gui.mod_gui.flow.valid then
                 pdata.gui.mod_gui.flow.destroy()
-                gui.update_filters("mod_gui_button", player.index, nil, "remove")
                 pdata.gui.mod_gui = {}
             end
         end
@@ -218,7 +205,6 @@ local migrations = {
                 local player = game.get_player(pi)
                 pdata.main_button_index = pdata.gui.mod_gui.flow.get_index_in_parent()
                 player_data.refresh(player, pdata)
-                gui.update_filters("mod_gui_button", player.index, nil, "remove")
                 local button_flow = pdata.gui.mod_gui.flow.parent
                 pdata.gui.mod_gui.flow.destroy()
                 if #button_flow.children == 0 then
@@ -229,7 +215,23 @@ local migrations = {
                 at_gui.update_main_button(player, pdata)
             end
         end
-    end
+    end,
+    ["5.3.2"] = function ()
+        for pi, pdata in pairs(global._pdata) do
+            local player = game.get_player(pi)
+            local button_flow = mod_gui.get_button_flow(player)
+            local at_flow = button_flow.autotrash_main_flow
+            if at_flow and at_flow.valid then
+                at_flow.destroy()
+            end
+            if button_flow.at_config_button and button_flow.at_config_button.valid then
+                pdata.main_button_index = button_flow.at_config_button.get_index_in_parent()
+                button_flow.at_config_button.destroy()
+            end
+            pdata.gui.mod_gui = nil
+            at_gui.update_main_button(player, pdata)
+        end
+    end,
 }
 
 return migrations
