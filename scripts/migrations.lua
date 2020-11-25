@@ -1,6 +1,7 @@
 local global_data = require("scripts.global-data")
 local player_data = require("scripts.player-data")
 local at_gui = require("scripts.gui")
+local spider_gui = require("scripts.spidertron")
 local constants = require("constants")
 
 local mod_gui = require ("__core__.lualib.mod-gui")
@@ -199,20 +200,14 @@ local migrations = {
         end
     end,
     ["5.3.1"] = function()
-        --remove the mod_gui button
         for pi, pdata in pairs(global._pdata) do
             if pdata.gui.mod_gui and pdata.gui.mod_gui.flow and pdata.gui.mod_gui.flow.valid then
                 local player = game.get_player(pi)
                 pdata.main_button_index = pdata.gui.mod_gui.flow.get_index_in_parent()
                 player_data.refresh(player, pdata)
-                local button_flow = pdata.gui.mod_gui.flow.parent
                 pdata.gui.mod_gui.flow.destroy()
-                if #button_flow.children == 0 then
-                    button_flow.parent.destroy()
-                end
-
-                pdata.gui.mod_gui = {}
                 at_gui.update_main_button(player, pdata)
+                pdata.gui.mod_gui = {}
             end
         end
     end,
@@ -221,15 +216,13 @@ local migrations = {
             local player = game.get_player(pi)
             local button_flow = mod_gui.get_button_flow(player)
             local at_flow = button_flow.autotrash_main_flow
-            if at_flow and at_flow.valid then
+            if at_flow then
                 at_flow.destroy()
-            end
-            if button_flow.at_config_button and button_flow.at_config_button.valid then
-                pdata.main_button_index = button_flow.at_config_button.get_index_in_parent()
-                button_flow.at_config_button.destroy()
             end
             pdata.gui.mod_gui = nil
             at_gui.update_main_button(player, pdata)
+            pdata.flags.spider = {keep_presets = false}
+            spider_gui.init(player, pdata)
         end
     end,
 }

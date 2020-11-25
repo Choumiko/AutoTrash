@@ -8,6 +8,7 @@ local global_data = require("scripts.global-data")
 local player_data = require("scripts.player-data")
 local migrations = require("scripts.migrations")
 local at_gui = require("scripts.gui")
+local spider_gui = require("scripts.spidertron")
 
 local at_util = require("scripts.util")
 local presets = require("scripts.presets")
@@ -87,19 +88,37 @@ end
 event.on_configuration_changed(on_configuration_changed)
 
 gui.hook_events(function(e)
+    local player = game.get_player(e.player_index)
+    local pdata = global._pdata[e.player_index]
+    e.player = player
+    e.pdata = pdata
+    --TODO: remove
+    if not pdata.flags.spider then
+        pdata.flags.spider = {keep_presets = false}
+    end
     local msg = gui.read_action(e)
     if msg then
-        e.player = game.get_player(e.player_index)
-        e.pdata = global._pdata[e.player_index]
-        local handler = at_gui.handlers[msg.gui][msg.action]
+        local handler = at_gui.handlers[msg.gui] and at_gui.handlers[msg.gui][msg.action]
         if handler then
             handler(e)
         else
-            e.player.print("Unhandled gui event: " .. serpent.line(msg))
+            handler = spider_gui.handlers[msg.action]
+            if handler then
+                if (player.opened_gui_type == defines.gui_type.entity and player.opened and player.opened.type == "spider-vehicle") then
+                    e.entity = player.opened
+                    handler(e, msg)
+                end
+            else
+                e.player.print("Unhandled gui event: " .. serpent.line(msg))
+            end
         end
+    elseif e.name == defines.events.on_gui_opened and e.gui_type == defines.gui_type.entity and e.entity.type == "spider-vehicle" then
+        --TODO: remove destroy and init
+        spider_gui.destroy(pdata)
+        spider_gui.init(player, pdata)
+        spider_gui.update(pdata)
     end
-end
-)
+end)
 
 --that's a bad event to handle unrequested, since adding stuff to the trash filters immediately triggers the next on_main_inventory_changed event
 -- on_nth_tick might work better or only registering when some player has trash_unrequested set to true
@@ -497,7 +516,7 @@ local at_commands = {
         at_gui.open(player, pdata)
     end,
 
-    move_button = function (args)
+    move_button = function(args)
         local pdata = global._pdata[args.player_index]
         local player = game.get_player(args.player_index)
         local index = tonumber(args.parameter)
@@ -507,7 +526,7 @@ local at_commands = {
         else
             player.print{"at-message.invalid-index"}
         end
-    end
+    end,
 }
 
 local comms = commands.commands

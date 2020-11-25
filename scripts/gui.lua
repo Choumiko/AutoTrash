@@ -6,6 +6,7 @@ local mod_gui = require ("__core__.lualib.mod-gui")
 local constants = require("constants")
 local presets = require("scripts.presets")
 
+local spider_gui = require("scripts.spidertron")
 local at_util = require("scripts.util")
 local player_data = require("scripts.player-data")
 local format_number = at_util.format_number
@@ -197,13 +198,6 @@ at_gui.templates = {
                     }
         end,
     },
-    frame_action_button = function(params)
-        local ret = {type = "sprite-button", style = "frame_action_button", mouse_button_filter={"left"}}
-        for k, v in pairs(params) do
-            ret[k] = v
-        end
-        return ret
-    end,
     pushers = {
         horizontal = {type = "empty-widget", style_mods = {horizontally_stretchable = true}},
         vertical = {type = "empty-widget", style_mods = {vertically_stretchable = true}}
@@ -216,7 +210,7 @@ at_gui.templates = {
                 {type = "flow", ref = {"window", "titlebar"}, children = {
                     {type = "label", style = "frame_title", caption = caption, elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
-                    at_gui.templates.frame_action_button{
+                    at_util.frame_action_button{
                         actions = {on_click = {gui = "import", action = "close_button"}},
                         ref = {"close_button"},
                         sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black"
@@ -1098,6 +1092,7 @@ function at_gui.add_preset(player, pdata, name, config)
 end
 
 function at_gui.update_presets(pdata)
+    spider_gui.update(pdata)
     if not pdata.flags.gui_open then return end
     local children = pdata.gui.main.presets_flow.children
     local selected_presets = pdata.selected_presets
@@ -1143,10 +1138,10 @@ function at_gui.create_main_window(player, pdata)
                 {type = "flow", ref = {"main", "titlebar", "flow"}, children = {
                     {type = "label", style = "frame_title", caption = {"mod-name.AutoTrash"}, elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
-                    at_gui.templates.frame_action_button{sprite="at_pin_white", hovered_sprite="at_pin_black", clicked_sprite="at_pin_black",
+                    at_util.frame_action_button{sprite="at_pin_white", hovered_sprite="at_pin_black", clicked_sprite="at_pin_black",
                         actions = {on_click = {gui = "main", action = "pin_button"}},
                         ref = {"main", "titlebar", "pin_button"}, tooltip={"at-gui.keep-open"}},
-                    at_gui.templates.frame_action_button{sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
+                    at_util.frame_action_button{sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
                         actions = {on_click = {gui = "main", action = "close_button"}},
                         ref = {"main", "titlebar", "close_button"}
                     }
@@ -1306,6 +1301,8 @@ function at_gui.init(player, pdata)
     at_gui.destroy(player, pdata)
     at_gui.update_main_button(player, pdata)
     at_gui.init_status_display(player, pdata)
+    spider_gui.destroy(pdata)
+    spider_gui.init(player, pdata)
 end
 
 function at_gui.init_main_button(player, pdata, destroy)
@@ -1332,19 +1329,16 @@ function at_gui.init_main_button(player, pdata, destroy)
             }})
             pdata.gui.main_button = gui_data.main_button
         else
+            button.visible = true
             pdata.gui.main_button = button
+            pdata.main_button_index = button.get_index_in_parent()
             gui.update_tags(button, {flib = {on_click = {gui = "main", action = "mod_gui_button"}}})
         end
         return button
     else
         if button then
             pdata.main_button_index = button.get_index_in_parent()
-            local button_flow = button.parent
-            button.destroy()
-            pdata.gui.main_button = nil
-            if #button_flow.children == 0 then
-                button_flow.parent.destroy()
-            end
+            button.visible = false
         end
     end
 end

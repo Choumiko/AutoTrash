@@ -18,11 +18,13 @@ function player_data.init(player_index)
             pause_trash = false,
             pause_requests = false,
             has_temporary_requests = false,
+            spider = {
+                keep_presets = false,
+            }
         },
         gui = {
-            mod_gui = {},
             import = {},
-            main = {}
+            main = {},
         },
         config_new = {config = {}, by_name = {}, c_requests = 0, max_slot = 0},
         config_tmp = {config = {}, by_name = {}, c_requests = 0, max_slot = 0},
@@ -137,21 +139,7 @@ function player_data.combine_from_vanilla(player, pdata, name)
     if not player.character then
         return {config = {}, by_name = {}, c_requests = 0, max_slot = 0}
     end
-    local by_name = {}
-    local requests = {}
-    local count = 0
-    local get_request_slot = player.get_personal_logistic_slot
-    local max_slot = 0
-    for c = 1, player.character.request_slot_count do
-        local t = get_request_slot(c)
-        if t.name then
-            max_slot = c > max_slot and c or max_slot
-            requests[c] = {name = t.name, min = t.min, max = t.max, slot = c}
-            by_name[t.name] = requests[c]
-            count = t.min > 0 and count + 1 or count
-        end
-    end
-    local result = {config = requests, by_name = by_name, max_slot = max_slot, c_requests = count}
+    local result = at_util.get_requests(player.get_personal_logistic_slot, player.character.request_slot_count)
     if name and next(result.config) then
         pdata.presets[name] = table.deep_copy(result)
     end

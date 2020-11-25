@@ -228,6 +228,20 @@ function M.get_non_equipment_network(character)
     return logi_point and logi_point.logistic_network
 end
 
+function M.get_requests(get_request_slot, request_slot_count)
+    local by_name = {}
+    local requests = {}
+    local count = 0
+    for c = 1, request_slot_count do
+        local t = get_request_slot(c)
+        if t.name then
+            requests[c] = {name = t.name, min = t.min, max = t.max, slot = c}
+            by_name[t.name] = requests[c]
+            count = t.min > 0 and count + 1 or count
+        end
+    end
+    return {config = requests, by_name = by_name, max_slot = request_slot_count, c_requests = count}
+end
 function M.get_network_entity(player)
     local network = M.get_non_equipment_network(player.character)
     if network and network.valid then
@@ -323,6 +337,14 @@ function M.remove_invalid_items()
             end
         end
     end
+end
+
+M.frame_action_button = function(params)
+    local ret = {type = "sprite-button", style = "frame_action_button", mouse_button_filter={"left"}}
+    for k, v in pairs(params) do
+        ret[k] = v
+    end
+    return ret
 end
 
 return M
