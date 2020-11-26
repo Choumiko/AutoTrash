@@ -85,6 +85,7 @@ function spider_gui.presets(pdata)
 end
 
 function spider_gui.init(player, pdata)
+    spider_gui.destroy(pdata)
     local refs = gui.build(player.gui.relative, {
         {type = "frame", style = "inner_frame_in_outer_frame", direction = "vertical",-- style_mods = {width = 214},
             ref = {"main"},
@@ -128,7 +129,6 @@ end
 function spider_gui.update(player, pdata)
     local gui_spider = pdata.gui.spider and pdata.gui.spider.presets
     if not (gui_spider and gui_spider.valid) then
-        spider_gui.destroy(pdata)
         spider_gui.init(player, pdata)
     end
     pdata.gui.spider.presets.clear()

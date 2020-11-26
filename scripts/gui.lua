@@ -1255,7 +1255,6 @@ function at_gui.init(player, pdata)
     at_gui.destroy(player, pdata)
     at_gui.update_main_button(player, pdata)
     at_gui.init_status_display(player, pdata)
-    spider_gui.destroy(pdata)
     spider_gui.init(player, pdata)
 end
 
@@ -1534,6 +1533,7 @@ end
 function at_gui.recreate(player, pdata)
     local was_open = pdata.flags.gui_open
     at_gui.destroy(player, pdata)
+    spider_gui.init(player, pdata)
     if was_open then
         at_gui.open(player, pdata)
     else

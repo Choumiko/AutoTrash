@@ -111,12 +111,8 @@ gui.hook_events(function(e)
     elseif e.name == defines.events.on_gui_opened and e.gui_type == defines.gui_type.entity and e.entity.type == "spider-vehicle" then
         local spider_ref = pdata.gui.spider and pdata.gui.spider.main
         if not (spider_ref and spider_ref.valid) then
-            spider_gui.destroy(pdata)
             spider_gui.init(player, pdata)
         end
-        --TODO: remove destroy and init
-        spider_gui.destroy(pdata)
-        spider_gui.init(player, pdata)
         spider_gui.update(player, pdata)
     end
 end)
@@ -515,7 +511,6 @@ local at_commands = {
         local player = game.get_player(args.player_index)
         at_gui.destroy(player, pdata)
         at_gui.open(player, pdata)
-        spider_gui.destroy(pdata)
         spider_gui.init(player, pdata)
     end,
 
