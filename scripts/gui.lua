@@ -8,6 +8,7 @@ local presets = require("scripts.presets")
 
 local spider_gui = require("scripts.spidertron")
 local at_util = require("scripts.util")
+local gui_util = require("scripts.gui-util")
 local player_data = require("scripts.player-data")
 local format_number = at_util.format_number
 local item_prototype = at_util.item_prototype
@@ -90,7 +91,7 @@ local function import_presets(player, pdata, add_presets, stack)
                 if stack.label and stack.label ~= "AutoTrash_configuration" then
                     local textfield = pdata.gui.main.preset_textfield
                     local preset_name = string.sub(stack.label, 11)
-                    if add_presets and at_gui.add_preset(player, pdata, preset_name, preset) then
+                    if add_presets and player_data.add_preset(player, pdata, preset_name, preset) then
                         pdata.selected_presets = {[preset_name] = true}
                         at_gui.update_presets(pdata)
                     end
@@ -111,7 +112,7 @@ local function import_presets(player, pdata, add_presets, stack)
                     local config, cc = presets.import(bp.get_blueprint_entities(), bp.blueprint_icons)
                     if cc then
                         any_cc = true
-                        at_gui.add_preset(player, pdata, bp.label, config)
+                        player_data.add_preset(player, pdata, bp.label, config)
                     end
                 end
             end
@@ -210,7 +211,7 @@ at_gui.templates = {
                 {type = "flow", ref = {"window", "titlebar"}, children = {
                     {type = "label", style = "frame_title", caption = caption, elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
-                    at_util.frame_action_button{
+                    gui_util.frame_action_button{
                         actions = {on_click = {gui = "import", action = "close_button"}},
                         ref = {"close_button"},
                         sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black"
@@ -294,33 +295,6 @@ at_gui.templates = {
             },
             at_gui.templates.pushers.horizontal
         }}
-    end,
-
-    preset = function(preset_name, pdata)
-        local style = pdata.selected_presets[preset_name] and "at_preset_button_selected" or "at_preset_button"
-        local rip_style = pdata.death_presets[preset_name] and "at_preset_button_small_selected" or "at_preset_button_small"
-        return {type = "flow", direction = "horizontal", name = preset_name, children = {
-            {type = "button", style = style, caption = preset_name, name = preset_name,
-                actions = {on_click = {gui = "presets", action = "load"}},
-            },
-            {type = "sprite-button", style = rip_style, sprite = "autotrash_rip",
-                tooltip = {"at-gui.tooltip-rip"},
-                actions = {on_click = {gui = "presets", action = "change_death_preset"}},
-            },
-            {type = "sprite-button", style = "at_delete_preset", sprite = "utility/trash",
-                actions = {on_click = {gui = "presets", action = "delete"}},
-            }
-        }}
-    end,
-
-    presets = function(pdata)
-        local ret = {}
-        local i = 1
-        for name in pairs(pdata.presets) do
-            ret[i] = at_gui.templates.preset(name, pdata)
-            i = i + 1
-        end
-        return ret
     end,
 
     networks = function(pdata)
@@ -641,7 +615,7 @@ at_gui.handlers.presets = {
         local pdata = e.pdata
         local textfield = pdata.gui.main.preset_textfield
         local name = textfield.text
-        if at_gui.add_preset(player, pdata, name) then
+        if player_data.add_preset(player, pdata, name) then
             pdata.selected_presets = {[name] = true}
             at_gui.update_presets(pdata)
         else
@@ -1071,26 +1045,6 @@ function at_gui.update_sliders(pdata)
     end
 end
 
-function at_gui.add_preset(player, pdata, name, config)
-    config = config or pdata.config_tmp
-    if name == "" then
-        player.print({"at-message.name-not-set"})
-        return
-    end
-    if pdata.presets[name] then
-        if not pdata.settings.overwrite then
-            player.print({"at-message.name-in-use"})
-            return
-        end
-        pdata.presets[name] = table.deep_copy(config)
-        player.print({"at-message.preset-updated", name})
-    else
-        pdata.presets[name] = table.deep_copy(config)
-        gui.build(pdata.gui.main.presets_flow, {at_gui.templates.preset(name, pdata)})
-    end
-    return true
-end
-
 function at_gui.update_presets(pdata)
     spider_gui.update(pdata)
     if not pdata.flags.gui_open then return end
@@ -1138,10 +1092,10 @@ function at_gui.create_main_window(player, pdata)
                 {type = "flow", ref = {"main", "titlebar", "flow"}, children = {
                     {type = "label", style = "frame_title", caption = {"mod-name.AutoTrash"}, elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
-                    at_util.frame_action_button{sprite="at_pin_white", hovered_sprite="at_pin_black", clicked_sprite="at_pin_black",
+                    gui_util.frame_action_button{sprite="at_pin_white", hovered_sprite="at_pin_black", clicked_sprite="at_pin_black",
                         actions = {on_click = {gui = "main", action = "pin_button"}},
                         ref = {"main", "titlebar", "pin_button"}, tooltip={"at-gui.keep-open"}},
-                    at_util.frame_action_button{sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
+                    gui_util.frame_action_button{sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
                         actions = {on_click = {gui = "main", action = "close_button"}},
                         ref = {"main", "titlebar", "close_button"}
                     }
@@ -1151,8 +1105,8 @@ function at_gui.create_main_window(player, pdata)
                         {type = "frame", style = "subheader_frame", children={
                             {type = "label", style = "subheader_caption_label", caption = {"at-gui.logistics-configuration"}},
                             at_gui.templates.pushers.horizontal,
-                            {type = "sprite-button", style = "tool_button_green", style_mods = {padding = 0},
-                                sprite = "utility/check_mark_white", tooltip = {"module-inserter-config-button-apply"},
+                            {type = "sprite-button", style = "item_and_count_select_confirm",
+                                sprite = "utility/check_mark", tooltip = {"module-inserter-config-button-apply"},
                                 actions = {on_click = {gui = "main", action = "apply_changes"}},
                             },
                             {type = "sprite-button", style = "tool_button_red", ref = {"main", "reset_button"}, sprite = "utility/reset_white",
@@ -1238,7 +1192,7 @@ function at_gui.create_main_window(player, pdata)
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
                                 {type = "scroll-pane", style = "at_right_scroll_pane", children = {
                                     {type = "flow", direction = "vertical", ref = {"main", "presets_flow"}, style = "at_right_flow_in_scroll_pane", children =
-                                        at_gui.templates.presets(pdata),
+                                    gui_util.presets(pdata),
                                     },
                                 }}
                             }},

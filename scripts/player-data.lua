@@ -1,4 +1,6 @@
 local at_util = require("scripts.util")
+local gui_util = require("scripts.gui-util")
+local gui = require("__flib__.gui-beta")
 local table = require("__flib__.table")
 
 local player_data = {}
@@ -18,13 +20,11 @@ function player_data.init(player_index)
             pause_trash = false,
             pause_requests = false,
             has_temporary_requests = false,
-            spider = {
-                keep_presets = false,
-            }
         },
         gui = {
             import = {},
             main = {},
+            spider = {},
         },
         config_new = {config = {}, by_name = {}, c_requests = 0, max_slot = 0},
         config_tmp = {config = {}, by_name = {}, c_requests = 0, max_slot = 0},
@@ -256,6 +256,27 @@ function player_data.check_temporary_requests(player, pdata)
     if not next(temporary_requests) then
         pdata.flags.has_temporary_requests = false
     end
+end
+
+function player_data.add_preset(player, pdata, name, config)
+    config = config or pdata.config_tmp
+    if name == "" then
+        player.print({"at-message.name-not-set"})
+        return
+    end
+    if pdata.presets[name] then
+        if not pdata.settings.overwrite then
+            player.print({"at-message.name-in-use"})
+            return
+        end
+        pdata.presets[name] = table.deep_copy(config)
+        player.print({"at-message.preset-updated", name})
+    else
+        pdata.presets[name] = table.deep_copy(config)
+        gui.build(pdata.gui.main.presets_flow, {gui_util.preset(name, pdata)})
+    end
+    return true
+
 end
 
 return player_data

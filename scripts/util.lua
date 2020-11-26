@@ -339,12 +339,4 @@ function M.remove_invalid_items()
     end
 end
 
-M.frame_action_button = function(params)
-    local ret = {type = "sprite-button", style = "frame_action_button", mouse_button_filter={"left"}}
-    for k, v in pairs(params) do
-        ret[k] = v
-    end
-    return ret
-end
-
 return M

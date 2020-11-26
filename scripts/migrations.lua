@@ -221,7 +221,6 @@ local migrations = {
             end
             pdata.gui.mod_gui = nil
             at_gui.update_main_button(player, pdata)
-            pdata.flags.spider = {keep_presets = false}
             spider_gui.init(player, pdata)
         end
     end,

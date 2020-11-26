@@ -92,10 +92,6 @@ gui.hook_events(function(e)
     local pdata = global._pdata[e.player_index]
     e.player = player
     e.pdata = pdata
-    --TODO: remove
-    if not pdata.flags.spider then
-        pdata.flags.spider = {keep_presets = false}
-    end
     local msg = gui.read_action(e)
     if msg then
         local handler = at_gui.handlers[msg.gui] and at_gui.handlers[msg.gui][msg.action]
@@ -109,10 +105,15 @@ gui.hook_events(function(e)
                     handler(e, msg)
                 end
             else
-                e.player.print("Unhandled gui event: " .. serpent.line(msg))
+                player.print("Unhandled gui event: " .. serpent.line(msg))
             end
         end
     elseif e.name == defines.events.on_gui_opened and e.gui_type == defines.gui_type.entity and e.entity.type == "spider-vehicle" then
+        local spider_ref = pdata.gui.spider and pdata.gui.spider.main
+        if not (spider_ref and spider_ref.valid) then
+            spider_gui.destroy(pdata)
+            spider_gui.init(player, pdata)
+        end
         --TODO: remove destroy and init
         spider_gui.destroy(pdata)
         spider_gui.init(player, pdata)
@@ -514,6 +515,8 @@ local at_commands = {
         local player = game.get_player(args.player_index)
         at_gui.destroy(player, pdata)
         at_gui.open(player, pdata)
+        spider_gui.destroy(pdata)
+        spider_gui.init(player, pdata)
     end,
 
     move_button = function(args)
