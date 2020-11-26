@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.2
-Date: ????
+Date: 2020-11-26
   Features:
     - Added the ability to load presets into the spidertron:
       - Presets are the same as the players presets
