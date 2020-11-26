@@ -223,6 +223,7 @@ local migrations = {
             at_gui.update_main_button(player, pdata)
             spider_gui.init(player, pdata)
         end
+        global.__flib = nil
     end,
 }
 

@@ -62,7 +62,7 @@ spider_gui.handlers = {
         local textfield = e.pdata.gui.spider.preset_textfield.text
         local config = at_util.get_requests(e.entity.get_vehicle_logistic_slot, e.entity.request_slot_count)
         if player_data.add_preset(e.player, e.pdata, textfield.text, config) then
-            spider_gui.update(e.pdata)
+            spider_gui.update(e.player, e.pdata)
             textfield.text = ""
         end
     end,
@@ -125,7 +125,12 @@ function spider_gui.init(player, pdata)
     pdata.gui.spider = refs
 end
 
-function spider_gui.update(pdata)
+function spider_gui.update(player, pdata)
+    local gui_spider = pdata.gui.spider and pdata.gui.spider.presets
+    if not (gui_spider and gui_spider.valid) then
+        spider_gui.destroy(pdata)
+        spider_gui.init(player, pdata)
+    end
     pdata.gui.spider.presets.clear()
     gui.build(pdata.gui.spider.presets, spider_gui.presets(pdata))
 end

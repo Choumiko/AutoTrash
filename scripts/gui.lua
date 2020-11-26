@@ -86,14 +86,14 @@ local function import_presets(player, pdata, add_presets, stack)
                 at_gui.adjust_slots(player, pdata)
                 at_gui.update_buttons(pdata)
                 at_gui.update_sliders(pdata)
-                at_gui.mark_dirty(pdata)
+                at_gui.mark_dirty(player, pdata)
                 --named preset
                 if stack.label and stack.label ~= "AutoTrash_configuration" then
                     local textfield = pdata.gui.main.preset_textfield
                     local preset_name = string.sub(stack.label, 11)
                     if add_presets and player_data.add_preset(player, pdata, preset_name, preset) then
                         pdata.selected_presets = {[preset_name] = true}
-                        at_gui.update_presets(pdata)
+                        at_gui.update_presets(player, pdata)
                     end
                     textfield.text = preset_name
                     player.clear_cursor()
@@ -118,7 +118,7 @@ local function import_presets(player, pdata, add_presets, stack)
             end
             if any_cc then
                 player.print({"string-import-successful", {"at-gui.presets"}})
-                at_gui.update_presets(pdata)
+                at_gui.update_presets(player, pdata)
             else
                 player.print({"", {"error-while-importing-string"}, " ", {"at-message.import-error"}})
             end
@@ -382,7 +382,7 @@ at_gui.handlers.main = {
             at_gui.adjust_slots(e.player, pdata)
             at_gui.update_buttons(pdata)
             at_gui.update_sliders(pdata)
-            at_gui.update_presets(pdata)
+            at_gui.update_presets(e.player, pdata)
         end
     end,
     export = function(e)
@@ -491,7 +491,7 @@ at_gui.handlers.main = {
             config_tmp.c_requests = c
         end
         element.selected_index = 1
-        at_gui.mark_dirty(pdata)
+        at_gui.mark_dirty(e.player, pdata)
         at_gui.update_sliders(pdata)
         at_gui.update_buttons(pdata)
     end
@@ -510,7 +510,7 @@ at_gui.handlers.slots = {
                 at_gui.update_sliders(pdata)
                 return
             end
-            at_gui.clear_button(pdata, index, e.element)
+            at_gui.clear_button(player, pdata, index, e.element)
             at_gui.adjust_slots(player, pdata)
         elseif e.button == defines.mouse_button_type.left then
             if e.shift then
@@ -527,7 +527,7 @@ at_gui.handlers.slots = {
                         player_data.swap_configs(pdata, old_selected, index)
                         player.cursor_ghost = nil
                         pdata.selected = index
-                        at_gui.mark_dirty(pdata)
+                        at_gui.mark_dirty(player, pdata)
                     end
                     if not old_config then
                         pdata.selected = false
@@ -595,7 +595,7 @@ at_gui.handlers.slots = {
             local trash_amount = pdata.settings.trash_equals_requests and request_amount or constants.max_request
             player_data.add_config(pdata, elem_value, request_amount, trash_amount, index)
 
-            at_gui.mark_dirty(pdata)
+            at_gui.mark_dirty(player, pdata)
             at_gui.update_button(pdata, index, e.element)
             if old_selected then
                 at_gui.update_button(pdata, old_selected, pdata.gui.main.slot_table.children[old_selected])
@@ -604,7 +604,7 @@ at_gui.handlers.slots = {
             at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
             at_gui.update_sliders(pdata)
         else
-            at_gui.clear_button(pdata, index, e.element)
+            at_gui.clear_button(player, pdata, index, e.element)
             at_gui.adjust_slots(player, pdata)
         end
     end
@@ -617,7 +617,7 @@ at_gui.handlers.presets = {
         local name = textfield.text
         if player_data.add_preset(player, pdata, name) then
             pdata.selected_presets = {[name] = true}
-            at_gui.update_presets(pdata)
+            at_gui.update_presets(player, pdata)
         else
             textfield.focus()
         end
@@ -647,8 +647,8 @@ at_gui.handlers.presets = {
         end
         at_gui.adjust_slots(player, pdata)
         at_gui.update_buttons(pdata)
-        at_gui.mark_dirty(pdata, true)
-        at_gui.update_presets(pdata)
+        at_gui.mark_dirty(player, pdata, true)
+        at_gui.update_presets(player, pdata)
         at_gui.update_sliders(pdata)
     end,
     delete = function(e)
@@ -659,7 +659,7 @@ at_gui.handlers.presets = {
         pdata.selected_presets[name] = nil
         pdata.death_presets[name] = nil
         pdata.presets[name] = nil
-        at_gui.update_presets(pdata)
+        at_gui.update_presets(e.player, pdata)
     end,
     change_death_preset = function(e)
         local pdata = e.pdata
@@ -674,7 +674,7 @@ at_gui.handlers.presets = {
                 selected_presets[name] = nil
             end
         end
-        at_gui.update_presets(pdata)
+        at_gui.update_presets(e.player, pdata)
     end,
     textfield = function(e)
         e.element.select_all()
@@ -684,12 +684,12 @@ at_gui.handlers.sliders = {
     request = function(e)
         local pdata = e.pdata
         if not pdata.selected then return end
-        at_gui.update_request_config(e.element.slider_value, pdata)
+        at_gui.update_request_config(e.player, e.element.slider_value, pdata)
     end,
     request_text = function(e)
         local pdata = e.pdata
         if not pdata.selected then return end
-        at_gui.update_request_config(tonumber_max(e.element.text), pdata, true)
+        at_gui.update_request_config(e.player, tonumber_max(e.element.text), pdata, true)
     end,
     trash = function(e)
         local pdata = e.pdata
@@ -856,7 +856,7 @@ at_gui.handlers.import = {
     end
 }
 
-function at_gui.update_request_config(number, pdata, from_text)
+function at_gui.update_request_config(player, number, pdata, from_text)
     local selected = pdata.selected
     local config_tmp = pdata.config_tmp
     local item_config = config_tmp.config[selected]
@@ -874,7 +874,7 @@ function at_gui.update_request_config(number, pdata, from_text)
     if item_config.max < constants.max_request and number > item_config.max then
         item_config.max = number
     end
-    at_gui.mark_dirty(pdata)
+    at_gui.mark_dirty(player, pdata)
     at_gui.update_sliders(pdata)
     at_gui.update_button(pdata, pdata.selected)
 end
@@ -900,7 +900,7 @@ function at_gui.update_trash_config(player, pdata, number, source)
             end
         end
         item_config.max = number
-        at_gui.mark_dirty(pdata)
+        at_gui.mark_dirty(player, pdata)
         at_gui.update_button(pdata, pdata.selected)
     else
         at_gui.update_button(pdata, pdata.selected)
@@ -1018,9 +1018,9 @@ function at_gui.update_button(pdata, i, button)
     button.style = (i == pdata.selected) and "yellow_slot_button" or "slot_button"
 end
 
-function at_gui.clear_button(pdata, index, button)
+function at_gui.clear_button(player, pdata, index, button)
     player_data.clear_config(pdata, index)
-    at_gui.mark_dirty(pdata)
+    at_gui.mark_dirty(player, pdata)
     at_gui.update_button(pdata, index, button)
     at_gui.update_sliders(pdata)
 end
@@ -1045,8 +1045,8 @@ function at_gui.update_sliders(pdata)
     end
 end
 
-function at_gui.update_presets(pdata)
-    spider_gui.update(pdata)
+function at_gui.update_presets(player, pdata)
+    spider_gui.update(player, pdata)
     if not pdata.flags.gui_open then return end
     local children = pdata.gui.main.presets_flow.children
     local selected_presets = pdata.selected_presets
@@ -1443,14 +1443,14 @@ function at_gui.update_settings(pdata)
     frame[def.status_display].state = flags.status_display_open
 end
 
-function at_gui.mark_dirty(pdata, keep_presets)
+function at_gui.mark_dirty(player, pdata, keep_presets)
     local reset = pdata.gui.main.reset_button
     reset.enabled = true
     pdata.flags.dirty = true
     if not keep_presets then
         pdata.selected_presets = {}
     end
-    at_gui.update_presets(pdata)
+    at_gui.update_presets(player, pdata)
 end
 
 function at_gui.destroy(player, pdata)
@@ -1497,11 +1497,19 @@ function at_gui.open(player, pdata)
     at_gui.update_button_styles(player, pdata)
     at_gui.update_settings(pdata)
     at_gui.update_sliders(pdata)
-    at_gui.update_presets(pdata)
+    at_gui.update_presets(player, pdata)
 end
 
 function at_gui.close(player, pdata, no_reset)
     local window_frame = pdata.gui.main.window
+    if not (window_frame and window_frame.valid) then
+        if window_frame then
+            player.print{"at-message.invalid-gui"}
+        end
+        at_gui.destroy(player, pdata)
+        at_gui.create_main_window(player, pdata)
+        window_frame = pdata.gui.main.window
+    end
     if window_frame and window_frame.valid then
         window_frame.visible = false
     end

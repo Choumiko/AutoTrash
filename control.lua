@@ -117,7 +117,7 @@ gui.hook_events(function(e)
         --TODO: remove destroy and init
         spider_gui.destroy(pdata)
         spider_gui.init(player, pdata)
-        spider_gui.update(pdata)
+        spider_gui.update(player, pdata)
     end
 end)
 
@@ -507,7 +507,7 @@ local at_commands = {
         if not player.character then return end
         pdata.config_tmp = player_data.combine_from_vanilla(player, pdata)
         at_gui.open(player, pdata)
-        at_gui.mark_dirty(pdata)
+        at_gui.mark_dirty(player, pdata)
     end,
 
     reset = function(args)
@@ -530,6 +530,12 @@ local at_commands = {
             player.print{"at-message.invalid-index"}
         end
     end,
+
+    mess_up = function(args)
+        local player = game.get_player(args.player_index)
+        player.gui.relative.clear()
+        player.gui.screen.clear()
+    end
 }
 
 local comms = commands.commands
@@ -541,3 +547,4 @@ end
 commands.add_command(command_prefix .. "import", "Import from vanilla", at_commands.import)
 commands.add_command(command_prefix .. "reset", "Reset gui", at_commands.reset)
 commands.add_command(command_prefix .. "move_button", "Move the top button to another position", at_commands.move_button)
+commands.add_command(command_prefix .. "mess_up", "", at_commands.mess_up)
