@@ -1,4 +1,3 @@
-local gui = require("__flib__.gui-beta")
 local gui_util = {}
 
 gui_util.frame_action_button = function(params)

@@ -181,7 +181,7 @@ event.on_player_selected_area(function(e)
         end
         ::continue::
     end
-    at_gui.update_networks(player, pdata)
+    at_gui.update_networks(pdata)
 end)
 
 event.on_player_alt_selected_area(function(e)
@@ -204,7 +204,7 @@ event.on_player_alt_selected_area(function(e)
         end
         ::continue::
     end
-    at_gui.update_networks(player, pdata)
+    at_gui.update_networks(pdata)
 end)
 
 
@@ -332,7 +332,7 @@ local function on_pre_mined_item(e)
                 end
             end
         end
-        at_gui.update_networks(player, pdata)
+        at_gui.update_networks(pdata)
     end
 end
 local robofilter = {{filter = "type", type = "roboport"}}
@@ -359,7 +359,7 @@ local function on_built_entity(e)
                 end
             end
         end
-        at_gui.update_networks(player, pdata)
+        at_gui.update_networks(pdata)
         exists = nil
     end
 end

@@ -83,7 +83,7 @@ local function import_presets(player, pdata, add_presets, stack)
                 pdata.config_tmp = preset
                 player.print({"string-import-successful", "AutoTrash configuration"})
                 pdata.selected = false
-                at_gui.adjust_slots(player, pdata)
+                at_gui.adjust_slots(pdata)
                 at_gui.update_buttons(pdata)
                 at_gui.update_sliders(pdata)
                 at_gui.mark_dirty(player, pdata)
@@ -379,7 +379,7 @@ at_gui.handlers.main = {
             pdata.selected_presets = {}
             pdata.selected = false
             pdata.flags.dirty = false
-            at_gui.adjust_slots(e.player, pdata)
+            at_gui.adjust_slots(pdata)
             at_gui.update_buttons(pdata)
             at_gui.update_sliders(pdata)
             at_gui.update_presets(e.player, pdata)
@@ -473,7 +473,7 @@ at_gui.handlers.main = {
             config_tmp.max_slot = 0
             config_tmp.c_requests = 0
             pdata.selected = false
-            at_gui.adjust_slots(e.player, pdata)
+            at_gui.adjust_slots(pdata)
         elseif index == 5 then
             for _, config in pairs(config_tmp.config) do
                 if config.min > 0 then
@@ -511,7 +511,7 @@ at_gui.handlers.slots = {
                 return
             end
             at_gui.clear_button(player, pdata, index, e.element)
-            at_gui.adjust_slots(player, pdata)
+            at_gui.adjust_slots(pdata)
         elseif e.button == defines.mouse_button_type.left then
             if e.shift then
                 local config_tmp = pdata.config_tmp
@@ -537,7 +537,7 @@ at_gui.handlers.slots = {
                 end
                 at_gui.update_button(pdata, index, e.element)
                 at_gui.update_button(pdata, old_selected)
-                at_gui.adjust_slots(player, pdata)
+                at_gui.adjust_slots(pdata)
                 at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
                 at_gui.update_sliders(pdata)
             else
@@ -600,12 +600,12 @@ at_gui.handlers.slots = {
             if old_selected then
                 at_gui.update_button(pdata, old_selected, pdata.gui.main.slot_table.children[old_selected])
             end
-            at_gui.adjust_slots(player, pdata)
+            at_gui.adjust_slots(pdata)
             at_gui.update_button_styles(player, pdata)--TODO: only update changed buttons
             at_gui.update_sliders(pdata)
         else
             at_gui.clear_button(player, pdata, index, e.element)
-            at_gui.adjust_slots(player, pdata)
+            at_gui.adjust_slots(pdata)
         end
     end
 }
@@ -645,7 +645,7 @@ at_gui.handlers.presets = {
             pdata.config_tmp = tmp
             pdata.selected = false
         end
-        at_gui.adjust_slots(player, pdata)
+        at_gui.adjust_slots(pdata)
         at_gui.update_buttons(pdata)
         at_gui.mark_dirty(player, pdata, true)
         at_gui.update_presets(player, pdata)
@@ -752,7 +752,7 @@ at_gui.handlers.settings = {
         else
             player.print{"at-message.not-in-network"}
         end
-        at_gui.update_networks(player, pdata)
+        at_gui.update_networks(pdata)
     end,
     remove_network = function(e)
         local player = e.player
@@ -764,7 +764,7 @@ at_gui.handlers.settings = {
             if pdata.networks[nid] then
                 pdata.networks[nid] = nil
                 player.print{"at-message.removed-network", nid}
-                at_gui.update_networks(player, pdata)
+                at_gui.update_networks(pdata)
                 return
             end
             local new_net = current_network.logistic_network
@@ -782,11 +782,11 @@ at_gui.handlers.settings = {
         else
             player.print{"at-message.not-in-network"}
         end
-        at_gui.update_networks(player, pdata)
+        at_gui.update_networks(pdata)
     end,
     edit_networks = function(e)
         local pdata = e.pdata
-        at_gui.update_networks(e.player, pdata)
+        at_gui.update_networks(pdata)
         local visible = not pdata.gui.main.networks.visible
         e.element.style = visible and "at_selected_tool_button" or "tool_button"
         pdata.gui.main.networks.visible = visible
@@ -909,7 +909,7 @@ function at_gui.update_trash_config(player, pdata, number, source)
     at_gui.update_sliders(pdata)
 end
 
-function at_gui.adjust_slots(player, pdata)
+function at_gui.adjust_slots(pdata)
     local slot_table = pdata.gui.main.slot_table
     local old_slots = #slot_table.children
     local min_step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
@@ -1066,7 +1066,7 @@ function at_gui.update_presets(player, pdata)
     end
 end
 
-function at_gui.update_networks(player, pdata)
+function at_gui.update_networks(pdata)
     if not pdata.flags.gui_open then return end
     local networks = pdata.gui.main.networks_flow
     networks.clear()
@@ -1491,7 +1491,7 @@ function at_gui.open(player, pdata)
     end
     player.set_shortcut_toggled("autotrash-toggle-gui", true)
 
-    at_gui.adjust_slots(player, pdata)
+    at_gui.adjust_slots(pdata)
     at_gui.update_buttons(pdata)
     at_gui.update_button_styles(player, pdata)
     at_gui.update_settings(pdata)

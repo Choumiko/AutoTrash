@@ -89,7 +89,7 @@ function spider_gui.init(player, pdata)
     local refs = gui.build(player.gui.relative, {
         {type = "frame", style = "inner_frame_in_outer_frame", direction = "vertical",-- style_mods = {width = 214},
             ref = {"main"},
-            anchor = {gui = defines.relative_gui_type.spider_vehicle_gui, position = defines.relative_gui_position.right},
+            anchor = {gui = defines.relative_gui_type.spider_vehicle_gui, position = defines.relative_gui_position.right},--luacheck: ignore
             children = {
                 {type = "flow", children = {
                     {type = "label", style = "frame_title", caption = "Logistics", elem_mods = {ignored_by_interaction = true}},
