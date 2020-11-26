@@ -5,7 +5,7 @@
   "title": "Auto Trash",
   "author": "Choumiko",
   "homepage": "https://forums.factorio.com/viewtopic.php?f=97&t=16016",
-  "description": "Allows saving of different logistic request setups\nEnable autotrash only in certain logistic networks\nLoad your spidertron with different setups with a single click",
+  "description": "Allows saving of different logistic request setups\nEnable autotrash only in certain logistic networks\nLoad your spidertron with different setups with a single click\nLoad one or more preset after respawning\nTrash unrequested items",
   "dependencies": ["flib >= 0.6.0"],
   "package":{
     "scripts": {
