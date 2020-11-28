@@ -199,10 +199,6 @@ at_gui.templates = {
                     }
         end,
     },
-    pushers = {
-        horizontal = {type = "empty-widget", style_mods = {horizontally_stretchable = true}},
-        vertical = {type = "empty-widget", style_mods = {vertically_stretchable = true}}
-    },
     import_export_window = function(bp_string, mode)
         local caption = bp_string and {"gui.export-to-string"} or {"gui-blueprint-library.import-string"}
         local button_caption = bp_string and {"gui.close"} or {"gui-blueprint-library.import"}
@@ -219,7 +215,7 @@ at_gui.templates = {
                 }},
                 {type = "text-box", text = bp_string, ref = {"window", "textbox"}, elem_mods = {word_wrap = true}, style_mods = {width = 400, height = 250}},
                 {type = "flow", direction = "horizontal", children={
-                        at_gui.templates.pushers.horizontal,
+                        gui_util.pushers.horizontal,
                         {type = "label", name = "mode", caption = mode, visible = false},
                         {type = "button", style = "dialog_button", caption = button_caption,
                             actions = {on_click = {gui = "import", action = button_handler}}
@@ -293,7 +289,6 @@ at_gui.templates = {
                     },
                 }
             },
-            at_gui.templates.pushers.horizontal
         }}
     end,
 
@@ -304,7 +299,7 @@ at_gui.templates = {
             if network and network.valid then
                 ret[i] = {type = "flow", name = id, direction = "horizontal", style_mods = {vertical_align = "center"}, children = {
                     {type = "label", caption = {"", {"gui-logistic.network"}, " #" .. id}},
-                    at_gui.templates.pushers.horizontal,
+                    gui_util.pushers.horizontal,
                     {type = "sprite-button", style = "tool_button", sprite = "utility/map",
                         actions = {on_click = {gui = "networks", action = "view"}},
                         tooltip = {"at-gui.tooltip-show-network"}
@@ -915,7 +910,7 @@ function at_gui.adjust_slots(pdata)
     local min_step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
     local slots = math.ceil(pdata.config_tmp.max_slot / pdata.settings.columns) * min_step
     --increase if anything is set in the last row
-    if (slots == pdata.config_tmp.max_slot) or (pdata.config_tmp.max_slot % min_step > 1) then
+    if (slots == pdata.config_tmp.max_slot) or (pdata.config_tmp.max_slot % min_step > 0) then
         slots = slots + min_step
     end
     slots = clamp(slots, 40, 65529)
@@ -1104,7 +1099,7 @@ function at_gui.create_main_window(player, pdata)
                     {type = "frame", style = "inside_shallow_frame", direction = "vertical", children = {
                         {type = "frame", style = "subheader_frame", children={
                             {type = "label", style = "subheader_caption_label", caption = {"at-gui.logistics-configuration"}},
-                            at_gui.templates.pushers.horizontal,
+                            gui_util.pushers.horizontal,
                             {type = "sprite-button", style = "item_and_count_select_confirm",
                                 sprite = "utility/check_mark", tooltip = {"module-inserter-config-button-apply"},
                                 actions = {on_click = {gui = "main", action = "apply_changes"}},
@@ -1162,7 +1157,6 @@ function at_gui.create_main_window(player, pdata)
                                     items = constants.quick_actions,
                                     selected_index = 1,
                                 },
-                                at_gui.templates.pushers.horizontal
                             }},
                             at_gui.templates.settings(flags),
                         }},
@@ -1171,7 +1165,7 @@ function at_gui.create_main_window(player, pdata)
                     {type = "frame", ref = {"main", "presets"}, style = "inside_shallow_frame", direction = "vertical", children = {
                         {type = "frame", style = "subheader_frame", children={
                             {type = "label", style = "subheader_caption_label", caption = {"at-gui.presets"}},
-                            at_gui.templates.pushers.horizontal,
+                            gui_util.pushers.horizontal,
                             {type = "sprite-button", style = "tool_button", sprite = "utility/export_slot", tooltip = {"at-gui.tooltip-export-all"},
                                 actions = {on_click = {gui = "main", action = "export_all"}},
                             },
@@ -1184,7 +1178,7 @@ function at_gui.create_main_window(player, pdata)
                                 {type = "textfield", style = "long_number_textfield", ref = {"main", "preset_textfield"},
                                     actions = {on_click = {gui = "presets", action = "textfield"}},
                                 },
-                                at_gui.templates.pushers.horizontal,
+                                gui_util.pushers.horizontal,
                                 {type = "button", caption = {"gui-save-game.save"}, style = "at_save_button",
                                     actions = {on_click = {gui = "presets", action = "save"}}
                                 }
@@ -1201,7 +1195,7 @@ function at_gui.create_main_window(player, pdata)
                     {type = "frame", ref = {"main", "networks"}, visible = false, style = "inside_shallow_frame", direction = "vertical", children = {
                         {type = "frame", style = "subheader_frame", children={
                             {type = "label", style = "subheader_caption_label", caption = {"gui-logistic.logistic-networks"}},
-                            at_gui.templates.pushers.horizontal,
+                            gui_util.pushers.horizontal,
                             {type = "sprite-button", style = "tool_button", style_mods = {padding = 0},
                                 actions = {on_click = {gui = "settings", action = "selection_tool"}},
                                 sprite = "autotrash_selection", tooltip = {"at-gui.tooltip-selection-tool"}},

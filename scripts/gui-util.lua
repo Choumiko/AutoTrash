@@ -8,6 +8,11 @@ gui_util.frame_action_button = function(params)
     return ret
 end
 
+gui_util.pushers = {
+    horizontal = {type = "empty-widget", style_mods = {horizontally_stretchable = true}},
+    vertical = {type = "empty-widget", style_mods = {vertically_stretchable = true}}
+}
+
 gui_util.preset = function(preset_name, pdata)
     local style = pdata.selected_presets[preset_name] and "at_preset_button_selected" or "at_preset_button"
     local rip_style = pdata.death_presets[preset_name] and "at_preset_button_small_selected" or "at_preset_button_small"

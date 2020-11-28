@@ -103,7 +103,7 @@ function spider_gui.init(player, pdata)
                         {type = "textfield", style = "long_number_textfield", ref = {"preset_textfield"},
                             actions = {on_click = {gui = "spider", action = "textfield"}},
                         },
-                        {type = "empty-widget", style_mods = {horizontally_stretchable = true}},
+                        gui_util.pushers.horizontal,
                         {type = "sprite-button", sprite = "utility/check_mark",style = "item_and_count_select_confirm",
                             tooltip = {"at-gui.spider-save"},
                             actions = {on_click = {gui = "spider", action = "save"}}
@@ -121,12 +121,16 @@ function spider_gui.init(player, pdata)
                         }},
                     }}
                 }},
-            }}
+            }
+        }
     })
     pdata.gui.spider = refs
 end
 
 function spider_gui.update(player, pdata)
+    if not (player.opened_gui_type == defines.gui_type.entity and player.opened and player.opened.type == "spider-vehicle") then
+        return
+    end
     local gui_spider = pdata.gui.spider and pdata.gui.spider.presets
     if not (gui_spider and gui_spider.valid) then
         spider_gui.init(player, pdata)
