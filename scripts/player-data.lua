@@ -19,6 +19,7 @@ function player_data.init(player_index)
             trash_network = false,
             pause_trash = false,
             pause_requests = false,
+            autotoggle_unrequested = false,
             has_temporary_requests = false,
         },
         gui = {

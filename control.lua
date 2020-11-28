@@ -128,7 +128,9 @@ local function on_player_main_inventory_changed(e)
         player_data.check_temporary_requests(player, pdata)
     end
     if not flags.pause_trash and flags.trash_unrequested then
-        set_requests(player, pdata)
+        if set_requests(player, pdata) then
+            at_gui.update_settings(pdata)
+        end
     end
 end
 event.on_player_main_inventory_changed(on_player_main_inventory_changed)
@@ -410,6 +412,17 @@ event.on_lua_shortcut(function(e)
             at_gui.toggle(game.get_player(e.player_index), pdata)
         end
     end
+end)
+
+event.register("autotrash-toggle-unrequested", function(e)
+    local player = game.get_player(e.player_index)
+    if not player.controller_type == defines.controllers.character then
+        return
+    end
+    local pdata = global._pdata[e.player_index]
+    pdata.flags.trash_unrequested = not pdata.flags.trash_unrequested
+    at_gui.toggle_setting.trash_unrequested(player, pdata)
+    at_gui.update_settings(pdata)
 end)
 
 event.register("autotrash-toggle-gui", function(e)

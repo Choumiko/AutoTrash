@@ -182,7 +182,12 @@ function M.set_requests(player, pdata)
 
     --trash unrequested items
     if contents and not trash_paused then
-        if not next(contents) then return end
+        if not next(contents) then
+            if pdata.flags.autotoggle_unrequested then
+                pdata.flags.trash_unrequested = false
+            end
+            return true
+        end
 
         for name, _ in pairs(contents) do
             if constants.trash_blacklist[M.item_prototype(name).type] then

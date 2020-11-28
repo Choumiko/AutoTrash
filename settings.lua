@@ -47,14 +47,6 @@ data:extend({
         order = "e"
     },
     {
-        type = "bool-setting",
-        name = "autotrash_open_library",
-        setting_type = "runtime-per-user",
-        default_value = false,
-        hidden = true,
-        order = "f",
-    },
-    {
         type = "int-setting",
         name = "autotrash_gui_displayed_columns",
         setting_type = "runtime-per-user",

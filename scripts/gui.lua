@@ -72,6 +72,7 @@ local at_gui = {
         pause_requests = "pause_requests",
         network_button = "network_button",
         status_display = "status_display",
+        autotoggle_unrequested = "autotoggle_unrequested",
     },
 }
 
@@ -225,28 +226,41 @@ at_gui.templates = {
     end,
 
     settings = function(flags)
+        local toggle_action = {on_checked_state_changed = {gui = "settings", action = "toggle"}}
         return {type = "frame", style = "at_bordered_frame", direction = "vertical", ref = {"main", "trash_options"}, children = {
             {
                 type = "checkbox",
                 name = at_gui.defines.trash_above_requested,
                 caption = {"at-gui.trash-above-requested"},
                 state = flags.trash_above_requested,
-                actions = {on_checked_state_changed = {gui = "settings", action = "toggle"}},
+                actions = toggle_action,
 
             },
-            {
-                type = "checkbox",
-                name = at_gui.defines.trash_unrequested,
-                caption = {"at-gui.trash-unrequested"},
-                state = flags.trash_unrequested,
-                actions = {on_checked_state_changed = {gui = "settings", action = "toggle"}},
-            },
+            {type = "flow", direction = "horizontal", style_mods = {horizontal_spacing = 20}, children = {
+                {
+                    type = "checkbox",
+                    ref = {"main", "trash_unrequested"},
+                    name = at_gui.defines.trash_unrequested,
+                    caption = {"at-gui.trash-unrequested"},
+                    state = flags.trash_unrequested,
+                    actions = toggle_action,
+                },
+                {
+                    type = "checkbox",
+                    ref = {"main", "autotoggle_unrequested"},
+                    name = at_gui.defines.autotoggle_unrequested,
+                    caption = {"at-gui.autotoggle_unrequested"},
+                    state = flags.autotoggle_unrequested,
+                    tooltip = {"at-gui.autotoggle_unrequested_tt"},
+                    actions = toggle_action,
+                },
+            }},
             {
                 type = "checkbox",
                 name = at_gui.defines.trash_network,
                 caption = {"at-gui.trash-in-main-network"},
                 state = flags.trash_network,
-                actions = {on_checked_state_changed = {gui = "settings", action = "toggle"}},
+                actions = toggle_action,
             },
             {
                 type = "checkbox",
@@ -254,7 +268,7 @@ at_gui.templates = {
                 caption = {"at-gui.pause-trash"},
                 tooltip = {"at-gui.tooltip-pause-trash"},
                 state = flags.pause_trash,
-                actions = {on_checked_state_changed = {gui = "settings", action = "toggle"}},
+                actions = toggle_action,
             },
             {
                 type = "checkbox",
@@ -262,7 +276,7 @@ at_gui.templates = {
                 caption = {"at-gui.pause-requests"},
                 tooltip = {"at-gui.tooltip-pause-requests"},
                 state = flags.pause_requests,
-                actions = {on_checked_state_changed = {gui = "settings", action = "toggle"}},
+                actions = toggle_action,
             },
             {
                 type = "checkbox",
@@ -715,6 +729,8 @@ at_gui.handlers.settings = {
             end
             pdata.flags[name] = e.element.state
             e.element.state = at_gui.toggle_setting[name](e.player, pdata)
+        elseif pdata.flags[name] ~= nil then
+            pdata.flags[name] = e.element.state
         end
     end,
     toggle_status_display = function(e)
@@ -1428,7 +1444,9 @@ function at_gui.update_settings(pdata)
     local flags = pdata.flags
     local def = at_gui.defines
 
-    frame[def.trash_unrequested].state = flags.trash_unrequested
+    pdata.gui.main.trash_unrequested.state = flags.trash_unrequested
+    pdata.gui.main.autotoggle_unrequested = flags.autotoggle_unrequested
+    --frame[def.trash_unrequested].state = flags.trash_unrequested
     frame[def.trash_above_requested].state = flags.trash_above_requested
     frame[def.trash_network].state = flags.trash_network
     frame[def.pause_trash].state = flags.pause_trash

@@ -225,6 +225,11 @@ local migrations = {
         end
         global.__flib = nil
     end,
+    ["5.3.3"] = function()
+        for _, pdata in pairs(global._pdata) do
+            pdata.flags.autotoggle_unrequested = false
+        end
+    end
 }
 
 return migrations

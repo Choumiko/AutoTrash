@@ -51,6 +51,12 @@ data:extend{
         key_sequence = "SHIFT + O",
         order = "d"
     },
+    {
+        type = "custom-input",
+        name = "autotrash-toggle-unrequested",
+        key_sequence = "",
+        order = "e"
+    },
 }
 
 data:extend{
