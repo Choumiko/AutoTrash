@@ -2,6 +2,7 @@
 Version: 5.3.3
 Date: ????
   Changes:
+    - Changed the shortcut icon to red and yellow arrows
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.2
 Date: 2020-11-26

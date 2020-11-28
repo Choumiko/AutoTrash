@@ -58,10 +58,10 @@ data:extend{
         type = "shortcut",
         name = "autotrash-toggle-gui",
         action = "lua",
-        icon = data_util.build_sprite(nil, {0, 0}, "__AutoTrash__/graphics/shortcut-x32.png", 32, 2),
-        small_icon = data_util.build_sprite(nil, {0, 0}, "__AutoTrash__/graphics/shortcut-x32.png", 32, 2),
-        disabled_icon = data_util.build_sprite(nil, {0, 0}, "__AutoTrash__/graphics/shortcut-x32-white.png", 32, 2),
-        disabled_small_icon = data_util.build_sprite(nil, {0, 0}, "__AutoTrash__/graphics/shortcut-x32-white.png", 32, 2),
+        icon = data_util.build_sprite(nil, nil, "__AutoTrash__/graphics/shortcut.png", 64),
+        disabled_icon = data_util.build_sprite(nil, nil, "__AutoTrash__/graphics/shortcut-disabled.png", 64),
+        small_icon = data_util.build_sprite(nil, nil, "__AutoTrash__/graphics/shortcut.png", 64),
+        disabled_small_icon = data_util.build_sprite(nil, nil, "__AutoTrash__/graphics/shortcut-disabled.png", 64),
         toggleable = true,
         associated_control_input = "autotrash-toggle-gui"
     }
