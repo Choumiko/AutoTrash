@@ -59,7 +59,7 @@ spider_gui.handlers = {
         frame.parent.style.bottom_padding = new_state and 8 or 0
     end,
     save = function(e)
-        local textfield = e.pdata.gui.spider.preset_textfield.text
+        local textfield = e.pdata.gui.spider.preset_textfield
         local config = at_util.get_requests(e.entity.get_vehicle_logistic_slot, e.entity.request_slot_count)
         if player_data.add_preset(e.player, e.pdata, textfield.text, config) then
             spider_gui.update(e.player, e.pdata)
