@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.3
-Date: ????
+Date: 2020-11-28
   Changes:
     - Changed the shortcut icon to red and yellow arrows
     - Added a hotkey to toggle trashing unrequested items
