@@ -77,7 +77,7 @@ function presets.export(preset, name)
     local bp = {}
     local item_config, request_items, trash_items, item_signal, pos_x
     local index_offset, index
-
+    combinators = combinators > 0 and combinators or 1
     for cc = 1, combinators do
         pos_x = cc - 1
         index_offset = pos_x * item_slot_count
@@ -144,9 +144,10 @@ function presets.import(preset, icons)
         --log_blueprint_entities(preset)
         for _, cc in pairs(preset) do
             index_offset = (cc.position.x - 0.5) * item_slot_count
-            if cc.name == "constant-combinator" and cc.control_behavior then
+            local filters = cc.control_behavior and cc.control_behavior.filters or {}
+            if cc.name == "constant-combinator" then
                 cc_found = true
-                for _, item_config in pairs(cc.control_behavior.filters) do
+                for _, item_config in pairs(filters) do
                     index = index_offset + item_config.index
                     if not config[index] then
                         config[index] = {name = item_config.signal.name, slot = index, max = max_request, min = 0}

@@ -403,10 +403,6 @@ at_gui.handlers.main = {
         else
             name = "AutoTrash_configuration"
         end
-        if table_size(pdata.config_tmp.config) == 0 then
-            player.print({"at-message.no-config-set"})
-            return
-        end
         local text = presets.export(pdata.config_tmp, name)
         if e.shift then
             local stack = player.cursor_stack
