@@ -2,8 +2,10 @@
 Version: 5.3.5
 Date: ????
   Changes:
-    - If requested and maximum amount are the same only one number is shown in the gui
+    - If requested amount and maximum amount are the same only one number is shown in the gui
     - Increased performance when dealing with a lot of configured items
+  Bugfixes:
+    - Fixed sprites for the pin and reset button
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.4
 Date: 2020-11-29

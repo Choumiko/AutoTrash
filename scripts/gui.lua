@@ -352,11 +352,13 @@ at_gui.handlers.main = {
         local pdata = e.pdata
         if pdata.flags.pinned then
             pdata.gui.main.titlebar.pin_button.style = "frame_action_button"
+            pdata.gui.main.titlebar.pin_button.sprite = "at_pin_white"
             pdata.flags.pinned = false
             pdata.gui.main.window.force_auto_center()
             e.player.opened = pdata.gui.main.window
         else
             pdata.gui.main.titlebar.pin_button.style = "flib_selected_frame_action_button"
+            pdata.gui.main.titlebar.pin_button.sprite = "at_pin_black"
             pdata.flags.pinned = true
             pdata.gui.main.window.auto_center = false
             e.player.opened = nil
@@ -1103,6 +1105,7 @@ function at_gui.create_main_window(player, pdata)
     width = (btns <= (rows*cols)) and width or (width + 12)
     local max_height = (player.display_resolution.height / player.display_scale) * 0.97
     local max_width = (player.display_resolution.width / player.display_scale)
+    local pin_sprite = flags.pinned and "at_pin_black" or "at_pin_white"
     local gui_data = gui.build(player.gui.screen,{
         {type = "frame", style = "outer_frame", style_mods = {maximal_width = max_width, maximal_height = max_height},
             actions = {on_closed = {gui = "main", action = "window"}},
@@ -1111,7 +1114,7 @@ function at_gui.create_main_window(player, pdata)
                 {type = "flow", ref = {"main", "titlebar", "flow"}, children = {
                     {type = "label", style = "frame_title", caption = {"mod-name.AutoTrash"}, elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
-                    gui_util.frame_action_button{sprite="at_pin_white", hovered_sprite="at_pin_black", clicked_sprite="at_pin_black",
+                    gui_util.frame_action_button{sprite=pin_sprite, hovered_sprite="at_pin_black", clicked_sprite="at_pin_black",
                         actions = {on_click = {gui = "main", action = "pin_button"}},
                         ref = {"main", "titlebar", "pin_button"}, tooltip={"at-gui.keep-open"}},
                     gui_util.frame_action_button{sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
@@ -1128,7 +1131,7 @@ function at_gui.create_main_window(player, pdata)
                                 sprite = "utility/check_mark", tooltip = {"module-inserter-config-button-apply"},
                                 actions = {on_click = {gui = "main", action = "apply_changes"}},
                             },
-                            {type = "sprite-button", style = "tool_button_red", ref = {"main", "reset_button"}, sprite = "utility/reset_white",
+                            {type = "sprite-button", style = "tool_button_red", ref = {"main", "reset_button"}, sprite = "utility/reset",
                                 actions = {on_click = {gui = "main", action = "reset"}},
                             },
                             {type = "sprite-button", style = "tool_button", sprite = "utility/export_slot", tooltip = {"at-gui.tooltip-export"},
