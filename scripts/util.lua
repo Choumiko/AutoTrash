@@ -11,6 +11,17 @@ function M.item_prototype(name)
     return item_prototypes[name]
 end
 
+function M.copy_preset(preset)
+    local new_table = {config = {}, by_name = {}, c_requests = preset.c_requests, max_slot = preset.max_slot}
+    local nt_config = new_table.config
+    local nt_by_name = new_table.by_name
+    for i, config in pairs(preset.config) do
+        nt_config[i] = {name = config.name, min = config.min, max = config.max, slot = config.slot}
+        nt_by_name[config.name] = nt_config[i]
+    end
+    return new_table
+end
+
 -- function M.get_quickbar_items(player, pdata)
 --     local items = {}
 --     local quickbars = 4

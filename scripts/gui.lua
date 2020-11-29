@@ -1,6 +1,4 @@
 local gui = require("__flib__.gui-beta")
-local table =require("__flib__.table")
-
 local mod_gui = require ("__core__.lualib.mod-gui")
 
 local constants = require("constants")
@@ -368,7 +366,7 @@ at_gui.handlers.main = {
         local pdata = e.pdata
 
         local adjusted = player_data.check_config(player, pdata)
-        pdata.config_new = table.deep_copy(pdata.config_tmp)
+        pdata.config_new = at_util.copy_preset(pdata.config_tmp)
         pdata.dirty = false
         pdata.gui.main.reset_button.enabled = false
         at_util.set_requests(player, pdata)
@@ -383,7 +381,7 @@ at_gui.handlers.main = {
     reset = function(e)
         local pdata = e.pdata
         if pdata.flags.dirty then
-            pdata.config_tmp = table.deep_copy(pdata.config_new)
+            pdata.config_tmp = at_util.copy_preset(pdata.config_new)
             e.element.enabled = false
             pdata.selected_presets = {}
             pdata.selected = false
@@ -633,7 +631,7 @@ at_gui.handlers.presets = {
         local name = e.element.caption
         if not e.shift and not e.control then
             pdata.selected_presets = {[name] = true}
-            pdata.config_tmp = table.deep_copy(pdata.presets[name])
+            pdata.config_tmp = at_util.copy_preset(pdata.presets[name])
             pdata.selected = false
             pdata.gui.main.preset_textfield.text = name
         else
@@ -1531,7 +1529,7 @@ function at_gui.close(player, pdata, no_reset)
         pdata.gui.main.network_edit_button.style = "tool_button"
     end
     if not no_reset and pdata.settings.reset_on_close then
-        pdata.config_tmp = table.deep_copy(pdata.config_new)
+        pdata.config_tmp = at_util.copy_preset(pdata.config_new)
         pdata.gui.main.reset_button.enabled = false
         pdata.dirty = false
     end

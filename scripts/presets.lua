@@ -1,4 +1,4 @@
-local table = require("__flib__.table")
+local at_util = require("scripts.util")
 local max_request = require("constants").max_request
 local presets = {}
 
@@ -9,7 +9,7 @@ local presets = {}
 function presets.merge(current, preset)
     if not (preset and preset.config) then return end
     local result = current.config
-    local b = table.deep_copy(preset)
+    local b = at_util.copy_preset(preset)
     local no_slot = {}
     local max_slot = current.max_slot
     local c_requests = current.c_requests

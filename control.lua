@@ -1,7 +1,6 @@
 local event = require("__flib__.event")
 local gui = require("__flib__.gui-beta")
 local migration = require("__flib__.migration")
-local table = require("__flib__.table")
 
 local trash_blacklist = require("constants").trash_blacklist
 local global_data = require("scripts.global-data")
@@ -52,7 +51,7 @@ local function on_init()
             at_gui.init(player, pdata)
             if player.character and force.character_logistic_requests then
                 if next(pdata.config_tmp.config) then
-                    pdata.presets["at_imported"] = table.deep_copy(pdata.config_tmp)
+                    pdata.presets["at_imported"] = at_util.copy_preset(pdata.config_tmp)
                     pdata.selected_presets = {at_imported = true}
                 end
                 at_gui.create_main_window(player, pdata)
@@ -228,7 +227,7 @@ local function on_player_respawned(e)
         end
         at_gui.close(player, pdata)
         pdata.config_tmp = tmp
-        pdata.config_new = table.deep_copy(tmp)
+        pdata.config_new = at_util.copy_preset(tmp)
 
         set_requests(player, pdata)
         player.character_personal_logistic_requests_enabled = true

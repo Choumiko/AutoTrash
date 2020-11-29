@@ -43,7 +43,7 @@ function player_data.init(player_index)
     player_data.update_settings(game.get_player(player_index), global._pdata[player_index])
 
     global._pdata[player_index].config_tmp = player_data.combine_from_vanilla(player)
-    global._pdata[player_index].config_new = table.deep_copy(global._pdata[player_index].config_tmp)
+    global._pdata[player_index].config_new = at_util.copy_preset(global._pdata[player_index].config_tmp)
 
     return global._pdata[player_index]
 end
@@ -142,7 +142,7 @@ function player_data.combine_from_vanilla(player, pdata, name)
     end
     local result = at_util.get_requests(player.get_personal_logistic_slot, player.character.request_slot_count)
     if name and next(result.config) then
-        pdata.presets[name] = table.deep_copy(result)
+        pdata.presets[name] = at_util.copy_preset(result)
     end
     return result
 end
@@ -152,7 +152,7 @@ function player_data.import_when_empty(player, pdata)
         player.print{"at-message.empty-config"}
         player.print{"at-message.auto-import"}
         pdata.config_tmp = player_data.combine_from_vanilla(player, "at_imported")
-        pdata.config_new = table.deep_copy(pdata.config_tmp)
+        pdata.config_new = at_util.copy_preset(pdata.config_tmp)
         return true
     end
 end
@@ -270,10 +270,10 @@ function player_data.add_preset(player, pdata, name, config)
             player.print({"at-message.name-in-use"})
             return
         end
-        pdata.presets[name] = table.deep_copy(config)
+        pdata.presets[name] = at_util.copy_preset(config)
         player.print({"at-message.preset-updated", name})
     else
-        pdata.presets[name] = table.deep_copy(config)
+        pdata.presets[name] = at_util.copy_preset(config)
         gui.build(pdata.gui.main.presets_flow, {gui_util.preset(name, pdata)})
     end
     return true
