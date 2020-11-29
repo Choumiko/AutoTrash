@@ -11,28 +11,26 @@ function presets.merge(current, preset)
     local result = current.config
     local b = table.deep_copy(preset)
     local no_slot = {}
-    local tmp
     local max_slot = current.max_slot
     local c_requests = current.c_requests
 
     for _, result_config in pairs(result) do
-        tmp = result_config
-        for i, config in pairs(b.config) do
-            if config.name == result_config.name then
+        if result_config.name then
+            local tmp = result_config
+            local config = b.by_name[result_config.name]
+            if config then
                 tmp.min = (config.min > tmp.min) and config.min or tmp.min
                 tmp.max = (config.max < max_request and tmp.max < max_request and config.max > tmp.max) and config.max or tmp.max
                 tmp.max = tmp.max < tmp.min and tmp.min or tmp.max
-                b.config[i] = nil
+                b.config[config.slot] = nil
                 max_slot = max_slot > tmp.slot and max_slot or tmp.slot
                 c_requests = tmp.min > 0 and c_requests + 1 or c_requests
                 current.by_name[tmp.name] = tmp
-                break
             end
         end
     end
     --preserve slot number if possible
     for i, config in pairs(b.config) do
-        assert(i==config.slot)
         if not result[config.slot] then
             result[config.slot] = config
             current.by_name[config.name] = config
