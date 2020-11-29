@@ -2,6 +2,8 @@
 Version: 5.3.5
 Date: ????
   Changes:
+    - If requested and maximum amount are the same only one number is shown in the gui
+    - Increased performance when dealing with a lot of configured items
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.4
 Date: 2020-11-29

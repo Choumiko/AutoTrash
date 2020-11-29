@@ -183,8 +183,17 @@ at_gui.templates = {
         button = function(i, pdata)
             local style = (i == pdata.selected) and "yellow_slot_button" or "slot_button"
             local config = pdata.config_tmp.config[i]
-            local req = config and format_number(format_request(config), true) or ""
-            local trash = config and format_trash(config)
+            local req = ""
+            local trash = "∞"
+            if config then
+                if config.min == config.max then
+                    req = ""
+                    trash = format_number(format_request(config), true) or ""
+                else
+                    req = format_number(format_request(config), true) or ""
+                    trash = format_trash(config)
+                end
+            end
             return {type = "choose-elem-button", name = i, elem_mods = {elem_value = config and config.name, locked = config and i ~= pdata.selected},
                         elem_type = "item", style = style,
                         actions = {
@@ -1010,8 +1019,13 @@ function at_gui.update_button(pdata, i, button)
     end
     local req = pdata.config_tmp.config[i]
     if req then
-        button.children[1].caption = format_number(format_request(req), true)
-        button.children[2].caption = format_trash(req)
+        if req.min == req.max then
+            button.children[1].caption = ""
+            button.children[2].caption = format_number(format_request(req), true)
+        else
+            button.children[1].caption = format_number(format_request(req), true)
+            button.children[2].caption = format_trash(req)
+        end
         button.elem_value = req.name
         button.locked = i ~= pdata.selected
     else
