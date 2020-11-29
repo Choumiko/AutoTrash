@@ -113,6 +113,9 @@ gui.hook_events(function(e)
         if not (spider_ref and spider_ref.valid) then
             spider_gui.init(player, pdata)
         end
+        if __DebugAdapter then
+            spider_gui.init(player, pdata)
+        end
         spider_gui.update(player, pdata)
     end
 end)
