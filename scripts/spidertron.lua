@@ -152,7 +152,7 @@ function spider_gui.init(player, pdata)
     pdata.gui.spider = refs
 end
 
-function spider_gui.update(player, pdata)
+function spider_gui.update(player, pdata, hide)
     if not (player.opened_gui_type == defines.gui_type.entity and player.opened and player.opened.type == "spider-vehicle") then
         return
     end
@@ -162,6 +162,7 @@ function spider_gui.update(player, pdata)
     end
     pdata.gui.spider.presets.clear()
     gui.build(pdata.gui.spider.presets, spider_gui.presets(pdata))
+    pdata.gui.spider.main.visible = not hide
 end
 
 function spider_gui.destroy(pdata)

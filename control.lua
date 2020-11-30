@@ -115,7 +115,8 @@ gui.hook_events(function(e)
         if __DebugAdapter then
             spider_gui.init(player, pdata)
         end
-        spider_gui.update(player, pdata)
+        local hide = not e.entity.get_logistic_point(defines.logistic_member_index.character_requester)
+        spider_gui.update(player, pdata, hide)
     end
 end)
 
