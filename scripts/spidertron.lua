@@ -70,25 +70,7 @@ spider_gui.handlers = {
         e.element.select_all()
     end,
     trash_all = function(e)
-        local all = {config = {}, by_name = {}, max_slot = 0, c_requests = 0}
-        local filters = {
-            {filter = "selection-tool", invert = true, mode = "and"},
-            {filter = "type", type = "blueprint", invert = true, mode = "and"},
-            {filter = "type", type = "blueprint-book", invert = true, mode = "and"},
-            {filter = "type", type = "deconstruction-item", invert = true, mode = "and"},
-            {filter = "type", type = "upgrade-item", invert = true, mode = "and"},
-            {filter = "type", type = "copy-paste-tool", invert = true, mode = "and"},
-            {filter = "type", type = "selection-tool", invert = true, mode = "and"},
-            {filter = "flag", flag = "hidden", invert = true, mode = "and"},
-        }
-        local i = 1
-        for name in pairs(game.get_filtered_item_prototypes(filters)) do
-            all.config[i] = {name = name, min = 0, max = 0, slot = i}
-            all.by_name[name] = all.config[i]
-            i = i + 1
-        end
-        all.max_slot = i - 1
-        set_requests(e.entity, all, true)
+        set_requests(e.entity, global.trash_all_items, true)
     end,
 }
 
@@ -96,14 +78,21 @@ function spider_gui.presets(pdata)
     local ret = {}
     local i = 1
     for name in pairs(pdata.presets) do
-        ret[i] = {
-            type = "button", style = "at_preset_button", caption = name,
-            actions = {on_click = {gui = "spider", action = "load", name = name}}
-        }
+        ret[i] = {type = "flow", direction = "horizontal", name = name, children = {
+            {
+                type = "button", style = "at_preset_button", caption = name,
+                actions = {on_click = {gui = "spider", action = "load", name = name}}
+            },
+            {type = "sprite-button", style = "at_delete_preset", sprite = "utility/trash",
+                actions = {on_click = {gui = "presets", action = "delete"}},
+            }
+        }}
         i = i + 1
     end
     ret[#ret+1] = {
-        type = "button", style = "at_preset_button", caption = "Trash everything",
+        type = "button", style = "red_button", style_mods = {width = 182},
+        caption = {"at-gui.spider-trash-all"},
+        tooltip = {"at-gui.spider-trash-all-tt"},
         actions = {on_click = {gui = "spider", action = "trash_all"}}
     }
     return ret

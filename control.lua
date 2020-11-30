@@ -41,7 +41,7 @@ end
 
 local function on_init()
     global_data.init()
-
+    global.data.refresh()
     for _, force in pairs(game.forces) do
         if force.character_logistic_requests then
             global.unlocked_by_force[force.name] = true
@@ -72,6 +72,7 @@ local function on_configuration_changed(data)
     local removed
     if migration.on_config_changed(data, migrations) then
         at_util.remove_invalid_items()
+        global_data.refresh()
         removed = true
         for index, pdata in pairs(global._pdata) do
             local player = game.get_player(index)
