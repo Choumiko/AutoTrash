@@ -99,6 +99,10 @@ gui.hook_events(function(e)
         else
             handler = spider_gui.handlers[msg.action]
             if handler then
+                --check for valid character gui here, because spider_gui may want to update the character gui
+                if not (pdata.gui.main.window and pdata.gui.main.window.valid) then
+                    at_gui.recreate(player, pdata, true)
+                end
                 if (player.opened_gui_type == defines.gui_type.entity and player.opened and player.opened.type == "spider-vehicle") then
                     e.entity = player.opened
                     handler(e, msg)
@@ -111,6 +115,9 @@ gui.hook_events(function(e)
         local spider_ref = pdata.gui.spider and pdata.gui.spider.main
         if not (spider_ref and spider_ref.valid) then
             spider_gui.init(player, pdata)
+        end
+        if not (pdata.gui.main.window and pdata.gui.main.window.valid) then
+            at_gui.recreate(player, pdata, true)
         end
         if __DebugAdapter then
             spider_gui.init(player, pdata)

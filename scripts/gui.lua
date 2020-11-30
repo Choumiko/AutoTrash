@@ -1553,10 +1553,12 @@ function at_gui.close(player, pdata, no_reset)
     player.set_shortcut_toggled("autotrash-toggle-gui", false)
 end
 
-function at_gui.recreate(player, pdata)
+function at_gui.recreate(player, pdata, no_spider)
     local was_open = pdata.flags.gui_open
     at_gui.destroy(player, pdata)
-    spider_gui.init(player, pdata)
+    if not no_spider then
+        spider_gui.init(player, pdata)
+    end
     if was_open then
         at_gui.open(player, pdata)
     else

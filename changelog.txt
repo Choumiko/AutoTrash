@@ -4,7 +4,9 @@ Date: ????
   Changes:
     - If requested amount and maximum amount are the same only one number is shown in the gui
     - Increased performance when dealing with a lot of configured items
+    - The gui for the spidertron is only shown for spidertrons with a logistics tab
   Bugfixes:
+    - Fixed crash when trying to save a preset via the spidertron and the character gui was invalid
     - Fixed sprites for the pin and reset button
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.4
