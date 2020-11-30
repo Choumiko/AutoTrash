@@ -184,7 +184,7 @@ at_gui.templates = {
             local style = (i == pdata.selected) and "yellow_slot_button" or "slot_button"
             local config = pdata.config_tmp.config[i]
             local req = ""
-            local trash = "∞"
+            local trash = ""
             if config then
                 if config.min == config.max then
                     req = ""

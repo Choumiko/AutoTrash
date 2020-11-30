@@ -41,7 +41,7 @@ end
 
 local function on_init()
     global_data.init()
-    global.data.refresh()
+    global_data.refresh()
     for _, force in pairs(game.forces) do
         if force.character_logistic_requests then
             global.unlocked_by_force[force.name] = true
