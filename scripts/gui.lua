@@ -863,7 +863,7 @@ at_gui.handlers.import = {
         if not result then
             player.print({"failed-to-import-string", "Unknown error"})
         end
-        at_gui.handlers.import.close_button.on_gui_click(e)
+        at_gui.handlers.import.close_button(e)
     end,
     close_button = function(e)
         local pdata = e.pdata
