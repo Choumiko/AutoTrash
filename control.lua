@@ -220,7 +220,6 @@ event.on_player_alt_selected_area(function(e)
     at_gui.update_networks(pdata)
 end)
 
-
 --TODO Display paused icons/checkboxes without clearing the requests?
 -- Vanilla now pauses logistic requests and trash when dying
 

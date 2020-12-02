@@ -1,14 +1,15 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.6
 Date: ????
-  Changes:
+  Bugfixes:
+    - Fixed crash when importing presets via blueprint string
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.5
 Date: 2020-11-30
   Changes:
     - Added a "Trash unrequested" button to the spidertron gui:
         It will set every unrequested item to a maximum amount of 0 in the spidertrons logistics tab.
-    - If requested amount and maximum amount are the same only one number is shown in the gui
+    - If requested amount and maximum amount are the same, only one number is shown in the gui
     - Increased performance when dealing with a lot of configured items
     - The gui for the spidertron is only shown for spidertrons with a logistics tab
     - Added a delete button to the spidertron gui. Note that this will also delete the preset in the characters gui.
