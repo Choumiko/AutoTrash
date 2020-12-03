@@ -174,7 +174,8 @@ at_gui.templates = {
         main = function(btns, pdata)
             local ret = {type = "table", column_count = pdata.settings.columns, style = "at_filter_group_table",
                 ref = {"main", "slot_table"},
-                style_mods = {minimal_height = pdata.settings.rows * 40}, children = {}}
+                children = {}
+            }
             for i=1, btns do
                 ret.children[i] = at_gui.templates.slot_table.button(i, pdata)
             end
@@ -1523,6 +1524,7 @@ function at_gui.open(player, pdata)
 end
 
 function at_gui.close(player, pdata, no_reset)
+    if pdata.closing then return end--no need to do it twice if not pinned and the close button is used
     local window_frame = pdata.gui.main.window
     if not (window_frame and window_frame.valid) then
         if window_frame then
@@ -1537,8 +1539,10 @@ function at_gui.close(player, pdata, no_reset)
     end
     pdata.flags.gui_open = false
     pdata.selected = false
-    if not pdata.flags.pinned then
+    if player.opened == window_frame then
+        pdata.closing = true
         player.opened = nil
+        pdata.closing = nil
     end
     if pdata.gui.main.networks and pdata.gui.main.presets then
         pdata.gui.main.networks.visible = false

@@ -150,18 +150,9 @@ styles["at_slider_flow"] = {
 
 styles["at_slot_table_scroll_pane"] = {
     type = "scroll_pane_style",
-    parent = "flib_naked_scroll_pane",
-    padding = 0,
+    parent = "flib_naked_scroll_pane_no_padding",
     margin = 0,
-    extra_padding_when_activated = 0,
     horizontally_squashable = "off",
-}
-
-styles["at_filter_group_table"] = {
-    type = "table_style",
-    horizontal_spacing = 0,
-    vertical_spacing = 0,
-    padding = 0,
     background_graphical_set =
     {
         position = {282, 17},
@@ -173,6 +164,13 @@ styles["at_filter_group_table"] = {
         overall_tiling_vertical_size = 32,
         overall_tiling_vertical_spacing = 8
     }
+}
+
+styles["at_filter_group_table"] = {
+    type = "table_style",
+    horizontal_spacing = 0,
+    vertical_spacing = 0,
+    padding = 0,
 }
 
 styles["at_right_container_flow"] = {

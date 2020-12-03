@@ -39,6 +39,8 @@ local function register_conditional_events()
     event.on_nth_tick(settings.global["autotrash_update_rate"].value + 1, on_nth_tick)
 end
 
+-- BOOTSTRAP
+
 local function on_init()
     global_data.init()
     global_data.refresh()
@@ -86,6 +88,8 @@ local function on_configuration_changed(data)
     register_conditional_events()
 end
 event.on_configuration_changed(on_configuration_changed)
+
+-- GUI
 
 gui.hook_events(function(e)
     local player = game.get_player(e.player_index)
@@ -163,15 +167,7 @@ local function add_to_trash(player, item)
     end
 end
 
-local function on_player_toggled_map_editor(e)
-    local player = game.get_player(e.player_index)
-    local pdata = global._pdata[e.player_index]
-    if pdata.flags.gui_open and not player.character then
-        player.print{"at-message.no-character"}
-        at_gui.close(player, pdata, true)
-    end
-end
-event.on_player_toggled_map_editor(on_player_toggled_map_editor)
+
 
 event.on_player_selected_area(function(e)
     if e.item ~= "autotrash-network-selection" then return end
@@ -220,10 +216,43 @@ event.on_player_alt_selected_area(function(e)
     at_gui.update_networks(pdata)
 end)
 
+-- PLAYER
+
+event.on_player_created(function(e)
+    local player = game.get_player(e.player_index)
+    player_data.init(e.player_index)
+    at_gui.init(player, global._pdata[e.player_index])
+end)
+
+--TODO is this still needed?
+event.on_cutscene_cancelled(function(e)
+    local player = game.get_player(e.player_index)
+    local pdata = global._pdata[e.player_index]
+    if not pdata then
+        pdata = player_data.init(e.player_index)
+    else
+        player_data.refresh(player, pdata)
+    end
+    at_gui.init(player, pdata)
+end)
+
+event.on_player_removed(function(e)
+    global._pdata[e.player_index] = nil
+    register_conditional_events()
+end)
+
+event.on_player_toggled_map_editor(function(e)
+    local player = game.get_player(e.player_index)
+    local pdata = global._pdata[e.player_index]
+    if pdata.flags.gui_open and not player.character then
+        player.print{"at-message.no-character"}
+        at_gui.close(player, pdata, true)
+    end
+end)
+
 --TODO Display paused icons/checkboxes without clearing the requests?
 -- Vanilla now pauses logistic requests and trash when dying
-
-local function on_player_respawned(e)
+event.on_player_respawned(function(e)
     local player = game.get_player(e.player_index)
     if not player.character then return end
     local pdata = global._pdata[e.player_index]
@@ -241,10 +270,9 @@ local function on_player_respawned(e)
         player.character_personal_logistic_requests_enabled = true
         at_gui.update_status_display(player, pdata)
     end
-end
-event.on_player_respawned(on_player_respawned)
+end)
 
-local function on_player_changed_position(e)
+event.on_player_changed_position(function(e)
     local player = game.get_player(e.player_index)
     if not player.character then return end
     local pdata = global._pdata[e.player_index]
@@ -281,33 +309,7 @@ local function on_player_changed_position(e)
             player.print({"at-message.trash-unpaused"})
         end
     end
-end
-event.on_player_changed_position(on_player_changed_position)
-
-local function on_cutscene_cancelled(e)
-    local player = game.get_player(e.player_index)
-    local pdata = global._pdata[e.player_index]
-    if not pdata then
-        pdata = player_data.init(e.player_index)
-    else
-        player_data.refresh(player, pdata)
-    end
-    at_gui.init(player, pdata)
-end
-event.on_cutscene_cancelled(on_cutscene_cancelled)
-
-local function on_player_created(e)
-    local player = game.get_player(e.player_index)
-    player_data.init(e.player_index)
-    at_gui.init(player, global._pdata[e.player_index])
-end
-event.on_player_created(on_player_created)
-
-local function on_player_removed(e)
-    global._pdata[e.player_index] = nil
-    register_conditional_events()
-end
-event.on_player_removed(on_player_removed)
+end)
 
 local function on_pre_mined_item(e)
     local entity = e.entity
@@ -375,14 +377,14 @@ local function on_built_entity(e)
         exists = nil
     end
 end
-
 event.on_built_entity(on_built_entity, robofilter)
 event.on_robot_built_entity(on_built_entity, robofilter)
 event.script_raised_built(on_built_entity, robofilter)
 event.script_raised_revive(on_built_entity, robofilter)
 
 
-local function toggle_autotrash_pause(player)
+local function toggle_autotrash_pause(e, player)
+    player = player or game.get_player(e.player_index)
     if not player.character then return end
     local pdata = global._pdata[player.index]
     player_data.import_when_empty(player, pdata)
@@ -394,11 +396,13 @@ local function toggle_autotrash_pause(player)
     at_gui.update_main_button(player, pdata)
     at_gui.close(player, pdata)
 end
-event.register("autotrash_pause", function(e)
-    toggle_autotrash_pause(game.get_player(e.player_index))
-end)
 
-local function toggle_autotrash_pause_requests(player)
+-- CUSTOM INPUT, SHORTCUT
+
+event.register("autotrash_pause", toggle_autotrash_pause)
+
+event.register("autotrash_pause_requests", function(e)
+    local player = game.get_player(e.player_index)
     if not player.character then return end
     local pdata = global._pdata[player.index]
     player_data.import_when_empty(player, pdata)
@@ -410,13 +414,10 @@ local function toggle_autotrash_pause_requests(player)
     at_gui.update_status_display(player, pdata)
     at_gui.update_main_button(player, pdata)
     at_gui.close(player, pdata)
-end
-event.register("autotrash_pause_requests", function(e)
-    toggle_autotrash_pause_requests(game.get_player(e.player_index))
 end)
 
-event.on_lua_shortcut(function(e)
-    if e.prototype_name == "autotrash-toggle-gui" then
+event.register({"autotrash-toggle-gui", defines.events.on_lua_shortcut}, function(e)
+    if e.input_name or e.prototype_name == "autotrash-toggle-gui" then
         local pdata = global._pdata[e.player_index]
         if pdata.flags.can_open_gui then
             at_gui.toggle(game.get_player(e.player_index), pdata)
@@ -435,10 +436,19 @@ event.register("autotrash-toggle-unrequested", function(e)
     at_gui.update_settings(pdata)
 end)
 
-event.register("autotrash-toggle-gui", function(e)
-    local pdata = global._pdata[e.player_index]
-    if pdata.flags.can_open_gui then
-        at_gui.toggle(game.get_player(e.player_index), pdata)
+event.register("autotrash_trash_cursor", function(e)
+    local player = game.get_player(e.player_index)
+    if not player.character then
+        player.print({"at-message.character-needed"})
+        return
+    end
+    if player.force.character_trash_slot_count > 0 then
+        local cursorStack = player.cursor_stack
+        if cursorStack.valid_for_read then
+            add_to_trash(player, cursorStack.name)
+        else
+            toggle_autotrash_pause(e, player)
+        end
     end
 end)
 
@@ -496,23 +506,6 @@ local function on_research_finished(e)
     end
 end
 event.on_research_finished(on_research_finished)
-
-local function autotrash_trash_cursor(e)
-    local player = game.get_player(e.player_index)
-    if player.force.character_trash_slot_count > 0 then
-        local cursorStack = player.cursor_stack
-        if cursorStack.valid_for_read then
-            if player.character then
-                add_to_trash(player, cursorStack.name)
-            else
-                player.print({"at-message.character-needed"})
-            end
-        else
-            toggle_autotrash_pause(player)
-        end
-    end
-end
-event.register("autotrash_trash_cursor", autotrash_trash_cursor)
 
 local at_commands = {
     import = function(args)
