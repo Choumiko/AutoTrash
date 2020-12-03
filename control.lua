@@ -457,17 +457,25 @@ local function on_runtime_mod_setting_changed(e)
         register_conditional_events()
         return
     end
-
     local player_index = e.player_index
     local player = game.get_player(player_index)
     local pdata = global._pdata[player_index]
     if not (player_index and pdata) then return end
-    player_data.update_settings(player, pdata)
+    player_data.refresh(player, pdata)
     at_gui.update_main_button(player, pdata)
-    if e.setting == "autotrash_gui_displayed_columns" or e.setting == "autotrash_gui_rows_before_scroll" then
-        at_gui.recreate(player, pdata)
-    end
-    if e.setting == "autotrash_status_count" or e.setting == "autotrash_status_columns" then
+    if e.setting == "autotrash_gui_displayed_columns" then
+        if pdata.gui.main.window and pdata.gui.main.window.valid then
+            at_gui.adjust_size(player, pdata)
+        else
+            at_gui.recreate(player, pdata)
+        end
+    elseif e.setting == "autotrash_gui_rows_before_scroll" then
+        if pdata.gui.main.window and pdata.gui.main.window.valid then
+            pdata.gui.main.config_rows.style.height = pdata.settings.rows * 40
+        else
+            at_gui.recreate(player, pdata)
+        end
+    elseif e.setting == "autotrash_status_count" or e.setting == "autotrash_status_columns" then
         at_gui.init_status_display(player, pdata, true)
     end
 end

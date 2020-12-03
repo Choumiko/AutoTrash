@@ -936,6 +936,8 @@ function at_gui.adjust_slots(pdata)
         slots = slots + min_step
     end
     slots = clamp(slots, 40, 65529)
+    local width = pdata.settings.columns * 40
+    pdata.gui.main.config_rows.style.width = (slots <= (pdata.settings.rows * pdata.settings.columns)) and width or (width + 12)
     if old_slots == slots then return end
 
     local diff = slots - old_slots
@@ -949,10 +951,6 @@ function at_gui.adjust_slots(pdata)
             btn.destroy()
         end
     end
-
-    local width = pdata.settings.columns * 40
-    width = (slots <= (pdata.settings.rows * pdata.settings.columns)) and width or (width + 12)
-    pdata.gui.main.config_rows.style.width = width
     pdata.gui.main.config_rows.scroll_to_element(slot_table.children[slots])
 end
 
@@ -1095,20 +1093,31 @@ function at_gui.update_networks(pdata)
     gui.build(networks, at_gui.templates.networks(pdata))
 end
 
+function at_gui.adjust_size(player, pdata)
+    local slot_table = pdata.gui.main.slot_table
+    if slot_table.column_count ~= pdata.settings.columns then
+        local scroll = pdata.gui.main.config_rows
+        scroll.clear()
+        local refs = gui.build(scroll, {at_gui.templates.slot_table.main(40, pdata)})
+        pdata.gui.main.slot_table = refs.main.slot_table
+    end
+    at_gui.adjust_slots(pdata)
+end
+
 function at_gui.create_main_window(player, pdata)
     if not player.character then return end
     local flags = pdata.flags
     pdata.selected = false
-    local cols = pdata.settings.columns
-    local rows = pdata.settings.rows
     local btns = math.max(40, player.character.request_slot_count, pdata.config_tmp.max_slot)
-    local width = cols * 40
-    width = (btns <= (rows*cols)) and width or (width + 12)
-    local max_height = (player.display_resolution.height / player.display_scale) * 0.97
-    local max_width = (player.display_resolution.width / player.display_scale)
+    local resolution = player.display_resolution
+    local scale = player.display_scale
     local pin_sprite = flags.pinned and "at_pin_black" or "at_pin_white"
     local gui_data = gui.build(player.gui.screen,{
-        {type = "frame", style = "outer_frame", style_mods = {maximal_width = max_width, maximal_height = max_height},
+        {type = "frame", style = "outer_frame",
+            style_mods = {
+                maximal_width = (resolution.width / scale),
+                maximal_height = (resolution.height / scale) * 0.97
+            },
             actions = {on_closed = {gui = "main", action = "window"}},
             ref = {"main", "window"}, children = {
             {type = "frame", style = "inner_frame_in_outer_frame", direction = "vertical", children = {
@@ -1146,7 +1155,6 @@ function at_gui.create_main_window(player, pdata)
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
                                 {type = "scroll-pane", style = "at_slot_table_scroll_pane", name = "config_rows", ref = {"main", "config_rows"},
                                     style_mods = {
-                                        width = width,
                                         height = pdata.settings.rows * 40
                                     },
                                     children = {
@@ -1251,6 +1259,7 @@ function at_gui.create_main_window(player, pdata)
         pdata.gui.main.titlebar.pin_button.style = "flib_selected_frame_action_button"
     end
     pdata.selected = false
+    at_gui.adjust_size(player, pdata)
 end
 
 function at_gui.create_import_window(player, pdata, bp_string, mode)
