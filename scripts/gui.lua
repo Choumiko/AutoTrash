@@ -929,15 +929,15 @@ end
 function at_gui.adjust_slots(pdata)
     local slot_table = pdata.gui.main.slot_table
     local old_slots = #slot_table.children
-    local min_step = (10 * pdata.settings.columns) / gcd(10, pdata.settings.columns)
-    local slots = math.ceil(pdata.config_tmp.max_slot / pdata.settings.columns) * min_step
+    local columns = pdata.settings.columns
+    local slots = math.ceil(pdata.config_tmp.max_slot / columns) * columns
     --increase if anything is set in the last row
-    if (slots == pdata.config_tmp.max_slot) or (pdata.config_tmp.max_slot % min_step > 0) then
-        slots = slots + min_step
+    if (slots == pdata.config_tmp.max_slot) or (pdata.config_tmp.max_slot % columns > 0) then
+        slots = slots + columns
     end
-    slots = clamp(slots, 40, 65529)
-    local width = pdata.settings.columns * 40
-    pdata.gui.main.config_rows.style.width = (slots <= (pdata.settings.rows * pdata.settings.columns)) and width or (width + 12)
+    slots = clamp(slots, 4 * columns, 1000)
+    local width = columns * 40
+    pdata.gui.main.config_rows.style.width = (slots <= (pdata.settings.rows * columns)) and width or (width + 12)
     if old_slots == slots then return end
 
     local diff = slots - old_slots
@@ -1259,7 +1259,7 @@ function at_gui.create_main_window(player, pdata)
         pdata.gui.main.titlebar.pin_button.style = "flib_selected_frame_action_button"
     end
     pdata.selected = false
-    at_gui.adjust_size(player, pdata)
+    at_gui.adjust_slots(pdata)
 end
 
 function at_gui.create_import_window(player, pdata, bp_string, mode)

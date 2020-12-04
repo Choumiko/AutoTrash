@@ -19,6 +19,10 @@ local get_network_entity = at_util.get_network_entity
 local in_network = at_util.in_network
 
 --TODO: "import" items from quickbars (automatically or by button?), add full rows and preserve quickbar layout
+--[[
+        - register on_player_main_inventory_changed etc conditionally
+        - Map setting to disable updating button styles / status display?
+]]--
 
 local function on_nth_tick()
     for _, p in pairs(game.connected_players) do
