@@ -152,7 +152,7 @@ styles["at_slot_table_scroll_pane"] = {
     type = "scroll_pane_style",
     parent = "flib_naked_scroll_pane_no_padding",
     margin = 0,
-    horizontally_squashable = "off",
+    vertically_stretchable = "on",
     background_graphical_set =
     {
         position = {282, 17},

@@ -51,12 +51,12 @@ spider_gui.handlers = {
     end,
     collapse = function(e)
         local frame = e.pdata.gui.spider.preset_frame
-        local new_state = not frame.visible
-        frame.visible = new_state
-        for k, v in pairs(collapse_sprites[new_state]) do
+        local visible = not frame.visible
+        frame.visible = visible
+        for k, v in pairs(collapse_sprites[visible]) do
             e.element[k] = v
         end
-        frame.parent.style.bottom_padding = new_state and 8 or 0
+        frame.parent.style.bottom_padding = visible and 8 or 0
     end,
     save = function(e)
         local textfield = e.pdata.gui.spider.preset_textfield

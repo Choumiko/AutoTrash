@@ -1112,15 +1112,18 @@ function at_gui.create_main_window(player, pdata)
     local resolution = player.display_resolution
     local scale = player.display_scale
     local pin_sprite = flags.pinned and "at_pin_black" or "at_pin_white"
+    local height = pdata.settings.rows * 40 + 432
     local gui_data = gui.build(player.gui.screen,{
-        {type = "frame", style = "outer_frame",
+        {type = "frame",
             style_mods = {
                 maximal_width = (resolution.width / scale),
-                maximal_height = (resolution.height / scale) * 0.97
+                maximal_height = (resolution.height / scale) * 0.97,
+                height = height,
             },
+            direction = "vertical",
             actions = {on_closed = {gui = "main", action = "window"}},
-            ref = {"main", "window"}, children = {
-            {type = "frame", style = "inner_frame_in_outer_frame", direction = "vertical", children = {
+            ref = {"main", "window"},
+            children = {
                 {type = "flow", ref = {"main", "titlebar", "flow"}, children = {
                     {type = "label", style = "frame_title", caption = {"mod-name.AutoTrash"}, elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
@@ -1154,9 +1157,6 @@ function at_gui.create_main_window(player, pdata)
                         {type = "flow", direction="vertical", style_mods = {padding= 12, top_padding = 8, vertical_spacing = 10}, children = {
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
                                 {type = "scroll-pane", style = "at_slot_table_scroll_pane", name = "config_rows", ref = {"main", "config_rows"},
-                                    style_mods = {
-                                        height = pdata.settings.rows * 40
-                                    },
                                     children = {
                                         at_gui.templates.slot_table.main(btns, pdata),
                                     }
@@ -1247,9 +1247,9 @@ function at_gui.create_main_window(player, pdata)
                         }}
                     }}
                 }}
-            }},
-        }
-    }})
+            }
+        },
+    })
     gui_data.main.titlebar.flow.drag_target = gui_data.main.window
     gui_data.main.window.force_auto_center()
     gui_data.main.window.visible = false

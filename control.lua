@@ -105,7 +105,7 @@ gui.hook_events(function(e)
         local handler = at_gui.handlers[msg.gui] and at_gui.handlers[msg.gui][msg.action]
         if handler then
             handler(e)
-        else
+        elseif msg.gui == "spider" then
             handler = spider_gui.handlers[msg.action]
             if handler then
                 --check for valid character gui here, because spider_gui may want to update the character gui
@@ -116,8 +116,6 @@ gui.hook_events(function(e)
                     e.entity = player.opened
                     handler(e, msg)
                 end
-            else
-                player.print("Unhandled gui event: " .. serpent.line(msg))
             end
         end
     elseif e.name == defines.events.on_gui_opened and e.gui_type == defines.gui_type.entity and e.entity.type == "spider-vehicle" then
@@ -475,7 +473,9 @@ local function on_runtime_mod_setting_changed(e)
         end
     elseif e.setting == "autotrash_gui_rows_before_scroll" then
         if pdata.gui.main.window and pdata.gui.main.window.valid then
-            pdata.gui.main.config_rows.style.height = pdata.settings.rows * 40
+            pdata.gui.main.window.style.height = pdata.settings.rows * 40 + 432
+            pdata.gui.main.window.force_auto_center()
+            at_gui.adjust_slots(pdata)
         else
             at_gui.recreate(player, pdata)
         end
