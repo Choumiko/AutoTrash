@@ -1351,12 +1351,13 @@ function at_gui.init_status_display(player, pdata, keep_status)
     end
     at_gui.update_settings(pdata)
     at_gui.update_status_display(player, pdata)
+    return status_table
 end
 
 function at_gui.open_status_display(player, pdata)
     local status_table = pdata.gui.status_table
     if not (status_table and status_table.valid) then
-        at_gui.init_status_display(player, pdata)
+        status_table = at_gui.init_status_display(player, pdata)
     end
     if pdata.flags.can_open_gui then
         status_table.parent.visible = true
@@ -1393,6 +1394,7 @@ function at_gui.update_status_display(player, pdata)
     local status_table = pdata.gui.status_table
     if not (status_table and status_table.valid) then
         at_gui.init_status_display(player, pdata)
+        return --init already updates it
     end
     local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
     if not (available and not pdata.flags.pause_requests) then
