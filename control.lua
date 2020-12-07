@@ -2,7 +2,8 @@ local event = require("__flib__.event")
 local gui = require("__flib__.gui-beta")
 local migration = require("__flib__.migration")
 
-local trash_blacklist = require("constants").trash_blacklist
+local constants = require("constants")
+local trash_blacklist = constants.trash_blacklist
 local global_data = require("scripts.global-data")
 local player_data = require("scripts.player-data")
 local migrations = require("scripts.migrations")
@@ -473,8 +474,14 @@ local function on_runtime_mod_setting_changed(e)
         end
     elseif e.setting == "autotrash_gui_rows_before_scroll" then
         if pdata.gui.main.window and pdata.gui.main.window.valid then
-            pdata.gui.main.window.style.height = pdata.settings.rows * 40 + 432
-            pdata.gui.main.window.force_auto_center()
+            local magic_heights = constants.magic_heights
+            local table_height = pdata.settings.rows * 40
+            local gui_data = pdata.gui.main
+            gui_data.slot_table.style.minimal_height = table_height
+            gui_data.window.style.height = table_height + magic_heights.window
+            gui_data.presets_flow.style.minimal_height = table_height + magic_heights.presets_flow
+            gui_data.networks_flow.style.minimal_height = table_height + magic_heights.networks_flow
+            gui_data.window.force_auto_center()
             at_gui.adjust_slots(pdata)
         else
             at_gui.recreate(player, pdata)

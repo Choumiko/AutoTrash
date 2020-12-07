@@ -19,4 +19,10 @@ constants.trash_blacklist = {
     ["copy-paste-tool"] = true,
     ["selection-tool"] = true,
 }
+
+constants.magic_heights = {
+    window =  432,
+    presets_flow = 286,
+    networks_flow = 286 + 38,
+}
 return constants

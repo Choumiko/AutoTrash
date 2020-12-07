@@ -172,7 +172,11 @@ at_gui.toggle_setting = {
 at_gui.templates = {
     slot_table = {
         main = function(btns, pdata)
-            local ret = {type = "table", column_count = pdata.settings.columns, style = "at_filter_group_table",
+            local ret = {type = "table", column_count = pdata.settings.columns,
+                style = "at_filter_group_table",
+                style_mods = {
+                    minimal_height = pdata.settings.rows * 40
+                },
                 ref = {"main", "slot_table"},
                 children = {}
             }
@@ -319,7 +323,7 @@ at_gui.templates = {
         local i = 1
         for id, network in pairs(pdata.networks) do
             if network and network.valid then
-                ret[i] = {type = "flow", name = id, direction = "horizontal", style_mods = {vertical_align = "center"}, children = {
+                ret[i] = {type = "flow", name = id, direction = "horizontal", children = {
                     {type = "label", caption = {"", {"gui-logistic.network"}, " #" .. id}},
                     gui_util.pushers.horizontal,
                     {type = "sprite-button", style = "tool_button", sprite = "utility/map",
@@ -936,8 +940,6 @@ function at_gui.adjust_slots(pdata)
         slots = slots + columns
     end
     slots = clamp(slots, 4 * columns, 1000)
-    local width = columns * 40
-    pdata.gui.main.config_rows.style.width = (slots <= (pdata.settings.rows * columns)) and width or (width + 12)
     if old_slots == slots then return end
 
     local diff = slots - old_slots
@@ -1112,13 +1114,13 @@ function at_gui.create_main_window(player, pdata)
     local resolution = player.display_resolution
     local scale = player.display_scale
     local pin_sprite = flags.pinned and "at_pin_black" or "at_pin_white"
-    local height = pdata.settings.rows * 40 + 432
+    local magic_heights = constants.magic_heights
     local gui_data = gui.build(player.gui.screen,{
         {type = "frame",
             style_mods = {
                 maximal_width = (resolution.width / scale),
                 maximal_height = (resolution.height / scale) * 0.97,
-                height = height,
+                height = pdata.settings.rows * 40 + magic_heights.window,
             },
             direction = "vertical",
             actions = {on_closed = {gui = "main", action = "window"}},
@@ -1221,8 +1223,9 @@ function at_gui.create_main_window(player, pdata)
                             }},
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
                                 {type = "scroll-pane", style = "at_right_scroll_pane", children = {
-                                    {type = "flow", direction = "vertical", ref = {"main", "presets_flow"}, style = "at_right_flow_in_scroll_pane", children =
-                                    gui_util.presets(pdata),
+                                    {type = "flow", direction = "vertical", ref = {"main", "presets_flow"}, style = "at_right_flow_in_scroll_pane",
+                                        style_mods = {minimal_height = pdata.settings.rows * 40 + magic_heights.presets_flow},
+                                        children = gui_util.presets(pdata),
                                     },
                                 }}
                             }},
@@ -1234,13 +1237,15 @@ function at_gui.create_main_window(player, pdata)
                             gui_util.pushers.horizontal,
                             {type = "sprite-button", style = "tool_button", style_mods = {padding = 0},
                                 actions = {on_click = {gui = "settings", action = "selection_tool"}},
-                                sprite = "autotrash_selection", tooltip = {"at-gui.tooltip-selection-tool"}},
+                                sprite = "autotrash_selection", tooltip = {"at-gui.tooltip-selection-tool"}
+                            },
                         }},
                         {type = "flow", direction = "vertical", style = "at_right_container_flow", children = {
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
                                 {type = "scroll-pane", style = "at_right_scroll_pane", children = {
-                                    {type = "flow", direction = "vertical", ref = {"main", "networks_flow"}, style = "at_right_flow_in_scroll_pane", children =
-                                        at_gui.templates.networks(pdata),
+                                    {type = "flow", direction = "vertical", ref = {"main", "networks_flow"}, style = "at_right_flow_in_scroll_pane",
+                                        style_mods = {minimal_height = pdata.settings.rows * 40 + magic_heights.networks_flow},
+                                        children = at_gui.templates.networks(pdata),
                                     },
                                 }}
                             }},

@@ -150,9 +150,7 @@ styles["at_slider_flow"] = {
 
 styles["at_slot_table_scroll_pane"] = {
     type = "scroll_pane_style",
-    parent = "flib_naked_scroll_pane_no_padding",
-    margin = 0,
-    vertically_stretchable = "on",
+    extra_padding_when_activated = 0,
     background_graphical_set =
     {
         position = {282, 17},
@@ -163,7 +161,7 @@ styles["at_slot_table_scroll_pane"] = {
         overall_tiling_vertical_padding = 4,
         overall_tiling_vertical_size = 32,
         overall_tiling_vertical_spacing = 8
-    }
+    },
 }
 
 styles["at_filter_group_table"] = {
@@ -175,26 +173,23 @@ styles["at_filter_group_table"] = {
 
 styles["at_right_container_flow"] = {
     type = "vertical_flow_style",
-    maximal_width = 274,
-    padding= 12,
+    padding = 12,
     top_padding = 8,
-    vertical_spacing = 12
+    vertical_spacing = 10,
+    width = 246
 }
 
 styles["at_right_scroll_pane"] = {
     type = "scroll_pane_style",
-    extra_top_padding_when_activated = 0,
-    extra_left_padding_when_activated = 0,
-    extra_right_padding_when_activated = 0
+    extra_padding_when_activated = 0
 }
 
 styles["at_right_flow_in_scroll_pane"] = {
     type = "vertical_flow_style",
-    vertically_stretchable = "on",
-    left_padding = 8,
-    right_padding = 8,
-    top_padding = 8,
-    width = 230
+    horizontally_stretchable = "on",
+    left_padding = 4,
+    right_padding = 4,
+    top_padding = 4,
 }
 
 styles["at_bordered_frame"] = {
