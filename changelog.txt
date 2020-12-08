@@ -2,6 +2,9 @@
 Version: 5.3.8
 Date: ????
   Changes:
+    - Minor changes to scrollbars to prevent the width of the gui changing
+  Bugfixes:
+    - Fixed crash when removing a preset via Spidertron and resaving it with the same name
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.7
 Date: 2020-12-06

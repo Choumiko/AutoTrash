@@ -22,7 +22,6 @@ constants.trash_blacklist = {
 
 constants.magic_heights = {
     window =  432,
-    presets_flow = 286,
-    networks_flow = 286 + 38,
+    spidertron = 752,
 }
 return constants

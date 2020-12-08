@@ -181,7 +181,13 @@ styles["at_right_container_flow"] = {
 
 styles["at_right_scroll_pane"] = {
     type = "scroll_pane_style",
-    extra_padding_when_activated = 0
+    extra_padding_when_activated = 0,
+    vertical_flow_style = {
+        type = "vertical_flow_style",
+        horizontally_stretchable = "on",
+        vertically_stretchable = "on",
+        padding = 4
+    }
 }
 
 styles["at_right_flow_in_scroll_pane"] = {

@@ -670,7 +670,7 @@ at_gui.handlers.presets = {
         at_gui.update_presets(player, pdata)
         at_gui.update_sliders(pdata)
     end,
-    delete = function(e)
+    delete = function(e, msg)
         local pdata = e.pdata
         local parent = e.element.parent
         local name = parent.name
@@ -678,6 +678,9 @@ at_gui.handlers.presets = {
         pdata.selected_presets[name] = nil
         pdata.death_presets[name] = nil
         pdata.presets[name] = nil
+        if msg.spider then
+            pdata.gui.main.presets_flow[name].destroy()
+        end
         at_gui.update_presets(e.player, pdata)
     end,
     change_death_preset = function(e)
@@ -1222,12 +1225,9 @@ function at_gui.create_main_window(player, pdata)
                                 }
                             }},
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
-                                {type = "scroll-pane", style = "at_right_scroll_pane", children = {
-                                    {type = "flow", direction = "vertical", ref = {"main", "presets_flow"}, style = "at_right_flow_in_scroll_pane",
-                                        style_mods = {minimal_height = pdata.settings.rows * 40 + magic_heights.presets_flow},
-                                        children = gui_util.presets(pdata),
-                                    },
-                                }}
+                                {type = "scroll-pane", style = "at_right_scroll_pane", ref = {"main", "presets_flow"},
+                                    children = gui_util.presets(pdata)
+                                }
                             }},
                         }}
                     }},
@@ -1242,12 +1242,9 @@ function at_gui.create_main_window(player, pdata)
                         }},
                         {type = "flow", direction = "vertical", style = "at_right_container_flow", children = {
                             {type = "frame", style = "deep_frame_in_shallow_frame", children = {
-                                {type = "scroll-pane", style = "at_right_scroll_pane", children = {
-                                    {type = "flow", direction = "vertical", ref = {"main", "networks_flow"}, style = "at_right_flow_in_scroll_pane",
-                                        style_mods = {minimal_height = pdata.settings.rows * 40 + magic_heights.networks_flow},
-                                        children = at_gui.templates.networks(pdata),
-                                    },
-                                }}
+                                {type = "scroll-pane", style = "at_right_scroll_pane", ref = {"main", "networks_flow"},
+                                    children = at_gui.templates.networks(pdata)
+                                }
                             }},
                         }}
                     }}

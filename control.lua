@@ -105,7 +105,7 @@ gui.hook_events(function(e)
     if msg then
         local handler = at_gui.handlers[msg.gui] and at_gui.handlers[msg.gui][msg.action]
         if handler then
-            handler(e)
+            handler(e, msg)
         elseif msg.gui == "spider" then
             handler = spider_gui.handlers[msg.action]
             if handler then
@@ -479,8 +479,6 @@ local function on_runtime_mod_setting_changed(e)
             local gui_data = pdata.gui.main
             gui_data.slot_table.style.minimal_height = table_height
             gui_data.window.style.height = table_height + magic_heights.window
-            gui_data.presets_flow.style.minimal_height = table_height + magic_heights.presets_flow
-            gui_data.networks_flow.style.minimal_height = table_height + magic_heights.networks_flow
             gui_data.window.force_auto_center()
             at_gui.adjust_slots(pdata)
         else
@@ -534,9 +532,9 @@ local at_commands = {
             pdata = player_data.init(player_index)
         end
         local player = game.get_player(player_index)
-        at_gui.close(player, pdata)
         if not player.character then return end
         pdata.config_tmp = player_data.combine_from_vanilla(player, pdata)
+        at_gui.recreate(player, pdata)
         at_gui.open(player, pdata)
         at_gui.mark_dirty(player, pdata)
     end,

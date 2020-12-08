@@ -3,6 +3,7 @@ local presets = require("scripts.presets")
 local at_util = require("scripts.util")
 local gui_util = require("scripts.gui-util")
 local player_data = require("scripts.player-data")
+local constants = require("constants")
 local spider_gui = {}
 
 local function set_requests(spider, requests, keep_presets)
@@ -84,7 +85,7 @@ function spider_gui.presets(pdata)
                 actions = {on_click = {gui = "spider", action = "load", name = name}}
             },
             {type = "sprite-button", style = "at_delete_preset", sprite = "utility/trash",
-                actions = {on_click = {gui = "presets", action = "delete"}},
+                actions = {on_click = {gui = "presets", action = "delete", spider = true}},
             }
         }}
         i = i + 1
@@ -101,7 +102,8 @@ end
 function spider_gui.init(player, pdata)
     spider_gui.destroy(pdata)
     local refs = gui.build(player.gui.relative, {
-        {type = "frame", style = "inner_frame_in_outer_frame", direction = "vertical",-- style_mods = {width = 214},
+        {type = "frame", style = "inner_frame_in_outer_frame", direction = "vertical",
+            style_mods = {maximal_height = constants.magic_heights.spidertron},
             ref = {"main"},
             anchor = {gui = defines.relative_gui_type.spider_vehicle_gui, position = defines.relative_gui_position.right},--luacheck: ignore
             children = {
@@ -123,15 +125,14 @@ function spider_gui.init(player, pdata)
                             actions = {on_click = {gui = "spider", action = "save"}}
                         }
                     }},
-                    {type = "flow", direction="vertical", style = "at_right_container_flow", children = {
+                    {type = "flow", direction="vertical",
+                        style_mods = {padding = 12, top_padding = 8, vertical_spacing = 12},
+                        children = {
                         {type = "frame", style = "deep_frame_in_shallow_frame", children = {
-                            {type = "scroll-pane", style = "at_right_scroll_pane", style_mods = {maximal_height = 500}, children = {
-                                {type = "flow", direction = "vertical",
-                                    ref = {"presets"},
-                                    style_mods = {vertically_stretchable = false, padding = 8, horizontally_stretchable = true},
-                                    children = spider_gui.presets(pdata)
-                                },
-                            }}
+                            {type = "scroll-pane", style = "at_right_scroll_pane", ref = {"presets"},
+                                style_mods = {vertically_stretchable = false},
+                                children = spider_gui.presets(pdata)
+                            }
                         }},
                     }}
                 }},
