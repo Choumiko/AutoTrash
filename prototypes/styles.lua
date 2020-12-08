@@ -204,3 +204,13 @@ styles["at_bordered_frame"] = {
     right_padding = 8,
     horizontally_stretchable = "on",
 }
+
+styles["at_bordered_frame2"] = {
+    type = "frame_style",
+    parent = "at_bordered_frame",
+    height = 112,
+    vertical_flow_style = {
+        type = "vertical_flow_style",
+        vertical_align = "bottom"
+    }
+}

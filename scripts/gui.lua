@@ -738,6 +738,7 @@ at_gui.handlers.settings = {
         local name = e.element.name
         if at_gui.toggle_setting[name] then
             if player_data.import_when_empty(player, pdata) then
+                at_gui.adjust_slots(pdata)
                 at_gui.update_buttons(pdata)
             end
             pdata.flags[name] = e.element.state
@@ -1052,8 +1053,9 @@ end
 
 function at_gui.update_sliders(pdata)
     if not pdata.flags.gui_open then return end
-    if pdata.selected then
-        local sliders = pdata.gui.main.sliders
+    local visible = pdata.selected and true or false
+    local sliders = pdata.gui.main.sliders
+    if visible then
         local item_config = pdata.config_tmp.config[pdata.selected]
         if item_config then
             local stack_size = item_prototype(item_config.name).stack_size
@@ -1064,10 +1066,7 @@ function at_gui.update_sliders(pdata)
             sliders.trash_text.text = tostring(item_config.max < constants.max_request and item_config.max or "inf.")
         end
     end
-    local visible = pdata.selected and true or false
-    for _, child in pairs(pdata.gui.main.sliders.table.children) do
-        child.visible = visible
-    end
+    sliders.table.visible = visible
 end
 
 function at_gui.update_presets(player, pdata)
@@ -1167,8 +1166,8 @@ function at_gui.create_main_window(player, pdata)
                                     }
                                 }
                             }},
-                            {type = "frame", style = "at_bordered_frame", direction = "vertical", children = {
-                                {type = "table", ref = {"main", "sliders", "table"}, style_mods = {height = 60, horizontal_spacing = 8}, column_count = 3, children = {
+                            {type = "frame", style = "at_bordered_frame2", direction = "vertical", children = {
+                                {type = "table", ref = {"main", "sliders", "table"}, style_mods = {horizontal_spacing = 8}, column_count = 3, children = {
                                     {type = "label", caption = {"at-gui.request"}},
                                     {type = "slider", ref = {"main", "sliders", "request"},
                                         minimum_value = 0, maximum_value = 10, style = "notched_slider",
