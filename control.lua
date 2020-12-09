@@ -468,7 +468,7 @@ local function on_runtime_mod_setting_changed(e)
     at_gui.update_main_button(player, pdata)
     if e.setting == "autotrash_gui_displayed_columns" then
         if pdata.gui.main.window and pdata.gui.main.window.valid then
-            at_gui.adjust_size(player, pdata)
+            at_gui.adjust_size(pdata)
         else
             at_gui.recreate(player, pdata)
         end

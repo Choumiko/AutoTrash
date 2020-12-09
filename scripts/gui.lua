@@ -30,16 +30,6 @@ local function tonumber_max(n)
     return (n > constants.max_request) and constants.max_request or n
 end
 
-local function gcd(a, b)
-    if a == b then
-        return a
-    elseif a > b then
-        return gcd(a - b, b)
-    elseif b > a then
-        return gcd(a, b-a)
-    end
-end
-
 local function get_network_data(player)
     local character = player.character
     if not character then return end
@@ -1097,7 +1087,7 @@ function at_gui.update_networks(pdata)
     gui.build(networks, at_gui.templates.networks(pdata))
 end
 
-function at_gui.adjust_size(player, pdata)
+function at_gui.adjust_size(pdata)
     local slot_table = pdata.gui.main.slot_table
     if slot_table.column_count ~= pdata.settings.columns then
         local scroll = pdata.gui.main.config_rows
