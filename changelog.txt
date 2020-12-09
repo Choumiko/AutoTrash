@@ -2,7 +2,11 @@
 Version: 5.3.8
 Date: ????
   Changes:
-    - Removed blue as a status indicator: Yellow button background means items are being delivered, red means no items are available/being delivered.
+    - Added two new commands:
+        /at_compress - Removes empty rows in the logistics configuratuon gui
+        /at_insert_row <number> - Add an empty row after row #<number>, e.g. /at_insert_row 2 - Inserts an empty row after row #2
+        For these commands a row is always 10 slots, regardless of the "Columns to display" mod setting
+    - Removed blue as a status indicator: Yellow button background means items are being delivered, red means no items are available/being delivered
     - Minor changes to scrollbars to prevent the width of the gui changing
   Bugfixes:
     - Fixed crash when removing a preset via Spidertron and resaving it with the same name

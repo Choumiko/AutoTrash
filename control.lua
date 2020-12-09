@@ -527,11 +527,11 @@ event.on_research_finished(on_research_finished)
 local at_commands = {
     import = function(args)
         local player_index = args.player_index
+        local player = game.get_player(player_index)
         local pdata = global._pdata[player_index]
         if not pdata then
             pdata = player_data.init(player_index)
         end
-        local player = game.get_player(player_index)
         if not player.character then return end
         pdata.config_tmp = player_data.combine_from_vanilla(player, pdata)
         at_gui.recreate(player, pdata)
@@ -540,16 +540,83 @@ local at_commands = {
     end,
 
     reset = function(args)
-        local pdata = global._pdata[args.player_index]
-        local player = game.get_player(args.player_index)
+        local player_index = args.player_index
+        local player = game.get_player(player_index)
+        local pdata = global._pdata[player_index]
         at_gui.destroy(player, pdata)
         at_gui.open(player, pdata)
         spider_gui.init(player, pdata)
     end,
 
+    compress = function(args)
+        local player_index = args.player_index
+        local pdata = global._pdata[player_index]
+        local config = pdata.config_tmp.config
+        local decrease = 0
+        local gap_size
+        local columns = 10
+
+        for i = 1, pdata.config_tmp.max_slot do
+            if i % columns == 1 and not config[i] then
+                --row starts empty, begin counting
+                gap_size = 1
+            elseif gap_size and not config[i] then
+                gap_size = gap_size + 1
+            else
+                gap_size = nil
+                if config[i] and decrease > 0 then
+                    if config[i-decrease] then
+                        if __DebugAdapter then
+                            __DebugAdapter.breakpoint()
+                        end
+                    end
+                    config[i-decrease] = config[i]
+                    config[i].slot = i - decrease
+                    config[i] = nil
+
+                end
+            end
+            if gap_size == columns then
+                decrease = decrease + columns
+                gap_size = nil
+            end
+        end
+        pdata.config_tmp.max_slot = pdata.config_tmp.max_slot - decrease
+        at_gui.adjust_slots(pdata, 1)
+        at_gui.update_buttons(pdata)
+    end,
+
+    insert_row = function(args)
+        local player_index = args.player_index
+        local player = game.get_player(player_index)
+        local pdata = global._pdata[player_index]
+        local row = tonumber(args.parameter)
+        if not row then
+            player.print(args.parameter .. " is not a number")
+            return
+        end
+        pdata.selected = false
+        local start = row * 10 + 1
+        if start <= pdata.config_tmp.max_slot then
+            local config = pdata.config_tmp.config
+            for i = pdata.config_tmp.max_slot, start, -1 do
+                if config[i] then
+                    config[i+10] = config[i]
+                    config[i].slot = i + 10
+                    config[i] = nil
+                end
+            end
+            pdata.config_tmp.max_slot = pdata.config_tmp.max_slot + 10
+            at_gui.update_sliders(pdata)
+            at_gui.adjust_slots(pdata, start)
+            at_gui.update_buttons(pdata)
+        end
+    end,
+
     move_button = function(args)
-        local pdata = global._pdata[args.player_index]
-        local player = game.get_player(args.player_index)
+        local player_index = args.player_index
+        local player = game.get_player(player_index)
+        local pdata = global._pdata[player_index]
         local index = tonumber(args.parameter)
         if index then
             pdata.main_button_index = index
@@ -559,20 +626,13 @@ local at_commands = {
         end
     end,
 
-    mess_up = function(args)
-        local player = game.get_player(args.player_index)
+    mess_up = function(player)
         player.gui.relative.clear()
         player.gui.screen.clear()
-    end
+    end,
 }
 
-local comms = commands.commands
-
-local command_prefix = "at_"
-if comms.at_hide or comms.at_show then
-    command_prefix = "autotrash_"
-end
-commands.add_command(command_prefix .. "import", "Import from vanilla", at_commands.import)
-commands.add_command(command_prefix .. "reset", "Reset gui", at_commands.reset)
-commands.add_command(command_prefix .. "move_button", "Move the top button to another position", at_commands.move_button)
-commands.add_command(command_prefix .. "mess_up", "", at_commands.mess_up)
+commands.add_command("at_import", {"at-commands.import"}, at_commands.import)
+commands.add_command("at_reset", {"at-commands.reset"}, at_commands.reset)
+commands.add_command("at_compress", {"at-commands.compress"}, at_commands.compress)
+commands.add_command("at_insert_row", {"at-commands.insert_row"}, at_commands.insert_row)
