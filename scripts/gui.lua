@@ -36,10 +36,9 @@ local function get_network_data(player)
     local network = get_non_equipment_network(character)
     local requester = character.get_logistic_point(defines.logistic_member_index.character_requester)
     if not (network and requester and network.valid and requester.valid) then
-        return
+        return false
     end
     local on_the_way = requester.targeted_items_deliver
-    local available = network.get_contents()
     local item_count = player.get_main_inventory().get_contents()
     local cursor_stack = player.cursor_stack
     cursor_stack = (cursor_stack and cursor_stack.valid_for_read) and {[cursor_stack.name] = cursor_stack.count} or {}
@@ -48,7 +47,7 @@ local function get_network_data(player)
     local gun = get_inventory(inventory.character_guns).get_contents()
     local ammo = get_inventory(inventory.character_ammo).get_contents()
 
-    return available, on_the_way, item_count, cursor_stack, armor, gun, ammo
+    return true, on_the_way, item_count, cursor_stack, armor, gun, ammo
 end
 
 local at_gui = {
@@ -924,7 +923,7 @@ function at_gui.update_trash_config(player, pdata, number, source)
     at_gui.update_sliders(pdata)
 end
 
-function at_gui.adjust_slots(pdata)
+function at_gui.adjust_slots(pdata, scroll_target)
     local slot_table = pdata.gui.main.slot_table
     local old_slots = #slot_table.children
     local columns = pdata.settings.columns
@@ -947,7 +946,8 @@ function at_gui.adjust_slots(pdata)
             btn.destroy()
         end
     end
-    pdata.gui.main.config_rows.scroll_to_element(slot_table.children[slots])
+    local target = scroll_target and slot_table.children[scroll_target] or slot_table.children[slots]
+    pdata.gui.main.config_rows.scroll_to_element(target)
 end
 
 function at_gui.update_buttons(pdata)
@@ -958,8 +958,8 @@ function at_gui.update_buttons(pdata)
     end
 end
 
-function at_gui.get_button_style(i, selected, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo, paused)
-    if paused or not (available and on_the_way and item and item.min > 0) then
+function at_gui.get_button_style(i, selected, item, on_the_way, item_count, cursor_stack, armor, gun, ammo, paused)
+    if paused or not (on_the_way and item and item.min > 0) then
         return (i == selected) and "yellow_slot_button" or "slot_button"
     end
     if i == selected then
@@ -971,12 +971,8 @@ function at_gui.get_button_style(i, selected, item, available, on_the_way, item_
     if diff <= 0 then
         return "slot_button"
     else
-        local diff2 = diff - (on_the_way[n] or 0) - (available[n] or 0)
-        if diff2 <= 0 then
+        if on_the_way[n] then
             return "yellow_slot_button", diff
-        elseif (on_the_way[n] and not available[n]) then
-        --item.name == "locomotive" then
-            return "blue_slot", diff
         end
         return "red_slot_button", diff
     end
@@ -987,8 +983,8 @@ function at_gui.update_button_styles(player, pdata)
     if not (ruleset_grid and ruleset_grid.valid) then return end
     local selected = pdata.selected
     local config = pdata.config_tmp
-    local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
-    if not (available and on_the_way and config.c_requests > 0 and not pdata.flags.pause_requests) then
+    local network, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
+    if not (network and on_the_way and config.c_requests > 0 and not pdata.flags.pause_requests) then
         local children = ruleset_grid.children
         for i=1, #children do
             children[i].style = (i == selected) and "yellow_slot_button" or "slot_button"
@@ -1000,7 +996,7 @@ function at_gui.update_button_styles(player, pdata)
     local buttons = ruleset_grid.children
     for i=1, #buttons do
         local item = config[i]
-        local style, diff = at_gui.get_button_style(i, selected, config[i], available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+        local style, diff = at_gui.get_button_style(i, selected, config[i], on_the_way, item_count, cursor_stack, armor, gun, ammo)
         if item and item.min > 0 then
             ret[item.name] = {style, diff}
         end
@@ -1397,8 +1393,8 @@ function at_gui.update_status_display(player, pdata)
         at_gui.init_status_display(player, pdata)
         return --init already updates it
     end
-    local available, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
-    if not (available and not pdata.flags.pause_requests) then
+    local network, on_the_way, item_count, cursor_stack, armor, gun, ammo = get_network_data(player)
+    if not (network and not pdata.flags.pause_requests) then
         for _, child in pairs(status_table.children) do
             child.visible = false
         end
@@ -1416,7 +1412,7 @@ function at_gui.update_status_display(player, pdata)
             if c > max_count then return true end
             item.min = item.count
             if item.min > 0 then
-                local style, diff = at_gui.get_button_style(i, false, item, available, on_the_way, item_count, cursor_stack, armor, gun, ammo)
+                local style, diff = at_gui.get_button_style(i, false, item, on_the_way, item_count, cursor_stack, armor, gun, ammo)
                 if style ~= "slot_button" then
                     local button = children[c]
                     button.style = style

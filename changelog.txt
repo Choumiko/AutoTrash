@@ -2,6 +2,7 @@
 Version: 5.3.8
 Date: ????
   Changes:
+    - Removed blue as a status indicator: Yellow button background means items are being delivered, red means no items are available/being delivered.
     - Minor changes to scrollbars to prevent the width of the gui changing
   Bugfixes:
     - Fixed crash when removing a preset via Spidertron and resaving it with the same name
