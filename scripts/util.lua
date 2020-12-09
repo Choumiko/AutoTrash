@@ -311,7 +311,8 @@ function M.format_number(n, append_suffix)
             end
         end
     end
-    local formatted, k = amount
+    local formatted = amount
+    local k
     local gsub = string.gsub
     while true do
         formatted, k = gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
