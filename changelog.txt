@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.8
-Date: ????
+Date: 2020-12-09
   Changes:
     - Added two new commands:
         /at_compress - Removes empty rows in the logistics configuratuon gui
