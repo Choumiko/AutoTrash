@@ -1,9 +1,17 @@
 local gui_util = {}
 
-gui_util.frame_action_button = function(params)
-    local ret = {type = "sprite-button", style = "frame_action_button", mouse_button_filter={"left"}}
-    for k, v in pairs(params) do
-        ret[k] = v
+gui_util.frame_action_button = function(sprite, hovered_sprite, action, ref, params)
+    local ret = {type = "sprite-button", style = "frame_action_button", mouse_button_filter={"left"},
+        sprite = sprite,
+        clicked_sprite = hovered_sprite,
+        hovered_sprite = hovered_sprite,
+        actions = {on_click = action},
+        ref = ref
+    }
+    if params then
+        for k, v in pairs(params) do
+            ret[k] = v
+        end
     end
     return ret
 end

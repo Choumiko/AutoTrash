@@ -209,11 +209,9 @@ at_gui.templates = {
                 {type = "flow", ref = {"window", "titlebar"}, children = {
                     {type = "label", style = "frame_title", caption = caption, elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
-                    gui_util.frame_action_button{
-                        actions = {on_click = {gui = "import", action = "close_button"}},
-                        ref = {"close_button"},
-                        sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black"
-                    }
+                    gui_util.frame_action_button("utility/close_white", "utility/close_black",
+                        {gui = "import", action = "close_button"}
+                    )
                 }},
                 {type = "text-box", text = bp_string, ref = {"window", "textbox"}, elem_mods = {word_wrap = true}, style_mods = {width = 400, height = 250}},
                 {type = "flow", direction = "horizontal", children={
@@ -312,7 +310,7 @@ at_gui.templates = {
         local i = 1
         for id, network in pairs(pdata.networks) do
             if network and network.valid then
-                ret[i] = {type = "flow", name = id, direction = "horizontal", style_mods = {width = 214},
+                ret[i] = {type = "flow", name = id, direction = "horizontal", style_mods = {width = constants.gui_dimensions.network_flow},
                     children = {
                         {type = "label", caption = {"", {"gui-logistic.network"}, " #" .. id}},
                         gui_util.pushers.horizontal,
@@ -347,14 +345,14 @@ at_gui.handlers.main = {
     pin_button = function(e)
         local pdata = e.pdata
         if pdata.flags.pinned then
-            pdata.gui.main.titlebar.pin_button.style = "frame_action_button"
-            pdata.gui.main.titlebar.pin_button.sprite = "at_pin_white"
+            pdata.gui.main.pin_button.style = "frame_action_button"
+            pdata.gui.main.pin_button.sprite = "at_pin_white"
             pdata.flags.pinned = false
             pdata.gui.main.window.force_auto_center()
             e.player.opened = pdata.gui.main.window
         else
-            pdata.gui.main.titlebar.pin_button.style = "flib_selected_frame_action_button"
-            pdata.gui.main.titlebar.pin_button.sprite = "at_pin_black"
+            pdata.gui.main.pin_button.style = "flib_selected_frame_action_button"
+            pdata.gui.main.pin_button.sprite = "at_pin_black"
             pdata.flags.pinned = true
             pdata.gui.main.window.auto_center = false
             e.player.opened = nil
@@ -1104,28 +1102,28 @@ function at_gui.create_main_window(player, pdata)
     local resolution = player.display_resolution
     local scale = player.display_scale
     local pin_sprite = flags.pinned and "at_pin_black" or "at_pin_white"
-    local magic_heights = constants.magic_heights
+    local gui_dimensions = constants.gui_dimensions
     local gui_data = gui.build(player.gui.screen,{
         {type = "frame",
             style_mods = {
                 maximal_width = (resolution.width / scale),
                 maximal_height = (resolution.height / scale) * 0.97,
-                height = pdata.settings.rows * 40 + magic_heights.window,
+                height = pdata.settings.rows * 40 + gui_dimensions.window,
             },
             direction = "vertical",
             actions = {on_closed = {gui = "main", action = "window"}},
             ref = {"main", "window"},
             children = {
-                {type = "flow", ref = {"main", "titlebar", "flow"}, children = {
+                {type = "flow", ref = {"main", "titlebar"}, children = {
                     {type = "label", style = "frame_title", caption = {"mod-name.AutoTrash"}, elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
-                    gui_util.frame_action_button{sprite=pin_sprite, hovered_sprite="at_pin_black", clicked_sprite="at_pin_black",
-                        actions = {on_click = {gui = "main", action = "pin_button"}},
-                        ref = {"main", "titlebar", "pin_button"}, tooltip={"at-gui.keep-open"}},
-                    gui_util.frame_action_button{sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black",
-                        actions = {on_click = {gui = "main", action = "close_button"}},
-                        ref = {"main", "titlebar", "close_button"}
-                    }
+                    gui_util.frame_action_button(pin_sprite, "at_pin_black",
+                        {gui = "main", action = "pin_button"},
+                        {"main", "pin_button"}, {tooltip={"at-gui.keep-open"}}
+                    ),
+                    gui_util.frame_action_button("utility/close_white", "utility/close_black",
+                        {gui = "main", action = "close_button"}
+                    )
                 }},
                 {type = "flow", direction = "horizontal", style = "inset_frame_container_horizontal_flow", children = {
                     {type = "frame", style = "inside_shallow_frame", direction = "vertical", children = {
@@ -1239,13 +1237,13 @@ function at_gui.create_main_window(player, pdata)
             }
         },
     })
-    gui_data.main.titlebar.flow.drag_target = gui_data.main.window
+    gui_data.main.titlebar.drag_target = gui_data.main.window
     gui_data.main.window.force_auto_center()
     gui_data.main.window.visible = false
 
     pdata.gui.main = gui_data.main
     if pdata.flags.pinned then
-        pdata.gui.main.titlebar.pin_button.style = "flib_selected_frame_action_button"
+        pdata.gui.main.pin_button.style = "flib_selected_frame_action_button"
     end
     pdata.selected = false
     at_gui.adjust_slots(pdata)

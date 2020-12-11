@@ -103,16 +103,16 @@ function spider_gui.init(player, pdata)
     spider_gui.destroy(pdata)
     local refs = gui.build(player.gui.relative, {
         {type = "frame", style = "inner_frame_in_outer_frame", direction = "vertical",
-            style_mods = {maximal_height = constants.magic_heights.spidertron},
+            style_mods = {maximal_height = constants.gui_dimensions.spidertron},
             ref = {"main"},
             anchor = {gui = defines.relative_gui_type.spider_vehicle_gui, position = defines.relative_gui_position.right},--luacheck: ignore
             children = {
                 {type = "flow", children = {
                     {type = "label", style = "frame_title", caption = "Logistics", elem_mods = {ignored_by_interaction = true}},
                     {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
-                    gui_util.frame_action_button{sprite="utility/collapse", hovered_sprite="utility/collapse_dark", clicked_sprite="utility/collapse_dark",
-                        actions = {on_click = {gui = "spider", action = "collapse"}},
-                        tooltip={"at-gui.keep-open"}},
+                    gui_util.frame_action_button("utility/collapse", "utility/collapse_dark",
+                        {gui = "spider", action = "collapse"}
+                    ),
                 }},
                 {type = "frame", style = "inside_shallow_frame", direction = "vertical", ref = {"preset_frame"}, children = {
                     {type = "frame", style = "subheader_frame", style_mods = {left_padding = 8}, children={

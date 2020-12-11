@@ -20,8 +20,9 @@ constants.trash_blacklist = {
     ["selection-tool"] = true,
 }
 
-constants.magic_heights = {
+constants.gui_dimensions = {
     window =  432,
     spidertron = 752,
+    network_flow = 214
 }
 return constants
