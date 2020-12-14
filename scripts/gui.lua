@@ -1445,10 +1445,10 @@ function at_gui.update_main_button(player, pdata)
         mainButton.sprite = "autotrash_trash"
     end
     mainButton.tooltip = {"at-gui.tooltip-main-button", flags.status_display_open and "On" or "Off"}
-    at_gui.update_settings(pdata)
+    at_gui.update_options(pdata)
 end
 
-function at_gui.update_settings(pdata)
+function at_gui.update_options(pdata)
     if not pdata.flags.gui_open then return end
     local frame = pdata.gui.main.trash_options
     if not (frame and frame.valid) then return end
