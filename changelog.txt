@@ -1,7 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.9
 Date: ????
-  Changes:
+  Bugfixes:
+    - Fixed crash when starting a game from custom scenario that used an older version of the mod
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.8
 Date: 2020-12-09

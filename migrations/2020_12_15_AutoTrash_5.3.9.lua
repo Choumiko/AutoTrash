@@ -1,0 +1,1 @@
+global.unlocked_by_force = global.unlocked_by_force or {}
