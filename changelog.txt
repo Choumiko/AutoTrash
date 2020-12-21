@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.10
-Date: ????
+Date: 2020-12-21
   Features:
     - Added a quick action to import the config from the inventory
     - Shift + Ctrl clicking presets will append presets without filling gaps
