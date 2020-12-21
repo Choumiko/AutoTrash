@@ -125,6 +125,11 @@ at_gui.toggle_setting = {
         at_util.set_requests(player, pdata)
         return pdata.flags.trash_unrequested
     end,
+    autotoggle_unrequested = function(player, pdata)
+        at_util.set_requests(player, pdata)
+        at_gui.update_options(pdata)
+        return pdata.flags.autotoggle_unrequested
+    end,
     trash_network = function(player, pdata)
         if pdata.flags.trash_network and not next(pdata.networks) then
             player.print{"at-message.no-network-set"}
@@ -201,31 +206,10 @@ at_gui.templates = {
                     }
         end,
     },
-    import_export_window = function(bp_string, all)
-        local caption = bp_string and {"gui.export-to-string"} or {"gui-blueprint-library.import-string"}
-        local button_caption = bp_string and {"gui.close"} or {"gui-blueprint-library.import"}
-        local button_handler = bp_string and "close_button" or "import_button"
-        return {type = "frame", ref = {"window", "main"}, style = "inner_frame_in_outer_frame", direction = "vertical", children = {
-                {type = "flow", ref = {"window", "titlebar"}, children = {
-                    {type = "label", style = "frame_title", caption = caption, elem_mods = {ignored_by_interaction = true}},
-                    {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
-                    gui_util.frame_action_button("utility/close_white", "utility/close_black",
-                        {gui = "import", action = "close_button"}
-                    )
-                }},
-                {type = "text-box", text = bp_string, ref = {"window", "textbox"}, elem_mods = {word_wrap = true}, style_mods = {width = 400, height = 250}},
-                {type = "flow", direction = "horizontal", children={
-                        gui_util.pushers.horizontal,
-                        {type = "button", style = "dialog_button", caption = button_caption,
-                            actions = {on_click = {gui = "import", action = button_handler, all = all}}
-                        }
-                }}
-            }}
-    end,
 
-    settings = function(flags)
+    options = function(flags)
         local toggle_action = {on_checked_state_changed = {gui = "settings", action = "toggle"}}
-        return {type = "frame", style = "at_bordered_frame", direction = "vertical", ref = {"main", "trash_options"}, children = {
+        return {
             {
                 type = "checkbox",
                 name = at_gui.defines.trash_above_requested,
@@ -237,7 +221,7 @@ at_gui.templates = {
             {type = "flow", direction = "horizontal", style_mods = {horizontal_spacing = 20}, children = {
                 {
                     type = "checkbox",
-                    ref = {"main", "trash_unrequested"},
+                    ref = {"options", "trash_unrequested"},
                     name = at_gui.defines.trash_unrequested,
                     caption = {"at-gui.trash-unrequested"},
                     state = flags.trash_unrequested,
@@ -245,7 +229,7 @@ at_gui.templates = {
                 },
                 {
                     type = "checkbox",
-                    ref = {"main", "autotoggle_unrequested"},
+                    ref = {"options", "autotoggle_unrequested"},
                     name = at_gui.defines.autotoggle_unrequested,
                     caption = {"at-gui.autotoggle_unrequested"},
                     state = flags.autotoggle_unrequested,
@@ -301,7 +285,7 @@ at_gui.templates = {
                     },
                 }
             },
-        }}
+        }
     end,
 
     networks = function(pdata)
@@ -849,7 +833,7 @@ at_gui.handlers.import = {
 
         inventory.insert{name = "blueprint"}
         local stack = inventory[1]
-        local result = stack.import_stack(pdata.gui.import.window.textbox.text)
+        local result = stack.import_stack(pdata.gui.import.textbox.text)
         if result ~= 0 then
             inventory.destroy()
             return result
@@ -863,7 +847,7 @@ at_gui.handlers.import = {
     end,
     close_button = function(e)
         local pdata = e.pdata
-        pdata.gui.import.window.main.destroy()
+        pdata.gui.import.window.destroy()
         pdata.gui.import = nil
     end
 }
@@ -1182,7 +1166,9 @@ function at_gui.create_main_window(player, pdata)
                                     selected_index = 1,
                                 },
                             }},
-                            at_gui.templates.settings(flags),
+                            {type = "frame", style = "at_bordered_frame", direction = "vertical", ref = {"options", "window"},
+                                children = at_gui.templates.options(flags),
+                            }
                         }},
 
                     }},
@@ -1243,6 +1229,7 @@ function at_gui.create_main_window(player, pdata)
     pdata.gui.sliders = gui_data.sliders
     pdata.gui.presets = gui_data.presets
     pdata.gui.networks = gui_data.networks
+    pdata.gui.options = gui_data.options
     if pdata.flags.pinned then
         pdata.gui.main.pin_button.style = "flib_selected_frame_action_button"
     end
@@ -1251,16 +1238,37 @@ function at_gui.create_main_window(player, pdata)
 end
 
 function at_gui.create_import_window(player, pdata, bp_string, all)
-    if pdata.gui.import and pdata.gui.import.window and pdata.gui.import.window.main.valid then
-        local window = pdata.gui.import.window.main
+    if pdata.gui.import and pdata.gui.import.window and pdata.gui.import.window.valid then
+        local window = pdata.gui.import.window
         window.destroy()
         pdata.gui.import = nil
     end
-    local refs = gui.build(player.gui.screen, {at_gui.templates.import_export_window(bp_string, all)})
+    local caption = bp_string and {"gui.export-to-string"} or {"gui-blueprint-library.import-string"}
+    local button_caption = bp_string and {"gui.close"} or {"gui-blueprint-library.import"}
+    local button_handler = bp_string and "close_button" or "import_button"
+
+    local refs = gui.build(player.gui.screen, {
+        {type = "frame", ref = {"window"}, style = "inner_frame_in_outer_frame", direction = "vertical", children = {
+                {type = "flow", ref = {"titlebar"}, children = {
+                    {type = "label", style = "frame_title", caption = caption, elem_mods = {ignored_by_interaction = true}},
+                    {type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = {ignored_by_interaction = true}},
+                    gui_util.frame_action_button("utility/close_white", "utility/close_black",
+                        {gui = "import", action = "close_button"}
+                    )
+                }},
+                {type = "text-box", text = bp_string, ref = {"textbox"}, elem_mods = {word_wrap = true}, style_mods = {width = 400, height = 250}},
+                {type = "flow", direction = "horizontal", children={
+                        gui_util.pushers.horizontal,
+                        {type = "button", style = "dialog_button", caption = button_caption,
+                            actions = {on_click = {gui = "import", action = button_handler, all = all}}
+                        }
+                }}
+            }}
+    })
     pdata.gui.import = refs
-    local import_window = pdata.gui.import.window
-    import_window.titlebar.drag_target = pdata.gui.import.window.main
-    import_window.main.force_auto_center()
+    local import_window = pdata.gui.import
+    import_window.titlebar.drag_target = pdata.gui.import.window
+    import_window.window.force_auto_center()
     local textbox = import_window.textbox
     if bp_string then
         textbox.read_only = true
@@ -1347,7 +1355,7 @@ function at_gui.init_status_display(player, pdata, keep_status)
             visible = false
         }
     end
-    at_gui.update_settings(pdata)
+    at_gui.update_options(pdata)
     at_gui.update_status_display(player, pdata)
     return status_table
 end
@@ -1363,12 +1371,12 @@ function at_gui.open_status_display(player, pdata)
         at_gui.update_main_button(player, pdata)
         at_gui.update_status_display(player, pdata)
     end
-    at_gui.update_settings(pdata)
+    at_gui.update_options(pdata)
 end
 
 function at_gui.close_status_display(player, pdata)
     pdata.flags.status_display_open = false
-    at_gui.update_settings(pdata)
+    at_gui.update_options(pdata)
     at_gui.update_main_button(player, pdata)
     local status_table = pdata.gui.status_table
     if not (status_table and status_table.valid) then
@@ -1450,14 +1458,13 @@ end
 
 function at_gui.update_options(pdata)
     if not pdata.flags.gui_open then return end
-    local frame = pdata.gui.main.trash_options
+    local frame = pdata.gui.options.window
     if not (frame and frame.valid) then return end
     local flags = pdata.flags
     local def = at_gui.defines
 
-    pdata.gui.main.trash_unrequested.state = flags.trash_unrequested
-    pdata.gui.main.autotoggle_unrequested = flags.autotoggle_unrequested
-    --frame[def.trash_unrequested].state = flags.trash_unrequested
+    pdata.gui.options.trash_unrequested.state = flags.trash_unrequested
+    pdata.gui.options.autotoggle_unrequested = flags.autotoggle_unrequested
     frame[def.trash_above_requested].state = flags.trash_above_requested
     frame[def.trash_network].state = flags.trash_network
     frame[def.pause_trash].state = flags.pause_trash
@@ -1480,11 +1487,13 @@ function at_gui.destroy(player, pdata)
         pdata.gui.main.window.destroy()
     end
     pdata.gui.main = {}
+    pdata.gui.sliders = {}
+    pdata.gui.options = {}
+    pdata.gui.presets = {}
+    pdata.gui.networks = {}
     pdata.flags.gui_open = false
-    if pdata.gui.import and pdata.gui.import.window then
-        if pdata.gui.import.window.main and pdata.gui.import.window.main.valid then
-            pdata.gui.import.window.main.destroy()
-        end
+    if pdata.gui.import and pdata.gui.import.window and pdata.gui.import.window.valid then
+        pdata.gui.import.window.destroy()
     end
     pdata.gui.import = {}
     player.set_shortcut_toggled("autotrash-toggle-gui", false)
@@ -1517,7 +1526,7 @@ function at_gui.open(player, pdata)
     at_gui.adjust_slots(pdata)
     at_gui.update_buttons(pdata)
     at_gui.update_button_styles(player, pdata)
-    at_gui.update_settings(pdata)
+    at_gui.update_options(pdata)
     at_gui.update_sliders(pdata)
     at_gui.update_presets(player, pdata)
 end
