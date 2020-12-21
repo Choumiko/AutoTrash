@@ -6,7 +6,7 @@ local presets = {}
 --requests and trash are set to max(current, preset)
 --if one preset has trash set to false it is set to a non false value
 --slot from current are kept
-function presets.merge(current, preset)
+function presets.merge(current, preset, append)
     if not (preset and preset.config) then return end
     local result = current.config
     local b = at_util.copy_preset(preset)
@@ -29,16 +29,32 @@ function presets.merge(current, preset)
             end
         end
     end
-    --preserve slot number if possible
-    for i, config in pairs(b.config) do
-        if not result[config.slot] then
-            result[config.slot] = config
+    if append then
+        local i = max_slot + 1
+        local last
+        for slot, config in pairs(b.config) do
+            if last then
+                i = i + slot - last
+            end
+            config.slot = i
+            result[i] = config
             current.by_name[config.name] = config
-        else
-            no_slot[#no_slot + 1] = config
+            last = slot
+            max_slot = max_slot > i and max_slot or i
+            c_requests = config.min > 0 and c_requests + 1 or c_requests
         end
-        max_slot = max_slot > config.slot and max_slot or config.slot
-        c_requests = config.min > 0 and c_requests + 1 or c_requests
+    else
+    --preserve slot number if possible
+        for _, config in pairs(b.config) do
+            if not result[config.slot] then
+                result[config.slot] = config
+                current.by_name[config.name] = config
+            else
+                no_slot[#no_slot + 1] = config
+            end
+            max_slot = max_slot > config.slot and max_slot or config.slot
+            c_requests = config.min > 0 and c_requests + 1 or c_requests
+        end
     end
 
     local start = 1

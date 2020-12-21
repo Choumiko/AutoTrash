@@ -480,6 +480,20 @@ at_gui.handlers.main = {
                 end
             end
             config_tmp.c_requests = c
+        elseif index == 7 then
+            local contents = e.player.get_main_inventory().get_contents()
+            config_tmp.config = {}
+            config_tmp.by_name = {}
+            config_tmp.max_slot = 0
+            config_tmp.c_requests = 0
+            pdata.selected = false
+            local i = 1
+            for name, count in pairs(contents) do
+                if not constants.trash_blacklist[name] then
+                    player_data.add_config(pdata, name, count, count, i)
+                    i = i + 1
+                end
+            end
         end
         element.selected_index = 1
         at_gui.mark_dirty(e.player, pdata)
@@ -617,7 +631,7 @@ at_gui.handlers.presets = {
         local player = e.player
         local pdata = e.pdata
         local name = e.element.caption
-        if not e.shift and not e.control then
+        if not e.shift then
             pdata.selected_presets = {[name] = true}
             pdata.config_tmp = at_util.copy_preset(pdata.presets[name])
             pdata.selected = false
@@ -631,7 +645,7 @@ at_gui.handlers.presets = {
             end
             local tmp = {config = {}, by_name = {}, max_slot = 0, c_requests = 0}
             for key, _ in pairs(selected_presets) do
-                presets.merge(tmp, pdata.presets[key])
+                presets.merge(tmp, pdata.presets[key], e.control)
             end
             pdata.config_tmp = tmp
             pdata.selected = false
