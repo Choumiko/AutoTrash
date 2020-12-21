@@ -686,7 +686,7 @@ at_gui.handlers = {
                     local player = e.player
                     local pdata = e.pdata
                     local name = e.element.caption
-                    if not e.shift and not e.control then
+                    if not e.shift then
                         pdata.selected_presets = {[name] = true}
                         pdata.config_tmp = table.deep_copy(pdata.presets[name])
                         pdata.selected = false
@@ -700,7 +700,7 @@ at_gui.handlers = {
                         end
                         local tmp = {config = {}, by_name = {}, max_slot = 0, c_requests = 0}
                         for key, _ in pairs(selected_presets) do
-                            presets.merge(tmp, pdata.presets[key])
+                            presets.merge(tmp, pdata.presets[key], e.control)
                         end
                         pdata.config_tmp = tmp
                         pdata.selected = false
