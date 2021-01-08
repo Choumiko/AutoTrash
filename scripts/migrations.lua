@@ -229,7 +229,15 @@ local migrations = {
         for _, pdata in pairs(global._pdata) do
             pdata.flags.autotoggle_unrequested = false
         end
-    end
+    end,
+    ["5.3.9"] = function()
+        for _, pdata in pairs(global._pdata) do
+            pdata.gui.sliders = {}
+            pdata.gui.options = {}
+            pdata.gui.presets = {}
+            pdata.gui.networks = {}
+        end
+    end,
 }
 
 return migrations

@@ -25,6 +25,10 @@ function player_data.init(player_index)
         gui = {
             import = {},
             main = {},
+            sliders = {},
+            options = {},
+            presets = {},
+            networks = {},
             spider = {},
         },
         config_new = {config = {}, by_name = {}, c_requests = 0, max_slot = 0},
@@ -274,7 +278,7 @@ function player_data.add_preset(player, pdata, name, config)
         player.print({"at-message.preset-updated", name})
     else
         pdata.presets[name] = at_util.copy_preset(config)
-        gui.build(pdata.gui.main.presets_flow, {gui_util.preset(name, pdata)})
+        gui.build(pdata.gui.presets.scroll, {gui_util.preset(name, pdata)})
     end
     return true
 

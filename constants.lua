@@ -9,7 +9,8 @@ constants.quick_actions = {
     [4] = {"at-gui.clear-both"},
     [5] = {"at-gui.trash-to-requests"},
     [6] = {"at-gui.requests-to-trash"},
-    [7] = {"at-gui.import-from-inventory"}
+    [7] = {"at-gui.import-requests"},
+    [8] = {"at-gui.import-from-inventory"}
 }
 
 constants.trash_blacklist = {

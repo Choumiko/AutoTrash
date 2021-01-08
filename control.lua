@@ -147,7 +147,7 @@ local function on_player_main_inventory_changed(e)
     end
     if not flags.pause_trash and flags.trash_unrequested then
         if set_requests(player, pdata) then
-            at_gui.update_settings(pdata)
+            at_gui.update_options(pdata)
         end
     end
 end
@@ -436,7 +436,7 @@ event.register("autotrash-toggle-unrequested", function(e)
     local pdata = global._pdata[e.player_index]
     pdata.flags.trash_unrequested = not pdata.flags.trash_unrequested
     at_gui.toggle_setting.trash_unrequested(player, pdata)
-    at_gui.update_settings(pdata)
+    at_gui.update_options(pdata)
 end)
 
 event.register("autotrash_trash_cursor", function(e)
