@@ -481,6 +481,9 @@ at_gui.handlers.main = {
             end
             config_tmp.c_requests = c
         elseif index == 7 then
+            pdata.config_tmp = at_util.get_requests(e.player.get_personal_logistic_slot, e.player.character.request_slot_count)
+            pdata.selected = false
+        elseif index == 8 then
             local contents = e.player.get_main_inventory().get_contents()
             config_tmp.config = {}
             config_tmp.by_name = {}
