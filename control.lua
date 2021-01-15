@@ -23,6 +23,7 @@ local in_network = at_util.in_network
 --[[
         - register on_player_main_inventory_changed etc conditionally
         - Map setting to disable updating button styles / status display?
+        - Load different profiles depending on the network?
 ]]--
 
 local function on_nth_tick()

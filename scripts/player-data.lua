@@ -157,6 +157,7 @@ function player_data.import_when_empty(player, pdata)
         player.print{"at-message.auto-import"}
         pdata.config_tmp = player_data.combine_from_vanilla(player, "at_imported")
         pdata.config_new = at_util.copy_preset(pdata.config_tmp)
+        pdata.selected = false
         return true
     end
 end

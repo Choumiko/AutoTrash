@@ -728,6 +728,7 @@ at_gui.handlers.settings = {
         if at_gui.toggle_setting[name] then
             if player_data.import_when_empty(player, pdata) then
                 at_gui.adjust_slots(pdata)
+                at_gui.update_sliders(pdata)
                 at_gui.update_buttons(pdata)
             end
             pdata.flags[name] = e.element.state
@@ -873,6 +874,12 @@ function at_gui.update_request_config(player, number, pdata, from_text)
     local selected = pdata.selected
     local config_tmp = pdata.config_tmp
     local item_config = config_tmp.config[selected]
+    if not item_config then
+        pdata.selected = false
+        at_gui.update_button_styles(player, pdata)
+        at_gui.update_sliders(pdata)
+        return
+    end
     if not from_text then
         number = number * item_prototype(item_config.name).stack_size
     end
@@ -1008,6 +1015,7 @@ function at_gui.update_button(pdata, i, button)
     if not (button and button.valid) then
         if not i then return end
         button = pdata.gui.main.slot_table.children[i]
+        if not button then return end
     end
     local req = pdata.config_tmp.config[i]
     if req then
@@ -1503,6 +1511,7 @@ function at_gui.destroy(player, pdata)
     if pdata.gui.main and pdata.gui.main.window and pdata.gui.main.window.valid then
         pdata.gui.main.window.destroy()
     end
+    pdata.selected = false
     pdata.gui.main = {}
     pdata.gui.sliders = {}
     pdata.gui.options = {}
