@@ -462,9 +462,10 @@ local function on_runtime_mod_setting_changed(e)
         return
     end
     local player_index = e.player_index
+    if not player_index then return end
     local player = game.get_player(player_index)
     local pdata = global._pdata[player_index]
-    if not (player_index and pdata) then return end
+    if not pdata then return end
     player_data.refresh(player, pdata)
     at_gui.update_main_button(player, pdata)
     if e.setting == "autotrash_gui_displayed_columns" then
