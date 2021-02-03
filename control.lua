@@ -461,6 +461,7 @@ local function on_runtime_mod_setting_changed(e)
         register_conditional_events()
         return
     end
+    if not e.player_index then return end
     local player_index = e.player_index
     local player = game.get_player(player_index)
     local pdata = global._pdata[player_index]
