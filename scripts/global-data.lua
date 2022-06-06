@@ -18,6 +18,7 @@ function global_data.refresh()
         {filter = "type", type = "upgrade-item", invert = true, mode = "and"},
         {filter = "type", type = "copy-paste-tool", invert = true, mode = "and"},
         {filter = "type", type = "selection-tool", invert = true, mode = "and"},
+        {filter = "type", type = "spidertron-remote", invert = true, mode = "and"},
         {filter = "flag", flag = "hidden", invert = true, mode = "and"},
         --{filter = "place-result", mode = "and"}
     }
