@@ -1138,11 +1138,11 @@ function at_gui.create_main_window(player, pdata)
                             {type = "label", style = "subheader_caption_label", caption = {"at-gui.logistics-configuration"}},
                             gui_util.pushers.horizontal,
                             {type = "sprite-button", style = "item_and_count_select_confirm",
-                                sprite = "utility/check_mark", tooltip = {"module-inserter-config-button-apply"},
+                                sprite = "utility/check_mark", tooltip = {"at-gui.config-button-apply"},
                                 actions = {on_click = {gui = "main", action = "apply_changes"}},
                             },
                             {type = "sprite-button", style = "tool_button_red", ref = {"main", "reset_button"}, sprite = "utility/reset",
-                                actions = {on_click = {gui = "main", action = "reset"}},
+                                tooltip = {"at-gui.config-button-reset"}, actions = {on_click = {gui = "main", action = "reset"}},
                             },
                             {type = "sprite-button", style = "tool_button", sprite = "utility/export_slot", tooltip = {"at-gui.tooltip-export"},
                                 actions = {on_click = {gui = "main", action = "export"}}
