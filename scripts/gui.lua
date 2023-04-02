@@ -634,6 +634,8 @@ at_gui.handlers.presets = {
         local player = e.player
         local pdata = e.pdata
         local name = e.element.caption
+        local textfield = pdata.gui.presets.textfield
+        textfield.text = name
         if not e.shift then
             pdata.selected_presets = {[name] = true}
             pdata.config_tmp = at_util.copy_preset(pdata.presets[name])
