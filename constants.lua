@@ -20,6 +20,7 @@ constants.trash_blacklist = {
     ["upgrade-item"] = true,
     ["copy-paste-tool"] = true,
     ["selection-tool"] = true,
+    ["spidertron-remote"] = true,
 }
 
 constants.gui_dimensions = {

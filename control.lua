@@ -525,6 +525,32 @@ local function on_research_finished(e)
 end
 event.on_research_finished(on_research_finished)
 
+local function on_entity_logistic_slot_changed(e)
+    if e.player_index == nil then return end
+
+    local player = game.get_player(e.player_index)
+    if not (player.character) then return end
+    local pdata = global._pdata[e.player_index]
+
+    local request = player.get_personal_logistic_slot(e.slot_index)
+    -- Request removed
+    if request.name == nil then end
+
+    -- Don't add request if it's already fulfilled
+    local contents = player.get_main_inventory().get_contents()
+    local item_count = contents[request.name] or 0
+    if item_count >= request.min and item_count <= request.max then 
+        player.clear_personal_logistic_slot(e.slot_index)
+        player.print{"temporary-request-already-fulfilled"}
+        return 
+    end
+
+    if player_data.set_request(player, global._pdata[player.index], request, true) then
+        player.print({"at-message.added-to-temporary-requests", at_util.item_prototype(request.name).localised_name})
+    end
+end
+event.on_entity_logistic_slot_changed(on_entity_logistic_slot_changed)
+
 local at_commands = {
     import = function(args)
         local player_index = args.player_index

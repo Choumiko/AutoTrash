@@ -634,6 +634,8 @@ at_gui.handlers.presets = {
         local player = e.player
         local pdata = e.pdata
         local name = e.element.caption
+        local textfield = pdata.gui.presets.textfield
+        textfield.text = name
         if not e.shift then
             pdata.selected_presets = {[name] = true}
             pdata.config_tmp = at_util.copy_preset(pdata.presets[name])
@@ -1138,7 +1140,7 @@ function at_gui.create_main_window(player, pdata)
                             {type = "label", style = "subheader_caption_label", caption = {"at-gui.logistics-configuration"}},
                             gui_util.pushers.horizontal,
                             {type = "sprite-button", style = "item_and_count_select_confirm",
-                                sprite = "utility/check_mark", tooltip = {"module-inserter-config-button-apply"},
+                                sprite = "utility/check_mark", tooltip = {"at-gui.config-button-apply"},
                                 actions = {on_click = {gui = "main", action = "apply_changes"}},
                             },
                             {type = "sprite-button", style = "tool_button_red", ref = {"main", "reset_button"}, sprite = "utility/reset",
