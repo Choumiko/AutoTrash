@@ -1,29 +1,47 @@
-![Top GUI](http://i.imgur.com/lg3Zpgk.png)
-Configure AutoTrash for the items you want to be moved to the trash slots automatically
+Configure different presets for your logistic request and auto-trash slots
 
-AutoTrash:
+![Config](https://mods-data.factorio.com/assets/ee3e3a9131dcaddd3c9ee49a3dced17af37a6de8.png)
+
+Features:
 ---
-Clicking the trash icon with an item in your hand, adds that item to the temporary trash, once that item is completely removed, it also gets removed from AutoTrash.
-Clicking it without an icon opens the gui. Click the grey squares with an item in your hand to add it to the list. In the textfield you can set how many items should stay in your inventory (defaults to 0 if nothing is set)
-If an item is also set in your logistic requests, that amount is also protected from being "trashed" (no need to use the textfield then).
-Number of slots is tied to the trash research. Level 1 unlocks it with 10 slots, Level 2 changes it to 30 slots.
+- Configure request and trash settings in one window
+- Save and load multiple presets
+- Export/Import the configuration and presets (as a string or blueprint/book)
+- Display the requests status:
+    + Red: missing items
+    + Yellow: items are on the way
+    + Blue: some items are on the way, but not enough are available
+- Pause requests when dying
+- Load one or more preset after respawning
+- Trash unrequested items
+- Pause autotrash when not in certain networks
+- Pause requests/auto-trash individually
+- Shift click configured items in the gui to quickly reorder them (keep shift pressed when clicking the second time):
+![ClickDrop](https://i.imgur.com/h8XcENe.gif)
 
-Logistics:
+Notes:
 ---
-Mostly the same as AutoTrash, but changing your request slots when clicking Save.
-You can save/load different setups for easier switching.
-The number of slots is equal to your logistics slots research.
-
-Items get trashed every 2 seconds for now. Hitting Pause will, wait for it.., pause AutoTrash :D
+- This mod may change your vanilla Logistic and Auto Trash slots at any time (depending on your settings), so i suggest to configure them only in the mods gui if you don't want to loose your changes
+- Export/Import: I suggest to keep the created strings as a blueprint in the blueprint library. If you have modded items configured and import the string in a save without these items you might even loose items that are still available. Importing from a blueprint from the library will only remove the missing items, keeping everything else intact.
 
 Hotkeys:
 ---
 - Shift + P: Pauses Autotrash
 - Shift + O: Pause logistic requests
 - Shift + T: Add item on cursor to temporary trash. Pause/Unpause Autotrash if cursor is empty
+- Control + L: Toggle AutoTrash gui
+- Unbound: Toggle trashing of unrequested items
 
-Console commands:
+Commands:
 ---
-- Show/Hide buttons: /c remote_call("at", "hide"), /c remote.call("at", "show")
+- /at_import - Import the vanilla request and trash settings into the mod gui:
+- /at_reset - Reset gui
+- /at_compress - Removes empty rows in the logistics configuratuon gui
+- /at_insert_row <number> - Add an empty row after row #<number>, e.g. /at_insert_row 2 - Inserts an empty row after row #2
+
+Todo:
+---
+- Temporary requests
+- Order blueprint items
 
 [More info](https://forums.factorio.com/viewtopic.php?f=97&t=16016)
