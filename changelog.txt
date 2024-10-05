@@ -1,7 +1,12 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.14
 Date: ????
+  Bugfixes:
+    - Fixed crash when saving a preset on a spidertron while in editor mode
+    - Possibly fixed crash when importing a preset via blueprint
+    - Possibly fixed crash when items stored in presets get removed from the game
   Changes:
+    - "Set trash to requests" quick action now works when 0 items are requested
 ---------------------------------------------------------------------------------------------------
 Version: 5.3.13
 Date: 2021-02-03
