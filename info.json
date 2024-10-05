@@ -1,6 +1,6 @@
 {
   "name": "AutoTrash",
-  "version": "5.3.14",
+  "version": "5.3.15",
   "factorio_version": "1.1",
   "title": "Auto Trash",
   "author": "Choumiko",
@@ -10,7 +10,6 @@
   "dependencies": ["flib >= 0.6.0"],
   "package":{
     "scripts": {
-        "prepackage": "luacheck . --config '../.luacheckrc'"
     },
     "ignore":[ "*.zip", "*.xcf" ]
   }
