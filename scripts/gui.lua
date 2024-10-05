@@ -66,7 +66,7 @@ local at_gui = {
 local function import_presets(player, pdata, add_presets, stack)
     if stack and stack.valid_for_read then
         if stack.is_blueprint and stack.is_blueprint_setup() then
-            local preset, cc_found = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
+            local preset, cc_found, missing_items = presets.import(stack.get_blueprint_entities(), stack.blueprint_icons)
             if cc_found then
                 pdata.config_tmp = preset
                 player.print({"string-import-successful", "AutoTrash configuration"})
@@ -89,6 +89,9 @@ local function import_presets(player, pdata, add_presets, stack)
                 end
             else
                 player.print({"", {"error-while-importing-string"}, " ", {"at-message.import-error"}})
+                if #missing_items > 0 then
+                    player.print("Removed missing items from import: ", table.concat(missing_items, ", "))
+                end
             end
             return true
         elseif add_presets and stack.is_blueprint_book then
@@ -97,10 +100,13 @@ local function import_presets(player, pdata, add_presets, stack)
             for i = 1, #book_inventory do
                 local bp = book_inventory[i]
                 if bp.valid_for_read and bp.is_blueprint_setup() then
-                    local config, cc = presets.import(bp.get_blueprint_entities(), bp.blueprint_icons)
+                    local config, cc, missing_items = presets.import(bp.get_blueprint_entities(), bp.blueprint_icons)
                     if cc then
                         any_cc = true
                         player_data.add_preset(player, pdata, bp.label, config)
+                    end
+                    if #missing_items > 0 then
+                        player.print("Removed missing items from import: ", table.concat(missing_items, ", "))
                     end
                 end
             end

@@ -154,6 +154,7 @@ function presets.import(preset, icons)
     local config = tmp.config
     local index_offset, index
     local cc_found = false
+    local missing_items = {}
     if icons then
         --log_blueprint_entities(preset)
         for _, cc in pairs(preset) do
@@ -162,23 +163,27 @@ function presets.import(preset, icons)
             if cc.name == "constant-combinator" then
                 cc_found = true
                 for _, item_config in pairs(filters) do
-                    index = index_offset + item_config.index
-                    if not config[index] then
-                        config[index] = {name = item_config.signal.name, slot = index, max = max_request, min = 0}
-                        by_name[item_config.signal.name] = config[index]
-                    end
-                    if (cc.position.y - 0.5) == 0 then
-                        config[index].min = item_config.count
+                    if at_util.item_prototype(item_config.name) then
+                        index = index_offset + item_config.index
+                        if not config[index] then
+                            config[index] = {name = item_config.signal.name, slot = index, max = max_request, min = 0}
+                            by_name[item_config.signal.name] = config[index]
+                        end
+                        if (cc.position.y - 0.5) == 0 then
+                            config[index].min = item_config.count
+                        else
+                            config[index].max = item_config.count
+                        end
+                        tmp.max_slot = tmp.max_slot > index and tmp.max_slot or index
+                        tmp.c_requests = config[index].min > 0 and (tmp.c_requests + 1) or tmp.c_requests
                     else
-                        config[index].max = item_config.count
+                        table.insert(missing_items, item_config.name)
                     end
-                    tmp.max_slot = tmp.max_slot > index and tmp.max_slot or index
-                    tmp.c_requests = config[index].min > 0 and (tmp.c_requests + 1) or tmp.c_requests
                 end
             end
         end
     end
-    return tmp, cc_found
+    return tmp, cc_found, missing_items
 end
 
 return presets
