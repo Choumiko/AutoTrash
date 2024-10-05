@@ -325,6 +325,15 @@ end
 
 function M.remove_invalid_items()
     local function _remove(tbl)
+        local max_slot = #tbl.config
+        if not type(tbl.max_slot) == "number" then
+            for j = 1, #tbl.config do
+                if tbl.config[j] and tbl.config[j].slot > max_slot then
+                    max_slot = tbl.config[j].slot
+                end
+            end
+        end
+        tbl.max_slot = max_slot
         for i = tbl.max_slot, 1, -1 do
             local item_config = tbl.config[i]
             if item_config then
