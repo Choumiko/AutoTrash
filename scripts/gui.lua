@@ -467,7 +467,7 @@ at_gui.handlers.main = {
             at_gui.adjust_slots(pdata)
         elseif index == 5 then
             for _, config in pairs(config_tmp.config) do
-                if config.min > 0 then
+                if config.min >= 0 then
                     config.max = config.min
                 end
             end

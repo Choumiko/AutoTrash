@@ -279,7 +279,9 @@ function player_data.add_preset(player, pdata, name, config)
         player.print({"at-message.preset-updated", name})
     else
         pdata.presets[name] = at_util.copy_preset(config)
-        gui.build(pdata.gui.presets.scroll, {gui_util.preset(name, pdata)})
+        if (player.controller_type ~= defines.controllers.editor) then
+            gui.build(pdata.gui.presets.scroll, {gui_util.preset(name, pdata)})
+        end
     end
     return true
 
