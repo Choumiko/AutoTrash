@@ -860,6 +860,8 @@ at_gui.handlers.import = {
         local result = stack.import_stack(pdata.gui.import.textbox.text)
         if result ~= 0 then
             inventory.destroy()
+            player.print({"failed-to-import-string", "Unknown error"})
+            at_gui.handlers.import.close_button(e)
             return result
         end
         result = import_presets(player, pdata, msg.all, stack)

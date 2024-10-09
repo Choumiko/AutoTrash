@@ -163,7 +163,7 @@ function presets.import(preset, icons)
             if cc.name == "constant-combinator" then
                 cc_found = true
                 for _, item_config in pairs(filters) do
-                    if at_util.item_prototype(item_config.name) then
+                    if at_util.item_prototype(item_config.signal.name) then
                         index = index_offset + item_config.index
                         if not config[index] then
                             config[index] = {name = item_config.signal.name, slot = index, max = max_request, min = 0}
@@ -177,7 +177,7 @@ function presets.import(preset, icons)
                         tmp.max_slot = tmp.max_slot > index and tmp.max_slot or index
                         tmp.c_requests = config[index].min > 0 and (tmp.c_requests + 1) or tmp.c_requests
                     else
-                        table.insert(missing_items, item_config.name)
+                        table.insert(missing_items, item_config.signal.name)
                     end
                 end
             end
